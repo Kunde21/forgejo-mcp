@@ -17,14 +17,14 @@ These are the tasks to be completed for the spec detailed in @.agent-os/specs/20
   - [x] 1.7 Add logrus logger initialization in server
   - [x] 1.8 Verify all tests pass
 
-- [ ] 2. Transport Layer Implementation
-  - [ ] 2.1 Write tests for stdio transport and request routing
-  - [ ] 2.2 Create server/transport.go with NewStdioTransport function
-  - [ ] 2.3 Implement JSON-RPC message handling over stdin/stdout
-  - [ ] 2.4 Create request dispatcher and router for tool mapping
-  - [ ] 2.5 Add connection lifecycle management
-  - [ ] 2.6 Implement timeout handling for requests
-  - [ ] 2.7 Verify all tests pass
+- [x] 2. Transport Layer Implementation
+  - [x] 2.1 Write tests for stdio transport and request routing
+  - [x] 2.2 Create server/transport.go with NewStdioTransport function
+  - [x] 2.3 Implement JSON-RPC message handling over stdin/stdout
+  - [x] 2.4 Create request dispatcher and router for tool mapping
+  - [x] 2.5 Add connection lifecycle management
+  - [x] 2.6 Implement timeout handling for requests
+  - [x] 2.7 Verify all tests pass
 
 - [ ] 3. Tool Registration System
   - [ ] 3.1 Write tests for tool registration and manifest generation
