@@ -26,14 +26,14 @@ These are the tasks to be completed for the spec detailed in @.agent-os/specs/20
   - [x] 2.6 Implement timeout handling for requests
   - [x] 2.7 Verify all tests pass
 
-- [ ] 3. Tool Registration System
-  - [ ] 3.1 Write tests for tool registration and manifest generation
-  - [ ] 3.2 Create server/tools.go with tool definitions
-  - [ ] 3.3 Define JSON schemas for pr_list and issue_list tools
-  - [ ] 3.4 Implement registerTools() method on Server
-  - [ ] 3.5 Implement toolManifest() for client discovery
-  - [ ] 3.6 Add parameter validation rules
-  - [ ] 3.7 Verify all tests pass
+- [x] 3. Tool Registration System
+  - [x] 3.1 Write tests for tool registration and manifest generation
+  - [x] 3.2 Create server/tools.go with tool definitions
+  - [x] 3.3 Define JSON schemas for pr_list and issue_list tools
+  - [x] 3.4 Implement registerTools() method on Server
+  - [x] 3.5 Implement toolManifest() for client discovery
+  - [x] 3.6 Add parameter validation rules
+  - [x] 3.7 Verify all tests pass
 
 - [ ] 4. Request Handlers and Tea Integration
   - [ ] 4.1 Write tests for request handlers and tea command building

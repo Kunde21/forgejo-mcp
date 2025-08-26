@@ -12,13 +12,14 @@ import (
 
 // Server represents the MCP server with all its dependencies
 type Server struct {
-	config     *config.Config
-	logger     *logrus.Logger
-	cancel     context.CancelFunc
-	stopCh     chan struct{}
-	transport  Transport
-	dispatcher *RequestDispatcher
-	processor  *MessageProcessor
+	config       *config.Config
+	logger       *logrus.Logger
+	cancel       context.CancelFunc
+	stopCh       chan struct{}
+	transport    Transport
+	dispatcher   *RequestDispatcher
+	processor    *MessageProcessor
+	toolRegistry *ToolRegistry
 }
 
 // New creates a new MCP server instance with the provided configuration
@@ -50,7 +51,11 @@ func New(cfg *config.Config) (*Server, error) {
 		dispatcher: dispatcher,
 		processor:  NewMessageProcessor(dispatcher, transport, logger),
 	}
-	server.RegisterDefaultHandlers()
+	// Initialize tool system
+	if err := server.InitializeToolSystem(); err != nil {
+		return nil, fmt.Errorf("failed to initialize tool system: %w", err)
+	}
+
 	logger.Info("MCP server created successfully")
 	return server, nil
 }
