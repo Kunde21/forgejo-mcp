@@ -1,0 +1,3 @@
+# Spec Summary (Lite)
+
+Implement a robust command-line interface using the Cobra framework to provide the primary entry point for the forgejo-mcp server with structured commands, global flags for configuration and logging, and proper signal handling for graceful shutdown. This CLI foundation enables users to start and configure the MCP server through intuitive commands like `forgejo-mcp serve` with comprehensive flag-based configuration options.

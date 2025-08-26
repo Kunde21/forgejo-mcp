@@ -41,7 +41,7 @@
 - [ ] Add command aliases and examples
 
 ### 2.3 Main Entry Point
-- [ ] Create `cmd/main.go` as main entry point
+- [ ] Create `main.go` as main entry point
 - [ ] Initialize Cobra app
 - [ ] Setup signal handling for graceful shutdown
 - [ ] Configure logrus with appropriate formatter and levels
