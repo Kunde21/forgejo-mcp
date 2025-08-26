@@ -12,8 +12,8 @@
 ### Must-Have Features
 
 - [x] MCP server implementation
-- Pull Request listing functionality
-- Issue listing functionality
+- [x] Pull Request listing functionality
+- [x] Issue listing functionality
 - Basic authentication flow documentation
 
 ## Phase 2: Enhanced Operations (Q2 2026)

@@ -35,15 +35,15 @@ These are the tasks to be completed for the spec detailed in @.agent-os/specs/20
   - [x] 3.6 Add parameter validation rules
   - [x] 3.7 Verify all tests pass
 
-- [ ] 4. Request Handlers and Tea Integration
-  - [ ] 4.1 Write tests for request handlers and tea command building
-  - [ ] 4.2 Create server/handlers.go with handler methods
-  - [ ] 4.3 Implement handlePRList with parameter extraction
-  - [ ] 4.4 Implement handleIssueList with parameter extraction
-  - [ ] 4.5 Create tea command builders with proper escaping
-  - [ ] 4.6 Add tea output parsing (JSON and text formats)
-  - [ ] 4.7 Implement response transformation to MCP format
-  - [ ] 4.8 Verify all tests pass
+- [x] 4. Request Handlers and Tea Integration
+  - [x] 4.1 Write tests for request handlers and tea command building
+  - [x] 4.2 Create server/handlers.go with handler methods
+  - [x] 4.3 Implement handlePRList with parameter extraction
+  - [x] 4.4 Implement handleIssueList with parameter extraction
+  - [x] 4.5 Create tea command builders with proper escaping
+  - [x] 4.6 Add tea output parsing (JSON and text formats)
+  - [x] 4.7 Implement response transformation to MCP format
+  - [x] 4.8 Verify all tests pass
 
 - [ ] 5. Integration Testing and Validation
   - [ ] 5.1 Write integration tests for complete request/response flow

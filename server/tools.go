@@ -4,6 +4,7 @@ package server
 import (
 	"context"
 	"fmt"
+	"slices"
 
 	"github.com/sirupsen/logrus"
 )
@@ -77,13 +78,11 @@ type ToolValidator struct {
 
 // NewToolValidator creates a new tool validator
 func NewToolValidator(logger *logrus.Logger) *ToolValidator {
-	return &ToolValidator{
-		logger: logger,
-	}
+	return &ToolValidator{logger: logger}
 }
 
 // ValidateParameters validates the parameters for a given tool
-func (tv *ToolValidator) ValidateParameters(toolName string, params map[string]interface{}) error {
+func (tv *ToolValidator) ValidateParameters(toolName string, params map[string]any) error {
 	tv.logger.Debugf("Validating parameters for tool %s: %v", toolName, params)
 
 	// Basic validation - can be extended with more sophisticated schema validation
@@ -98,15 +97,13 @@ func (tv *ToolValidator) ValidateParameters(toolName string, params map[string]i
 }
 
 // validatePRListParams validates parameters for pr_list tool
-func (tv *ToolValidator) validatePRListParams(params map[string]interface{}) error {
+func (tv *ToolValidator) validatePRListParams(params map[string]any) error {
 	// Validate state parameter if provided
 	if state, exists := params["state"]; exists {
 		if stateStr, ok := state.(string); ok {
 			validStates := []string{"open", "closed", "merged", "all"}
-			for _, validState := range validStates {
-				if stateStr == validState {
-					return nil
-				}
+			if slices.Contains(validStates, stateStr) {
+				return nil
 			}
 			return fmt.Errorf("invalid state parameter: %s, must be one of: %v", stateStr, validStates)
 		}
@@ -148,10 +145,8 @@ func (tv *ToolValidator) validateIssueListParams(params map[string]interface{}) 
 	if state, exists := params["state"]; exists {
 		if stateStr, ok := state.(string); ok {
 			validStates := []string{"open", "closed", "all"}
-			for _, validState := range validStates {
-				if stateStr == validState {
-					return nil
-				}
+			if slices.Contains(validStates, stateStr) {
+				return nil
 			}
 			return fmt.Errorf("invalid state parameter: %s, must be one of: %v", stateStr, validStates)
 		}
@@ -215,15 +210,15 @@ func CreateDefaultTools() []*ToolDefinition {
 		{
 			Name:        "pr_list",
 			Description: "List pull requests from the Forgejo repository",
-			InputSchema: map[string]interface{}{
+			InputSchema: map[string]any{
 				"type": "object",
-				"properties": map[string]interface{}{
-					"state": map[string]interface{}{
+				"properties": map[string]any{
+					"state": map[string]any{
 						"type":        "string",
 						"description": "Filter by PR state (open, closed, merged, all)",
 						"enum":        []string{"open", "closed", "merged", "all"},
 					},
-					"author": map[string]interface{}{
+					"author": map[string]any{
 						"type":        "string",
 						"description": "Filter by PR author username",
 					},
@@ -340,8 +335,8 @@ func (s *Server) InitializeToolSystem() error {
 		registry:          toolRegistry,
 		validator:         toolValidator,
 		manifestGenerator: manifestGenerator,
-		prHandler:         NewPRListHandler(s.logger),
-		issueHandler:      NewIssueListHandler(s.logger),
+		prHandler:         NewTeaPRListHandler(s.logger),
+		issueHandler:      NewTeaIssueListHandler(s.logger),
 		logger:            s.logger,
 	}
 
@@ -422,8 +417,8 @@ type ToolSystemHandler struct {
 	registry          *ToolRegistry
 	validator         *ToolValidator
 	manifestGenerator *ToolManifestGenerator
-	prHandler         *PRListHandler
-	issueHandler      *IssueListHandler
+	prHandler         *TeaPRListHandler
+	issueHandler      *TeaIssueListHandler
 	logger            *logrus.Logger
 }
 
