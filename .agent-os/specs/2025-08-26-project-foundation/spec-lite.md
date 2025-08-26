@@ -1,0 +1,3 @@
+# Spec Summary (Lite)
+
+Establish the foundational structure for the forgejo-mcp project including Go module initialization with core dependencies (Cobra, MCP SDK, Viper, Logrus), organized directory structure, and configuration management system. This creates the base framework with proper dependency management and project organization that enables all subsequent development phases to proceed consistently.
