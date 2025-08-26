@@ -3,16 +3,16 @@
 ## 1. Project Setup and Go Modules
 
 ### 1.1 Initialize Go Module
-- [ ] Run `go mod init github.com/kunde21/forgejo-mcp`
-- [ ] Create `.gitignore` with Go-specific patterns
-- [ ] Add LICENSE file (MIT or Apache 2.0)
+- [x] Run `go mod init github.com/kunde21/forgejo-mcp`
+- [x] Create `.gitignore` with Go-specific patterns
+- [x] Add LICENSE file (MIT or Apache 2.0)
 
 ### 1.2 Add Core Dependencies
-- [ ] Add Cobra: `go get github.com/spf13/cobra@v1.8.0`
-- [ ] Add MCP Go SDK: `go get github.com/modelcontextprotocol/go-sdk/mcp@latest`
-- [ ] Add Viper for config: `go get github.com/spf13/viper@v1.18.0`
-- [ ] Add logging library: `go get github.com/sirupsen/logrus@v1.9.3`
-- [ ] Run `go mod tidy` to clean up dependencies
+- [x] Add Cobra: `go get github.com/spf13/cobra@v1.8.0`
+- [x] Add MCP Go SDK: `go get github.com/modelcontextprotocol/go-sdk/mcp@latest`
+- [x] Add Viper for config: `go get github.com/spf13/viper@v1.18.0`
+- [x] Add logging library: `go get github.com/sirupsen/logrus@v1.9.3`
+- [x] Run `go mod tidy` to clean up dependencies
 
 ### 1.3 Project Structure Setup
 - [ ] Create `cmd/` directory with main.go, root.go, serve.go
