@@ -2,13 +2,13 @@
 
 ## Tasks
 
-- [ ] 1. Initialize Go Module and Dependencies
-  - [ ] 1.1 Write tests for config loading and validation
-  - [ ] 1.2 Initialize Go module with `go mod init github.com/Kunde21/forgejo-mcp`
-  - [ ] 1.3 Add core dependencies (Cobra, MCP SDK, Viper, Logrus)
-  - [ ] 1.4 Run `go mod tidy` to clean up dependencies
-  - [ ] 1.5 Create project metadata files (.gitignore, LICENSE, README.md)
-  - [ ] 1.6 Verify module initialization with `go mod verify`
+- [x] 1. Initialize Go Module and Dependencies
+  - [x] 1.1 Write tests for config loading and validation
+  - [x] 1.2 Initialize Go module with `go mod init github.com/Kunde21/forgejo-mcp`
+  - [x] 1.3 Add core dependencies (Cobra, MCP SDK, Viper, Logrus)
+  - [x] 1.4 Run `go mod tidy` to clean up dependencies
+  - [x] 1.5 Create project metadata files (.gitignore, LICENSE, README.md)
+  - [x] 1.6 Verify module initialization with `go mod verify`
 
 - [ ] 2. Create Project Directory Structure
   - [ ] 2.1 Write tests for directory structure validation
