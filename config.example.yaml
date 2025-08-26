@@ -1,0 +1,29 @@
+# Forgejo MCP Configuration Example
+#
+# Copy this file to `config.yaml` in the current directory,
+# or to `~/.forgejo-mcp/config.yaml` for user-wide configuration.
+
+# URL of your Forgejo instance
+# Required: Yes
+# Environment variable: FORGEJO_MCP_FORGEJO_URL
+forgejo_url: "https://your.forgejo.instance"
+
+# Authentication token for Forgejo API
+# Required: Yes
+# Environment variable: FORGEJO_MCP_AUTH_TOKEN
+auth_token: "your-auth-token"
+
+# Path to the tea CLI executable
+# Required: No (defaults to "tea")
+# Environment variable: FORGEJO_MCP_TEA_PATH
+tea_path: "tea"
+
+# Enable debug logging
+# Required: No (defaults to false)
+# Environment variable: FORGEJO_MCP_DEBUG
+debug: false
+
+# Log level (debug, info, warn, error)
+# Required: No (defaults to "info")
+# Environment variable: FORGEJO_MCP_LOG_LEVEL
+log_level: "info"
