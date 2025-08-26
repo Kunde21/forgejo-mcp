@@ -23,7 +23,7 @@ Or build from source:
 ```bash
 git clone https://github.com/Kunde21/forgejo-mcp.git
 cd forgejo-mcp
-go build -o bin/forgejo-mcp cmd/main.go
+go build -o bin/forgejo-mcp .
 ```
 
 ## Configuration
@@ -66,6 +66,26 @@ For more options:
 forgejo-mcp --help
 forgejo-mcp serve --help
 ```
+
+### CLI Commands
+
+The forgejo-mcp CLI provides the following commands:
+
+- `forgejo-mcp` - Root command with global flags
+- `forgejo-mcp serve` - Start the MCP server (aliases: server, start)
+- `forgejo-mcp completion` - Generate autocompletion script
+- `forgejo-mcp help` - Get help for any command
+
+### Global Flags
+
+- `--config string` - Path to configuration file (default is ./config.yaml)
+- `--debug` - Enable debug mode
+- `--log-level string` - Set log level (trace, debug, info, warn, error, fatal, panic) (default "info")
+
+### Serve Command Flags
+
+- `--host string` - Host to bind to (default "localhost")
+- `--port int` - Port to listen on (default 3000)
 
 ## Features
 
