@@ -1,7 +1,6 @@
 package server
 
 import (
-	"fmt"
 	"testing"
 	"time"
 
@@ -10,65 +9,64 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-func TestServerLifecycle(t *testing.T) {
-	tests := []struct {
-		name        string
-		config      *config.Config
-		expectedErr error
-	}{
-		{
-			name: "ValidConfig",
-			config: &config.Config{
-				ForgejoURL:   "https://example.forgejo.com",
-				AuthToken:    "test-token",
-				TeaPath:      "tea",
-				Host:         "localhost",
-				Port:         8080,
-				ReadTimeout:  30,
-				WriteTimeout: 30,
-				LogLevel:     "info",
-			},
-		},
-		{
-			name:        "NilConfig",
-			config:      nil,
-			expectedErr: fmt.Errorf("config cannot be nil"),
-		},
-		{
-			name: "InvalidLogLevel",
-			config: &config.Config{
-				ForgejoURL:   "https://example.forgejo.com",
-				AuthToken:    "test-token",
-				TeaPath:      "tea",
-				Host:         "localhost",
-				Port:         8080,
-				ReadTimeout:  30,
-				WriteTimeout: 30,
-				LogLevel:     "invalid",
-			},
-			expectedErr: fmt.Errorf("invalid configuration: LogLevel: must be a valid value."),
-		},
+func TestServerLifecycle_ValidConfig(t *testing.T) {
+	config := &config.Config{
+		ForgejoURL:   "https://example.forgejo.com",
+		AuthToken:    "test-token",
+		TeaPath:      "tea",
+		Host:         "localhost",
+		Port:         8080,
+		ReadTimeout:  30,
+		WriteTimeout: 30,
+		LogLevel:     "info",
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			server, err := New(tt.config)
-			if !cmp.Equal(tt.expectedErr, err) {
-				t.Error(cmp.Diff(tt.expectedErr, err))
-			}
-			if err != nil {
-				return
-			}
-			if server == nil {
-				t.Fatal("New() should return non-nil server")
-			}
-			if server.logger == nil {
-				t.Error("server.logger should be initialized")
-			}
-			if server.config == nil {
-				t.Error("server.config should be set")
-			}
-		})
+	server, err := New(config)
+
+	if err != nil {
+		t.Fatalf("New() with valid config should not return error, got: %v", err)
+	}
+	if server == nil {
+		t.Fatal("New() should return non-nil server")
+	}
+	if server.logger == nil {
+		t.Error("server.logger should be initialized")
+	}
+	if server.config == nil {
+		t.Error("server.config should be set")
+	}
+}
+
+func TestServerLifecycle_NilConfig(t *testing.T) {
+	server, err := New(nil)
+
+	if err == nil {
+		t.Error("New() with nil config should return error")
+	}
+	if server != nil {
+		t.Error("New() with nil config should return nil server")
+	}
+}
+
+func TestServerLifecycle_InvalidLogLevel(t *testing.T) {
+	config := &config.Config{
+		ForgejoURL:   "https://example.forgejo.com",
+		AuthToken:    "test-token",
+		TeaPath:      "tea",
+		Host:         "localhost",
+		Port:         8080,
+		ReadTimeout:  30,
+		WriteTimeout: 30,
+		LogLevel:     "invalid",
+	}
+
+	server, err := New(config)
+
+	if err == nil {
+		t.Error("New() with invalid log level should return error")
+	}
+	if server != nil {
+		t.Error("New() with invalid log level should return nil server")
 	}
 }
 

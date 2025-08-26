@@ -11,7 +11,7 @@
 
 ### Must-Have Features
 
-- MCP server implementation
+- [x] MCP server implementation
 - Pull Request listing functionality
 - Issue listing functionality
 - Basic authentication flow documentation
