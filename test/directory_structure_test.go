@@ -32,7 +32,7 @@ func TestDirectoryStructure(t *testing.T) {
 // TestPackageFiles validates that essential package files exist
 func TestPackageFiles(t *testing.T) {
 	requiredFiles := []string{
-		"cmd/main.go",
+		"main.go",
 		"cmd/root.go",
 		"cmd/serve.go",
 	}
