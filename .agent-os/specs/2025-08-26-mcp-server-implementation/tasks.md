@@ -7,15 +7,15 @@ These are the tasks to be completed for the spec detailed in @.agent-os/specs/20
 
 ## Tasks
 
-- [ ] 1. Server Foundation and Configuration
-  - [ ] 1.1 Write tests for Server struct lifecycle (New, Start, Stop)
-  - [ ] 1.2 Create server/server.go with Server struct and mcp.Server field
-  - [ ] 1.3 Implement New() constructor with config validation
-  - [ ] 1.4 Implement Start() and Stop() methods with graceful shutdown
-  - [ ] 1.5 Add server configuration to config/config.go
-  - [ ] 1.6 Integrate Viper configuration with environment variables
-  - [ ] 1.7 Add logrus logger initialization in server
-  - [ ] 1.8 Verify all tests pass
+- [x] 1. Server Foundation and Configuration
+  - [x] 1.1 Write tests for Server struct lifecycle (New, Start, Stop)
+  - [x] 1.2 Create server/server.go with Server struct and mcp.Server field
+  - [x] 1.3 Implement New() constructor with config validation
+  - [x] 1.4 Implement Start() and Stop() methods with graceful shutdown
+  - [x] 1.5 Add server configuration to config/config.go
+  - [x] 1.6 Integrate Viper configuration with environment variables
+  - [x] 1.7 Add logrus logger initialization in server
+  - [x] 1.8 Verify all tests pass
 
 - [ ] 2. Transport Layer Implementation
   - [ ] 2.1 Write tests for stdio transport and request routing

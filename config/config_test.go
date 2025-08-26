@@ -24,11 +24,15 @@ func TestLoad(t *testing.T) {
 func TestValidate(t *testing.T) {
 	// Test valid config
 	validConfig := &Config{
-		ForgejoURL: "https://example.forgejo.com",
-		AuthToken:  "test-token",
-		TeaPath:    "tea",
-		Debug:      true,
-		LogLevel:   "info",
+		ForgejoURL:   "https://example.forgejo.com",
+		AuthToken:    "test-token",
+		TeaPath:      "tea",
+		Host:         "localhost",
+		Port:         8080,
+		ReadTimeout:  30,
+		WriteTimeout: 30,
+		Debug:        true,
+		LogLevel:     "info",
 	}
 
 	if err := validConfig.Validate(); err != nil {
@@ -37,11 +41,15 @@ func TestValidate(t *testing.T) {
 
 	// Test invalid config - missing Forgejo URL
 	invalidConfig1 := &Config{
-		ForgejoURL: "",
-		AuthToken:  "test-token",
-		TeaPath:    "tea",
-		Debug:      true,
-		LogLevel:   "info",
+		ForgejoURL:   "",
+		AuthToken:    "test-token",
+		TeaPath:      "tea",
+		Host:         "localhost",
+		Port:         8080,
+		ReadTimeout:  30,
+		WriteTimeout: 30,
+		Debug:        true,
+		LogLevel:     "info",
 	}
 
 	if err := invalidConfig1.Validate(); err == nil {
@@ -50,11 +58,15 @@ func TestValidate(t *testing.T) {
 
 	// Test invalid config - missing auth token
 	invalidConfig2 := &Config{
-		ForgejoURL: "https://example.forgejo.com",
-		AuthToken:  "",
-		TeaPath:    "tea",
-		Debug:      true,
-		LogLevel:   "info",
+		ForgejoURL:   "https://example.forgejo.com",
+		AuthToken:    "",
+		TeaPath:      "tea",
+		Host:         "localhost",
+		Port:         8080,
+		ReadTimeout:  30,
+		WriteTimeout: 30,
+		Debug:        true,
+		LogLevel:     "info",
 	}
 
 	if err := invalidConfig2.Validate(); err == nil {

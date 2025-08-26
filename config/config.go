@@ -6,16 +6,27 @@ import (
 	"path/filepath"
 	"strings"
 
+	validation "github.com/go-ozzo/ozzo-validation/v4"
+	"github.com/go-ozzo/ozzo-validation/v4/is"
 	"github.com/spf13/viper"
 )
 
 // Config represents the forgejo-mcp application configuration
 type Config struct {
+	// Forgejo configuration
 	ForgejoURL string `mapstructure:"forgejo_url"`
 	AuthToken  string `mapstructure:"auth_token"`
 	TeaPath    string `mapstructure:"tea_path"`
-	Debug      bool   `mapstructure:"debug"`
-	LogLevel   string `mapstructure:"log_level"`
+
+	// Server configuration
+	Host         string `mapstructure:"host"`
+	Port         int    `mapstructure:"port"`
+	ReadTimeout  int    `mapstructure:"read_timeout"`  // seconds
+	WriteTimeout int    `mapstructure:"write_timeout"` // seconds
+
+	// Logging configuration
+	Debug    bool   `mapstructure:"debug"`
+	LogLevel string `mapstructure:"log_level"`
 }
 
 // Load loads the configuration from environment variables and config files
@@ -26,6 +37,10 @@ func Load() (*Config, error) {
 	v.SetDefault("forgejo_url", "https://example.forgejo.com")
 	v.SetDefault("auth_token", "placeholder-token")
 	v.SetDefault("tea_path", "tea")
+	v.SetDefault("host", "localhost")
+	v.SetDefault("port", 8080)
+	v.SetDefault("read_timeout", 30)
+	v.SetDefault("write_timeout", 30)
 	v.SetDefault("debug", false)
 	v.SetDefault("log_level", "info")
 
@@ -60,23 +75,16 @@ func Load() (*Config, error) {
 	return &cfg, nil
 }
 
-// Validate validates the configuration
+// Validate validates the configuration using ozzo-validation
 func (c *Config) Validate() error {
-	// Placeholder implementation - will be expanded later
-	if c.ForgejoURL == "" {
-		return &ValidationError{"forgejo_url is required"}
-	}
-	if c.AuthToken == "" {
-		return &ValidationError{"auth_token is required"}
-	}
-	return nil
-}
-
-// ValidationError represents a configuration validation error
-type ValidationError struct {
-	Message string
-}
-
-func (e *ValidationError) Error() string {
-	return e.Message
+	return validation.ValidateStruct(c,
+		validation.Field(&c.ForgejoURL, validation.Required, is.URL),
+		validation.Field(&c.AuthToken, validation.Required),
+		validation.Field(&c.TeaPath),
+		validation.Field(&c.Host, validation.Required),
+		validation.Field(&c.Port, validation.Required, validation.Min(1), validation.Max(65535)),
+		validation.Field(&c.ReadTimeout, validation.Min(0)),
+		validation.Field(&c.WriteTimeout, validation.Min(0)),
+		validation.Field(&c.LogLevel, validation.In("trace", "debug", "info", "warn", "error", "fatal", "panic")),
+	)
 }
