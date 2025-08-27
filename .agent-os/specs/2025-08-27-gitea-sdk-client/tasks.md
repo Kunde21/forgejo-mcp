@@ -28,22 +28,22 @@ These are the tasks to be completed for the spec detailed in @.agent-os/specs/20
 ### 2. Gitea SDK Integration
 
 #### 2.1 Setup Gitea SDK Wrapper
-- [ ] Write tests for Gitea client initialization in `tea/wrapper_test.go`
-- [ ] Implement Gitea SDK client wrapper in `tea/wrapper.go`
-- [ ] Write tests for connection validation
-- [ ] Implement connection validation and health checks
-- [ ] Write tests for error handling from Gitea SDK
-- [ ] Implement error transformation from Gitea errors
-- [ ] Verify all wrapper tests pass
+- [x] Write tests for Gitea client initialization in `tea/wrapper_test.go`
+- [x] Implement Gitea SDK client wrapper in `tea/wrapper.go`
+- [x] Write tests for connection validation
+- [x] Implement connection validation and health checks
+- [x] Write tests for error handling from Gitea SDK
+- [x] Implement error transformation from Gitea errors
+- [x] Verify all wrapper tests pass
 
 #### 2.2 Implement Authentication Methods
-- [ ] Write tests for token authentication
-- [ ] Implement token authentication support
-- [ ] Write tests for OAuth authentication
-- [ ] Implement OAuth authentication support
-- [ ] Write tests for authentication fallback scenarios
-- [ ] Implement authentication fallback logic
-- [ ] Verify all authentication tests pass
+- [x] Write tests for token authentication
+- [x] Implement token authentication support
+- [x] Write tests for OAuth authentication
+- [x] Implement OAuth authentication support
+- [x] Write tests for authentication fallback scenarios
+- [x] Implement authentication fallback logic
+- [x] Verify all authentication tests pass
 
 ### 3. Request Building and Filtering
 
