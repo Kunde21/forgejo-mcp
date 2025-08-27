@@ -10,20 +10,20 @@ These are the tasks to be completed for the spec detailed in @.agent-os/specs/20
 ### 1. Client Interface and Core Structure
 
 #### 1.1 Define Client Interface
-- [ ] Write tests for Client interface contract in `tea/client_test.go`
-- [ ] Define Client interface with all required methods in `tea/client.go`
-- [ ] Write tests for error types and constants in `tea/errors_test.go`
-- [ ] Define custom error types and constants in `tea/errors.go`
-- [ ] Verify all interface tests pass
+- [x] Write tests for Client interface contract in `client/client_test.go`
+- [x] Define Client interface with all required methods in `client/client.go`
+- [x] Write tests for error types and constants in `client/errors_test.go`
+- [x] Define custom error types and constants in `client/errors.go`
+- [x] Verify all interface tests pass
 
 #### 1.2 Implement Base Client Structure
-- [ ] Write tests for NewClient constructor in `tea/client_test.go`
-- [ ] Implement NewClient function with validation
-- [ ] Write tests for client configuration handling
-- [ ] Implement client configuration with defaults
-- [ ] Write tests for authentication setup
-- [ ] Implement authentication configuration
-- [ ] Verify all client structure tests pass
+- [x] Write tests for NewClient constructor in `client/client_test.go`
+- [x] Implement NewClient function with validation
+- [x] Write tests for client configuration handling
+- [x] Implement client configuration with defaults
+- [x] Write tests for authentication setup
+- [x] Implement authentication configuration
+- [x] Verify all client structure tests pass
 
 ### 2. Gitea SDK Integration
 
