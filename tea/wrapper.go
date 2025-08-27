@@ -83,8 +83,6 @@ func (w *GiteaWrapper) InitializeWithAuth(baseURL string, authConfig *AuthConfig
 	return nil
 }
 
-// InitializeWithFallback initializes the GiteaWrapper with fallback authentication
-// It tries the primary auth config first, and if that fails, tries the fallback
 func (w *GiteaWrapper) InitializeWithFallback(baseURL string, primaryAuth, fallbackAuth *AuthConfig) error {
 	err := w.InitializeWithAuth(baseURL, primaryAuth)
 	if err == nil {
@@ -114,7 +112,6 @@ func (w *GiteaWrapper) Ping(ctx context.Context) error {
 	return nil
 }
 
-// ListRepositories lists repositories with optional filters
 func (w *GiteaWrapper) ListRepositories(ctx context.Context, filters *RepositoryFilters) ([]*gitea.Repository, *gitea.Response, error) {
 	if !w.IsInitialized() {
 		return nil, nil, fmt.Errorf("wrapper not initialized")
@@ -131,10 +128,27 @@ func (w *GiteaWrapper) ListRepositories(ctx context.Context, filters *Repository
 	return w.client.ListMyRepos(*opts)
 }
 
-// GetRepository gets a specific repository by owner and name
 func (w *GiteaWrapper) GetRepository(ctx context.Context, owner, name string) (*gitea.Repository, *gitea.Response, error) {
 	if !w.IsInitialized() {
 		return nil, nil, fmt.Errorf("wrapper not initialized")
 	}
 	return w.client.GetRepo(owner, name)
+}
+
+func (w *GiteaWrapper) ListIssues(ctx context.Context, owner, repo string, filters *IssueFilters) ([]*gitea.Issue, *gitea.Response, error) {
+	if !w.IsInitialized() {
+		return nil, nil, fmt.Errorf("wrapper not initialized")
+	}
+
+	opts := buildIssueListOptions(filters)
+	return w.client.ListRepoIssues(owner, repo, *opts)
+}
+
+func (w *GiteaWrapper) ListPullRequests(ctx context.Context, owner, repo string, filters *PullRequestFilters) ([]*gitea.PullRequest, *gitea.Response, error) {
+	if !w.IsInitialized() {
+		return nil, nil, fmt.Errorf("wrapper not initialized")
+	}
+
+	opts := buildPullRequestListOptions(filters)
+	return w.client.ListRepoPullRequests(owner, repo, *opts)
 }

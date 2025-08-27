@@ -30,7 +30,6 @@ type RepositoryFilters struct {
 	ExcludeTemplate bool `json:"exclude_template,omitempty"`
 }
 
-// buildRepoListOptions converts RepositoryFilters to Gitea ListReposOptions
 func buildRepoListOptions(filters *RepositoryFilters) *gitea.ListReposOptions {
 	opts := &gitea.ListReposOptions{
 		ListOptions: gitea.ListOptions{
@@ -43,7 +42,6 @@ func buildRepoListOptions(filters *RepositoryFilters) *gitea.ListReposOptions {
 		return opts
 	}
 
-	// Handle pagination
 	if filters.Page > 0 {
 		opts.Page = filters.Page
 	}
@@ -54,7 +52,6 @@ func buildRepoListOptions(filters *RepositoryFilters) *gitea.ListReposOptions {
 	return opts
 }
 
-// buildSearchRepoOptions converts RepositoryFilters to Gitea SearchRepoOptions
 func buildSearchRepoOptions(filters *RepositoryFilters) *gitea.SearchRepoOptions {
 	opts := &gitea.SearchRepoOptions{
 		ListOptions: gitea.ListOptions{

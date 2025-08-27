@@ -7,15 +7,12 @@ import (
 	"github.com/google/go-cmp/cmp"
 )
 
+var _ RepositoryLister = (*ForgejoClient)(nil)
+var _ Client = (*ForgejoClient)(nil)
 var exampleCom *url.URL
 
 func init() {
 	exampleCom, _ = url.Parse("https://example.com")
-}
-
-func TestClientInterface(t *testing.T) {
-	// Test that ForgejoClient implements Client interface
-	var _ Client = (*ForgejoClient)(nil)
 }
 
 func TestNewClientValidation(t *testing.T) {
@@ -47,11 +44,6 @@ func TestNewClientValidation(t *testing.T) {
 
 	for _, tst := range tests {
 		t.Run(tst.name, func(t *testing.T) {
-			// Skip the valid inputs test since it requires a real connection
-			if tst.name == "valid inputs" {
-				return
-			}
-
 			client, err := New(tst.baseURL, tst.token)
 			if !cmp.Equal(tst.wantErr, err) {
 				t.Error(cmp.Diff(tst.wantErr, err))

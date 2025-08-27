@@ -70,15 +70,12 @@ func TestNewGiteaClient(t *testing.T) {
 }
 
 func TestGiteaWrapper_InitializeWithFallback(t *testing.T) {
-	// Test successful initialization with fallback
 	w := &GiteaWrapper{}
 	err := w.InitializeWithFallback("https://example.com", &AuthConfig{Type: AuthTypeToken, Token: "valid-token"}, &AuthConfig{Type: AuthTypeBasic, Username: "user", Password: "pass"})
-	// We expect an error since we're using a fake URL, but we want to ensure the method is called correctly
 	if err == nil {
 		t.Error("Expected error for invalid URL, got nil")
 	}
 
-	// Test with nil fallback
 	w2 := &GiteaWrapper{}
 	err2 := w2.InitializeWithFallback("https://example.com", &AuthConfig{Type: AuthTypeToken, Token: "valid-token"}, nil)
 	if err2 == nil {
@@ -97,6 +94,22 @@ func TestGiteaWrapper_ListRepositories(t *testing.T) {
 func TestGiteaWrapper_GetRepository(t *testing.T) {
 	w := &GiteaWrapper{}
 	_, _, err := w.GetRepository(context.Background(), "owner", "repo")
+	if err == nil {
+		t.Error("Expected error for uninitialized wrapper, got nil")
+	}
+}
+
+func TestGiteaWrapper_ListIssues(t *testing.T) {
+	w := &GiteaWrapper{}
+	_, _, err := w.ListIssues(context.Background(), "owner", "repo", nil)
+	if err == nil {
+		t.Error("Expected error for uninitialized wrapper, got nil")
+	}
+}
+
+func TestGiteaWrapper_ListPullRequests(t *testing.T) {
+	w := &GiteaWrapper{}
+	_, _, err := w.ListPullRequests(context.Background(), "owner", "repo", nil)
 	if err == nil {
 		t.Error("Expected error for uninitialized wrapper, got nil")
 	}

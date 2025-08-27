@@ -56,14 +56,14 @@ These are the tasks to be completed for the spec detailed in @.agent-os/specs/20
 - [x] Implement repository search with query parameters
 - [x] Verify all repository operation tests pass
 
-#### 3.2 Issue and PR Operations
-- [ ] Write tests for ListIssues with filters in `tea/issues_test.go`
-- [ ] Implement ListIssues method in `tea/issues.go`
-- [ ] Write tests for ListPullRequests with filters in `tea/pulls_test.go`
-- [ ] Implement ListPullRequests method in `tea/pulls.go`
-- [ ] Write tests for combined issue/PR queries
-- [ ] Implement combined query functionality
-- [ ] Verify all issue/PR operation tests pass
+#### 3.2 Issue and PR Operations ✅
+- [x] Write tests for ListIssues with filters in `tea/issues_test.go`
+- [x] Implement ListIssues method in `tea/issues.go`
+- [x] Write tests for ListPullRequests with filters in `tea/pulls_test.go`
+- [x] Implement ListPullRequests method in `tea/pulls.go`
+- [x] Write tests for combined issue/PR queries
+- [x] Implement combined query functionality
+- [x] Verify all issue/PR operation tests pass
 
 #### 3.3 Advanced Filtering
 - [ ] Write tests for query builder in `tea/query_test.go`
