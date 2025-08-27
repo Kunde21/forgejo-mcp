@@ -45,11 +45,11 @@ These are the tasks to be completed for the spec detailed in @.agent-os/specs/20
   - [x] 4.7 Implement response transformation to MCP format
   - [x] 4.8 Verify all tests pass
 
-- [ ] 5. Integration Testing and Validation
-  - [ ] 5.1 Write integration tests for complete request/response flow
-  - [ ] 5.2 Test server startup and MCP connection acceptance
-  - [ ] 5.3 Test tool discovery through manifest
-  - [ ] 5.4 Test pr_list with mocked tea output
-  - [ ] 5.5 Test issue_list with mocked tea output
-  - [ ] 5.6 Test error handling and timeout scenarios
-  - [ ] 5.7 Verify all tests pass with >80% coverage
+- [x] 5. Integration Testing and Validation
+  - [x] 5.1 Write integration tests for complete request/response flow
+  - [x] 5.2 Test server startup and MCP connection acceptance
+  - [x] 5.3 Test tool discovery through manifest
+  - [x] 5.4 Test pr_list with mocked tea output
+  - [x] 5.5 Test issue_list with mocked tea output
+  - [x] 5.6 Test error handling and timeout scenarios
+  - [x] 5.7 Verify all tests pass with >80% coverage

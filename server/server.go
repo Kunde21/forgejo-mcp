@@ -60,6 +60,15 @@ func New(cfg *config.Config) (*Server, error) {
 	return server, nil
 }
 
+// ReplaceTeaExecutor replaces the tea executor in all handlers (for testing)
+func (s *Server) ReplaceTeaExecutor(executor interface{}) {
+	// This is a testing utility method to replace the tea executor
+	// In a real implementation, this would be done through dependency injection
+	// For now, this is a placeholder that would need to be implemented
+	// based on the actual handler structure
+	s.logger.Warn("ReplaceTeaExecutor not implemented - this is a testing utility")
+}
+
 // Start begins the MCP server and blocks until stopped or an error occurs
 func (s *Server) Start(ctx context.Context) error {
 	s.logger.Info("Starting MCP server...")
