@@ -1,0 +1,3 @@
+# Spec Summary (Lite)
+
+Implement a robust Go client using the official Gitea SDK that makes direct API calls to Forgejo repositories, retrieves structured data, and transforms results for the MCP server. This client provides efficient HTTP communication with comprehensive authentication, supports rich filtering options, and returns structured Go types with comprehensive error handling for API failures.

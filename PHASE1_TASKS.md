@@ -17,7 +17,7 @@
 ### 1.3 Project Structure Setup
 - [x] Create `cmd/` directory with main.go, root.go, serve.go
 - [x] Create `server/` directory for MCP server implementation
-- [x] Create `tea/` directory for tea CLI wrapper
+- [x] Create `client/` directory for Gitea SDK client
 - [x] Create `context/` directory for repository context detection
 - [x] Create `auth/` directory for authentication logic
 - [x] Create `config/` directory for configuration management
@@ -64,7 +64,7 @@
 
 ### 3.1 Core Server Structure ✅
 - [x] Create `server/server.go` with main server struct
-- [x] Define `type Server struct` with mcp.Server, config, tea wrapper, and logger
+- [x] Define `type Server struct` with mcp.Server, config, Gitea client, and logger
 - [x] Implement `New(cfg *config.Config) (*Server, error)`
 - [x] Implement `(s *Server) Start() error`
 - [x] Implement `(s *Server) Stop() error`
@@ -101,8 +101,8 @@
 - [x] Implement `(s *Server) handleIssueList(params map[string]interface{}) (interface{}, error)`
 - [x] Implement error response formatting
 - [x] Implement parameter extraction and validation
-- [x] Create tea command builders with proper escaping
-- [x] Add tea output parsing (JSON and text formats)
+- [x] Create Gitea API request builders with proper parameter handling
+- [x] Add Gitea response parsing and transformation
 - [x] Implement response transformation to MCP format
 - [x] Write tests for request handlers and tea command building
 
@@ -110,37 +110,36 @@
 - [x] Write integration tests for complete request/response flow
 - [x] Test server startup and MCP connection acceptance
 - [x] Test tool discovery through manifest
-- [x] Test pr_list with mocked tea output
-- [x] Test issue_list with mocked tea output
+- [x] Test pr_list with mocked Gitea API responses
+- [x] Test issue_list with mocked Gitea API responses
 - [x] Test error handling and timeout scenarios
 - [x] Verify all tests pass with >80% coverage
 
-## 4. Tea CLI Wrapper
+## 4. Gitea SDK Client
 
-### 4.1 Tea Wrapper Interface
-- [ ] Create `tea/wrapper.go` with wrapper interface
-- [ ] Define `type Wrapper interface` with required methods
-- [ ] Define `type TeaCLI struct` with execPath and timeout
-- [ ] Implement `New(path string) (*TeaCLI, error)`
+### 4.1 Client Interface and Core Structure
+- [ ] Create `client/client.go` with client interface
+- [ ] Define `type Client interface` with required methods
+- [ ] Define `type ForgejoClient struct` with Gitea SDK integration
+- [ ] Implement `New(baseURL, token string) (*ForgejoClient, error)`
 
-### 4.2 Tea Implementation
-- [ ] Create `tea/tea.go` for tea CLI execution
-- [ ] Implement `(t *TeaCLI) Execute(args ...string) ([]byte, error)`
-- [ ] Implement `(t *TeaCLI) ListPRs(filters ...string) ([]PR, error)`
-- [ ] Implement `(t *TeaCLI) ListIssues(filters ...string) ([]Issue, error)`
+### 4.2 Gitea SDK Integration
+- [ ] Create `client/gitea.go` for Gitea SDK wrapper
+- [ ] Implement Gitea SDK client initialization and configuration
+- [ ] Add authentication support (token-based)
+- [ ] Implement connection validation and health checks
 
-### 4.3 Command Builders
-- [ ] Create `tea/commands.go` for command building
-- [ ] Implement `buildPRListCommand(filters ...string) []string`
-- [ ] Implement `buildIssueListCommand(filters ...string) []string`
-- [ ] Add support for filter parameters
+### 4.3 Request Building and Filtering
+- [ ] Create `client/requests.go` for API request construction
+- [ ] Implement `buildPRListOptions(filters map[string]interface{}) ListPullRequestsOptions`
+- [ ] Implement `buildIssueListOptions(filters map[string]interface{}) ListIssueOption`
+- [ ] Add support for advanced filtering (state, labels, assignee, author, milestone)
 
-### 4.4 Output Parsers
-- [ ] Create `tea/parser.go` for output parsing
-- [ ] Implement `parsePRList(output []byte) ([]PR, error)`
-- [ ] Implement `parseIssueList(output []byte) ([]Issue, error)`
-- [ ] Add JSON parsing for tea output
-- [ ] Handle text format fallback
+### 4.4 Response Transformation
+- [ ] Create `client/transformer.go` for response transformation
+- [ ] Implement `transformPullRequest(sdkPR *gitea.PullRequest) types.PullRequest`
+- [ ] Implement `transformIssue(sdkIssue *gitea.Issue) types.Issue`
+- [ ] Handle field mapping and metadata preservation
 
 ## 5. Repository Context Detection
 
@@ -213,7 +212,7 @@
 
 ### 8.1 Unit Tests
 - [ ] Create `server/server_test.go`
-- [ ] Create `tea/wrapper_test.go`
+- [ ] Create `client/client_test.go`
 - [ ] Create `context/context_test.go`
 - [ ] Create `auth/auth_test.go`
 - [ ] Add logrus logging tests
@@ -223,7 +222,7 @@
 - [ ] Create `test/integration/server_test.go`
 - [ ] Test MCP server startup/shutdown
 - [ ] Test tool registration
-- [ ] Test basic tool execution with mocked tea
+- [ ] Test basic tool execution with mocked Gitea client
 - [ ] Test error handling scenarios
 
 ### 8.3 End-to-End Tests
@@ -245,7 +244,7 @@
 ### 9.2 Setup Guide
 - [ ] Create `docs/SETUP.md` with installation instructions
 - [ ] Document authentication configuration
-- [ ] Document tea CLI installation steps
+- [ ] Document Gitea SDK client configuration
 - [ ] Add configuration options
 - [ ] Add troubleshooting section
 
@@ -296,7 +295,7 @@
 - **Week 1**: Project foundation and setup ✅ COMPLETED
 - **Week 2**: Cobra CLI implementation ✅ COMPLETED
 - **Week 3-4**: MCP server core implementation (with logrus logging) ✅ COMPLETED
-- **Week 4-5**: Tea CLI wrapper
+- **Week 4-5**: Gitea SDK client implementation
 - **Week 5**: Repository context detection
 - **Week 6**: Authentication system
 - **Week 7**: Testing suite
