@@ -18,15 +18,9 @@ ELSE:
 - Maintain consistent indentation throughout files
 - Align nested structures for readability
 
-### Naming Conventions
-- **Methods and Variables**: Use snake_case (e.g., `user_profile`, `calculate_total`)
-- **Classes and Modules**: Use PascalCase (e.g., `UserProfile`, `PaymentProcessor`)
-- **Constants**: Use UPPER_SNAKE_CASE (e.g., `MAX_RETRY_COUNT`)
-
 ### String Formatting
-- Use single quotes for strings: `'Hello World'`
-- Use double quotes only when interpolation is needed
-- Use template literals for multi-line strings or complex interpolation
+- Use double quotes for strings: `"Hello World"`
+- Use backticks quotes only when interpolation is needed
 
 ### Code Comments
 - Add brief comments above non-obvious business logic
