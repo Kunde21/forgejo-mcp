@@ -48,13 +48,13 @@ These are the tasks to be completed for the spec detailed in @.agent-os/specs/20
 ### 3. Request Building and Filtering
 
 #### 3.1 Repository Operations
-- [ ] Write tests for ListRepositories with filters in `tea/repositories_test.go`
-- [ ] Implement ListRepositories method in `tea/repositories.go`
-- [ ] Write tests for GetRepository by name/ID
-- [ ] Implement GetRepository method
-- [ ] Write tests for repository search functionality
-- [ ] Implement repository search with query parameters
-- [ ] Verify all repository operation tests pass
+- [x] Write tests for ListRepositories with filters in `tea/repositories_test.go`
+- [x] Implement ListRepositories method in `tea/repositories.go`
+- [x] Write tests for GetRepository by name/ID
+- [x] Implement GetRepository method
+- [x] Write tests for repository search functionality
+- [x] Implement repository search with query parameters
+- [x] Verify all repository operation tests pass
 
 #### 3.2 Issue and PR Operations
 - [ ] Write tests for ListIssues with filters in `tea/issues_test.go`

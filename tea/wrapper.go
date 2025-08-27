@@ -113,3 +113,28 @@ func (w *GiteaWrapper) Ping(ctx context.Context) error {
 	}
 	return nil
 }
+
+// ListRepositories lists repositories with optional filters
+func (w *GiteaWrapper) ListRepositories(ctx context.Context, filters *RepositoryFilters) ([]*gitea.Repository, *gitea.Response, error) {
+	if !w.IsInitialized() {
+		return nil, nil, fmt.Errorf("wrapper not initialized")
+	}
+
+	// If we have search filters, use SearchRepos instead of ListMyRepos
+	if filters != nil && filters.Query != "" {
+		opts := buildSearchRepoOptions(filters)
+		return w.client.SearchRepos(*opts)
+	}
+
+	// Use ListMyRepos for non-search cases
+	opts := buildRepoListOptions(filters)
+	return w.client.ListMyRepos(*opts)
+}
+
+// GetRepository gets a specific repository by owner and name
+func (w *GiteaWrapper) GetRepository(ctx context.Context, owner, name string) (*gitea.Repository, *gitea.Response, error) {
+	if !w.IsInitialized() {
+		return nil, nil, fmt.Errorf("wrapper not initialized")
+	}
+	return w.client.GetRepo(owner, name)
+}

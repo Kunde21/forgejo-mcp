@@ -2,9 +2,45 @@
 package client
 
 import (
+	"fmt"
+	"net/http"
 	"net/url"
 	"time"
+
+	"code.gitea.io/sdk/gitea"
 )
+
+// RepositoryFilters holds filter parameters for repository operations
+type RepositoryFilters struct {
+	// Pagination
+	Page     int `json:"page,omitempty"`
+	PageSize int `json:"page_size,omitempty"`
+
+	// Search
+	Query string `json:"query,omitempty"`
+
+	// Ownership and access
+	OwnerID       int64  `json:"owner_id,omitempty"`
+	StarredByUser int64  `json:"starred_by_user,omitempty"`
+	Type          string `json:"type,omitempty"`
+
+	// Visibility and status
+	IsPrivate  *bool `json:"is_private,omitempty"`
+	IsArchived *bool `json:"is_archived,omitempty"`
+
+	// Sorting
+	Sort  string `json:"sort,omitempty"`
+	Order string `json:"order,omitempty"`
+
+	// Additional filters
+	ExcludeTemplate bool `json:"exclude_template,omitempty"`
+}
+
+// Client defines the interface for interacting with Forgejo repositories
+type RepositoryLister interface {
+	ListRepositories(filters *RepositoryFilters) ([]Repository, error)
+	GetRepository(owner, name string) (*Repository, error)
+}
 
 // Client defines the interface for interacting with Forgejo repositories
 type Client interface {
@@ -13,6 +49,9 @@ type Client interface {
 
 	// ListIssues retrieves issues for a repository with optional filters
 	ListIssues(owner, repo string, filters map[string]interface{}) ([]Issue, error)
+
+	// Repository operations
+	RepositoryLister
 }
 
 // ClientConfig holds configuration options for the ForgejoClient
@@ -23,10 +62,11 @@ type ClientConfig struct {
 
 // ForgejoClient implements the Client interface using the Gitea SDK
 type ForgejoClient struct {
-	baseURL   *url.URL
-	token     string
-	timeout   time.Duration
-	userAgent string
+	baseURL     *url.URL
+	token       string
+	timeout     time.Duration
+	userAgent   string
+	giteaClient *gitea.Client
 }
 
 // PullRequest represents a pull request from the Gitea API
@@ -134,6 +174,115 @@ func (c *ForgejoClient) ListIssues(owner, repo string, filters map[string]interf
 	return []Issue{}, nil
 }
 
+// ListRepositories retrieves repositories with optional filters
+func (c *ForgejoClient) ListRepositories(filters *RepositoryFilters) ([]Repository, error) {
+	if c.giteaClient == nil {
+		return nil, fmt.Errorf("Gitea client not initialized")
+	}
+
+	// Set default values
+	page := 1
+	pageSize := 30
+
+	// Use filters if provided
+	if filters != nil {
+		if filters.Page > 0 {
+			page = filters.Page
+		}
+		if filters.PageSize > 0 {
+			pageSize = filters.PageSize
+		}
+
+		// If we have a search query, use SearchRepos instead of ListMyRepos
+		if filters.Query != "" {
+			searchOpts := &gitea.SearchRepoOptions{
+				ListOptions: gitea.ListOptions{
+					Page:     page,
+					PageSize: pageSize,
+				},
+				Keyword: filters.Query,
+			}
+
+			// Apply additional search filters
+			if filters.OwnerID > 0 {
+				searchOpts.OwnerID = filters.OwnerID
+			}
+			if filters.StarredByUser > 0 {
+				searchOpts.StarredByUserID = filters.StarredByUser
+			}
+			if filters.IsPrivate != nil {
+				searchOpts.IsPrivate = filters.IsPrivate
+			}
+			if filters.IsArchived != nil {
+				searchOpts.IsArchived = filters.IsArchived
+			}
+			if filters.Type != "" {
+				searchOpts.Type = gitea.RepoType(filters.Type)
+			}
+			if filters.Sort != "" {
+				searchOpts.Sort = filters.Sort
+			}
+			if filters.Order != "" {
+				searchOpts.Order = filters.Order
+			}
+			searchOpts.ExcludeTemplate = filters.ExcludeTemplate
+
+			// Call Gitea search API
+			giteaRepos, _, err := c.giteaClient.SearchRepos(*searchOpts)
+			if err != nil {
+				return nil, fmt.Errorf("failed to search repositories: %w", err)
+			}
+
+			// Convert to client repositories
+			repos := make([]Repository, len(giteaRepos))
+			for i, giteaRepo := range giteaRepos {
+				repos[i] = transformRepository(giteaRepo)
+			}
+
+			return repos, nil
+		}
+	}
+
+	// Use ListMyRepos for non-search cases
+	opts := &gitea.ListReposOptions{
+		ListOptions: gitea.ListOptions{
+			Page:     page,
+			PageSize: pageSize,
+		},
+	}
+
+	// Call Gitea API
+	giteaRepos, _, err := c.giteaClient.ListMyRepos(*opts)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list repositories: %w", err)
+	}
+
+	// Convert to client repositories
+	repos := make([]Repository, len(giteaRepos))
+	for i, giteaRepo := range giteaRepos {
+		repos[i] = transformRepository(giteaRepo)
+	}
+
+	return repos, nil
+}
+
+// GetRepository retrieves a specific repository by owner and name
+func (c *ForgejoClient) GetRepository(owner, name string) (*Repository, error) {
+	if c.giteaClient == nil {
+		return nil, fmt.Errorf("Gitea client not initialized")
+	}
+
+	// Call Gitea API
+	giteaRepo, _, err := c.giteaClient.GetRepo(owner, name)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get repository: %w", err)
+	}
+
+	// Convert to client repository
+	repo := transformRepository(giteaRepo)
+	return &repo, nil
+}
+
 // DefaultConfig returns a default client configuration
 func DefaultConfig() *ClientConfig {
 	return &ClientConfig{
@@ -175,11 +324,22 @@ func NewWithConfig(baseURL, token string, config *ClientConfig) (*ForgejoClient,
 		}
 	}
 
+	// Create Gitea client
+	giteaClient, err := gitea.NewClient(baseURL,
+		gitea.SetToken(token),
+		gitea.SetUserAgent(config.UserAgent),
+		gitea.SetHTTPClient(&http.Client{Timeout: config.Timeout}),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create Gitea client: %w", err)
+	}
+
 	return &ForgejoClient{
-		baseURL:   parsedURL,
-		token:     token,
-		timeout:   config.Timeout,
-		userAgent: config.UserAgent,
+		baseURL:     parsedURL,
+		token:       token,
+		timeout:     config.Timeout,
+		userAgent:   config.UserAgent,
+		giteaClient: giteaClient,
 	}, nil
 }
 
@@ -196,4 +356,20 @@ func (c *ForgejoClient) GetTimeout() time.Duration {
 // GetUserAgent returns the client's user agent
 func (c *ForgejoClient) GetUserAgent() string {
 	return c.userAgent
+}
+
+// transformRepository converts a Gitea Repository to client Repository
+func transformRepository(giteaRepo *gitea.Repository) Repository {
+	if giteaRepo == nil {
+		return Repository{}
+	}
+
+	return Repository{
+		ID:          giteaRepo.ID,
+		Name:        giteaRepo.Name,
+		FullName:    giteaRepo.FullName,
+		Description: giteaRepo.Description,
+		HTMLURL:     giteaRepo.HTMLURL,
+		CloneURL:    giteaRepo.CloneURL,
+	}
 }
