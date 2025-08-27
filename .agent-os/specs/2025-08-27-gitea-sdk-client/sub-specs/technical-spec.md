@@ -22,12 +22,16 @@ This is the technical specification for the spec detailed in @.agent-os/specs/20
 ### High-Level Methods
 - `ListPRs(owner, repo string, filters map[string]interface{}) ([]types.PullRequest, error)` for pull requests
 - `ListIssues(owner, repo string, filters map[string]interface{}) ([]types.Issue, error)` for issues
+- `ListRepositories(filters *RepositoryFilters) ([]Repository, error)` for repositories
+- `GetRepository(owner, name string) (*Repository, error)` for individual repository retrieval
 - Methods handle complete flow: build request → execute API call → transform response → return structs
 - Support filter parameters: state (open/closed/all), labels, assignee, author, milestone
 
 ### API Request Building
 - `buildPRListOptions(filters map[string]interface{}) ListPullRequestsOptions` constructs PR API options
 - `buildIssueListOptions(filters map[string]interface{}) ListIssueOption` constructs issue API options
+- `buildRepoListOptions(filters *RepositoryFilters) *gitea.ListReposOptions` constructs repository API options
+- `buildSearchRepoOptions(filters *RepositoryFilters) *gitea.SearchRepoOptions` constructs repository search options
 - Map Go filter parameters to Gitea SDK option structs
 - Handle pagination parameters (page, limit) for large result sets
 - Validate filter parameters before API calls
@@ -35,6 +39,7 @@ This is the technical specification for the spec detailed in @.agent-os/specs/20
 ### Response Transformation
 - `transformPullRequest(sdkPR *gitea.PullRequest) types.PullRequest` converts SDK types to internal types
 - `transformIssue(sdkIssue *gitea.Issue) types.Issue` converts SDK types to internal types
+- `transformRepository(giteaRepo *gitea.Repository) Repository` converts SDK repository types to internal types
 - Map all relevant fields from Gitea SDK response to internal type structures
 - Handle nil/optional fields appropriately in transformation functions
 - Preserve all metadata (timestamps, URLs, etc.) during transformation
@@ -48,10 +53,12 @@ This is the technical specification for the spec detailed in @.agent-os/specs/20
 
 ### Testing Approach
 - Mock Gitea SDK client using interface for unit testing
-- Test request building with various filter combinations
+- Test request building with various `RepositoryFilters` combinations
 - Test response transformation with sample Gitea API responses
+- Test `RepositoryFilters` struct creation and field validation
 - Integration tests with actual Forgejo instance when available
 - Test error scenarios including network failures and authentication issues
+- Use table-driven tests for comprehensive coverage of filter combinations
 
 ### Performance Considerations
 - Reuse ForgejoClient instance across multiple calls to maintain connection pooling
@@ -74,4 +81,35 @@ The implementation will follow a layered architecture:
 
 - **Gitea SDK**: `code.gitea.io/sdk/gitea@v0.21.0` - Official Go client for Gitea/Forgejo API
 - **Standard library packages**: `context`, `fmt`, `time`, `net/http`
-- **Internal packages**: `types` package for data structures, `auth` for token management, `config` for client configuration
+- **Internal packages**: `client` package for Forgejo client interface, `tea` package for Gitea SDK wrapper, `types` package for data structures, `auth` for token management, `config` for client configuration
+
+## RepositoryFilters Type
+
+The `RepositoryFilters` struct provides type-safe filtering for repository operations:
+
+```go
+type RepositoryFilters struct {
+    // Pagination
+    Page     int `json:"page,omitempty"`
+    PageSize int `json:"page_size,omitempty"`
+
+    // Search
+    Query string `json:"query,omitempty"`
+
+    // Ownership and access
+    OwnerID       int64  `json:"owner_id,omitempty"`
+    StarredByUser int64  `json:"starred_by_user,omitempty"`
+    Type          string `json:"type,omitempty"`
+
+    // Visibility and status
+    IsPrivate  *bool `json:"is_private,omitempty"`
+    IsArchived *bool `json:"is_archived,omitempty"`
+
+    // Sorting
+    Sort  string `json:"sort,omitempty"`
+    Order string `json:"order,omitempty"`
+
+    // Additional filters
+    ExcludeTemplate bool `json:"exclude_template,omitempty"`
+}
+```
