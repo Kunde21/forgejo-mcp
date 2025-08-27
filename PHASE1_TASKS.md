@@ -23,56 +23,97 @@
 - [x] Create `config/` directory for configuration management
 - [x] Create `types/` directory for data types and models
 
-## 2. Cobra CLI Structure
+## 2. Cobra CLI Structure ✅ COMPLETED
 
-### 2.1 Initialize Root Command
+### 2.1 Initialize Root Command ✅
 - [x] Create `cmd/root.go` with root command setup
 - [x] Implement `NewRootCommand() *cobra.Command` function
 - [x] Add global flags: `--config`, `--debug`, `--log-level`
 - [x] Set up logrus logging configuration
 - [x] Set up command descriptions and usage examples
 
-### 2.2 Create Server Command
+### 2.2 Create Server Command ✅
 - [x] Create `cmd/serve.go` for server command
 - [x] Implement `NewServeCommand() *cobra.Command` function
 - [x] Add server-specific flags: `--host`, `--port`
 - [x] Add command aliases and examples
 
-### 2.3 Main Entry Point
+### 2.3 Main Entry Point ✅
 - [x] Create `main.go` as main entry point
 - [x] Initialize Cobra app
 - [x] Setup signal handling for graceful shutdown
 - [x] Configure logrus with appropriate formatter and levels
 
-## 3. MCP Server Implementation
+### 2.4 Additional Cobra Implementation (from recap) ✅
+- [x] Extend `cmd/logging.go` with Cobra-integrated logging setup
+- [x] Implement configuration loading with flag overrides
+- [x] Add configuration validation in command PreRunE
+- [x] Implement comprehensive error handling with proper exit codes
+- [x] Write unit tests for command functions and flag parsing
+- [x] Test signal handling and graceful shutdown
+- [x] Add godoc comments to all exported functions
+- [x] Update command help text with examples
+- [x] Document CLI usage in README
+- [x] Verify CLI starts and shows help with `forgejo-mcp --help`
+- [x] Verify server command runs with `forgejo-mcp serve`
+- [x] Verify graceful shutdown works with Ctrl+C
+- [x] Verify all flags work as documented
+- [x] Verify tests pass with good coverage
 
-### 3.1 Core Server Structure
-- [ ] Create `server/server.go` with main server struct
-- [ ] Define `type Server struct` with mcp.Server, config, tea wrapper, and logger
-- [ ] Implement `New(cfg *config.Config) (*Server, error)`
-- [ ] Implement `(s *Server) Start() error`
-- [ ] Implement `(s *Server) Stop() error`
-- [ ] Configure logrus logger instance for server
+## 3. MCP Server Implementation ✅ COMPLETED
 
-### 3.2 Transport Layer
-- [ ] Create `server/transport.go` for transport handling
-- [ ] Implement stdio transport using MCP SDK
-- [ ] Implement `NewStdioTransport() mcp.Transport`
-- [ ] Handle connection lifecycle
-- [ ] Set up request routing based on tool name
+### 3.1 Core Server Structure ✅
+- [x] Create `server/server.go` with main server struct
+- [x] Define `type Server struct` with mcp.Server, config, tea wrapper, and logger
+- [x] Implement `New(cfg *config.Config) (*Server, error)`
+- [x] Implement `(s *Server) Start() error`
+- [x] Implement `(s *Server) Stop() error`
+- [x] Configure logrus logger instance for server
+- [x] Add server configuration to `config/config.go`
+- [x] Integrate Viper configuration with environment variables
+- [x] Write tests for Server struct lifecycle (New, Start, Stop)
 
-### 3.3 Tool Registration
-- [ ] Create `server/tools.go` for tool definitions
-- [ ] Implement `(s *Server) registerTools() error`
-- [ ] Implement `(s *Server) toolManifest() []mcp.Tool`
-- [ ] Register PR list tool: `pr_list`
-- [ ] Register issue list tool: `issue_list`
+### 3.2 Transport Layer ✅
+- [x] Create `server/transport.go` for transport handling
+- [x] Implement stdio transport using MCP SDK
+- [x] Implement `NewStdioTransport() mcp.Transport`
+- [x] Handle connection lifecycle
+- [x] Set up request routing based on tool name
+- [x] Implement JSON-RPC message handling over stdin/stdout
+- [x] Create request dispatcher and router for tool mapping
+- [x] Add connection lifecycle management
+- [x] Implement timeout handling for requests
+- [x] Write tests for stdio transport and request routing
 
-### 3.4 Tool Handlers
-- [ ] Create `server/handlers.go` for tool handler implementations
-- [ ] Implement `(s *Server) handlePRList(params map[string]interface{}) (interface{}, error)`
-- [ ] Implement `(s *Server) handleIssueList(params map[string]interface{}) (interface{}, error)`
-- [ ] Implement error response formatting
+### 3.3 Tool Registration ✅
+- [x] Create `server/tools.go` for tool definitions
+- [x] Implement `(s *Server) registerTools() error`
+- [x] Implement `(s *Server) toolManifest() []mcp.Tool`
+- [x] Register PR list tool: `pr_list`
+- [x] Register issue list tool: `issue_list`
+- [x] Define JSON schemas for pr_list and issue_list tools
+- [x] Add parameter validation rules
+- [x] Write tests for tool registration and manifest generation
+
+### 3.4 Tool Handlers ✅
+- [x] Create `server/handlers.go` for tool handler implementations
+- [x] Implement `(s *Server) handlePRList(params map[string]interface{}) (interface{}, error)`
+- [x] Implement `(s *Server) handleIssueList(params map[string]interface{}) (interface{}, error)`
+- [x] Implement error response formatting
+- [x] Implement parameter extraction and validation
+- [x] Create tea command builders with proper escaping
+- [x] Add tea output parsing (JSON and text formats)
+- [x] Implement response transformation to MCP format
+- [x] Write tests for request handlers and tea command building
+
+### 3.5 Integration Testing and Validation ✅
+- [x] Write integration tests for complete request/response flow
+- [x] Test server startup and MCP connection acceptance
+- [x] Test tool discovery through manifest
+- [x] Test pr_list with mocked tea output
+- [x] Test issue_list with mocked tea output
+- [x] Test error handling and timeout scenarios
+- [x] Verify all tests pass with >80% coverage
 
 ## 4. Tea CLI Wrapper
 
@@ -252,9 +293,9 @@
 
 ## Timeline Summary
 
-- **Week 1**: Project foundation and setup
-- **Week 2**: Cobra CLI implementation
-- **Week 3-4**: MCP server core implementation (with logrus logging)
+- **Week 1**: Project foundation and setup ✅ COMPLETED
+- **Week 2**: Cobra CLI implementation ✅ COMPLETED
+- **Week 3-4**: MCP server core implementation (with logrus logging) ✅ COMPLETED
 - **Week 4-5**: Tea CLI wrapper
 - **Week 5**: Repository context detection
 - **Week 6**: Authentication system

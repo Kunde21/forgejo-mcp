@@ -18,6 +18,7 @@ opencode.json
 # Test coverage
 coverage.txt
 coverage.html
+*.out
 
 # Logs
 *.log
