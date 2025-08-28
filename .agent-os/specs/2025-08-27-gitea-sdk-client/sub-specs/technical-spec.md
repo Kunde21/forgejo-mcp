@@ -20,16 +20,16 @@ This is the technical specification for the spec detailed in @.agent-os/specs/20
 - Set appropriate user agent and request headers for Forgejo compatibility
 
 ### High-Level Methods
-- `ListPRs(owner, repo string, filters map[string]interface{}) ([]types.PullRequest, error)` for pull requests
-- `ListIssues(owner, repo string, filters map[string]interface{}) ([]types.Issue, error)` for issues
+- `ListPRs(owner, repo string, filters *PullFilters) ([]types.PullRequest, error)` for pull requests
+- `ListIssues(owner, repo string, filters *IssueFilters) ([]types.Issue, error)` for issues
 - `ListRepositories(filters *RepositoryFilters) ([]Repository, error)` for repositories
 - `GetRepository(owner, name string) (*Repository, error)` for individual repository retrieval
 - Methods handle complete flow: build request → execute API call → transform response → return structs
 - Support filter parameters: state (open/closed/all), labels, assignee, author, milestone
 
 ### API Request Building
-- `buildPRListOptions(filters map[string]interface{}) ListPullRequestsOptions` constructs PR API options
-- `buildIssueListOptions(filters map[string]interface{}) ListIssueOption` constructs issue API options
+- `buildPRListOptions(filters *PullFilters) *gitea.ListPullRequestsOptions` constructs PR API options
+- `buildIssueListOptions(filters *IssueFilters) *gitea.ListIssueOption` constructs issue API options
 - `buildRepoListOptions(filters *RepositoryFilters) *gitea.ListReposOptions` constructs repository API options
 - `buildSearchRepoOptions(filters *RepositoryFilters) *gitea.SearchRepoOptions` constructs repository search options
 - Map Go filter parameters to Gitea SDK option structs
