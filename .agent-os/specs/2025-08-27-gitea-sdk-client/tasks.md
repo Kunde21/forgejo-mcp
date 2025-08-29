@@ -66,13 +66,13 @@ These are the tasks to be completed for the spec detailed in @.agent-os/specs/20
 - [x] Verify all issue/PR operation tests pass
 
 #### 3.3 Advanced Filtering
-- [ ] Write tests for query builder in `tea/query_test.go`
-- [ ] Implement query builder for complex filters in `tea/query.go`
-- [ ] Write tests for pagination handling
-- [ ] Implement pagination with cursor support
-- [ ] Write tests for sorting and ordering
-- [ ] Implement sorting and ordering logic
-- [ ] Verify all filtering tests pass
+- [x] Write tests for query builder in `tea/query_test.go`
+- [x] Implement query builder for complex filters in `tea/query.go`
+- [x] Write tests for pagination handling
+- [x] Implement pagination with cursor support
+- [x] Write tests for sorting and ordering
+- [x] Implement sorting and ordering logic
+- [x] Verify all filtering tests pass
 
 ### 4. Response Transformation
 

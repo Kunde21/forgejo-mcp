@@ -40,8 +40,8 @@ This is the detailed task breakdown for implementing the Gitea SDK Client specif
 - **Estimated Time:** 45 minutes
 
 ### Task 2.3: Implement High-Level Methods
-- Implement `ListPRs(owner, repo string, filters map[string]interface{}) ([]types.PullRequest, error)`
-- Implement `ListIssues(owner, repo string, filters map[string]interface{}) ([]types.Issue, error)`
+- Implement `ListPRs(owner, repo string, filters *PullFilters) ([]types.PullRequest, error)`
+- Implement `ListIssues(owner, repo string, filters *IssueFilters) ([]types.Issue, error)`
 - Integrate request building and response transformation
 - **Estimated Time:** 1 hour
 
@@ -49,8 +49,8 @@ This is the detailed task breakdown for implementing the Gitea SDK Client specif
 
 ### Task 3.1: Create Request Builder Functions
 - Create `client/requests.go` file
-- Implement `buildPRListOptions(filters map[string]interface{}) ListPullRequestsOptions`
-- Implement `buildIssueListOptions(filters map[string]interface{}) ListIssueOption`
+- Implement `buildPRListOptions(filters *PullFilters) ListPullRequestsOptions`
+- Implement `buildIssueListOptions(filters *IssueFilters) ListIssueOption`
 - **Estimated Time:** 45 minutes
 
 ### Task 3.2: Add Filter Support
