@@ -123,13 +123,13 @@ These are the tasks to be completed for the spec detailed in @.agent-os/specs/20
 - [x] Verify all performance tests pass
 
 #### 5.3 Documentation and Examples
-- [ ] Write unit tests for example code snippets
-- [ ] Create usage examples in `tea/examples_test.go`
-- [ ] Document Client interface and public methods
-- [ ] Create integration guide in `docs/TEA_INTEGRATION.md`
-- [ ] Write troubleshooting guide
-- [ ] Update main README with Gitea client features
-- [ ] Verify all documentation examples work
+- [x] Write unit tests for example code snippets
+- [x] Create usage examples in `tea/examples_test.go`
+- [x] Document Client interface and public methods
+- [x] Create integration guide in `docs/TEA_INTEGRATION.md`
+- [x] Write troubleshooting guide
+- [x] Update main README with Gitea client features
+- [x] Verify all documentation examples work
 
 ### 6. Testing and Quality Assurance
 

@@ -96,6 +96,14 @@ Authentication to the server must happen outside of the mcp calls, before the ag
 
 All calls are expected to come from a git repository with a forgejo server remote.
 
+### Gitea SDK Client
+
+The server also includes a native Gitea SDK client for direct API integration, providing:
+- Better performance compared to CLI calls
+- More comprehensive API coverage
+- Built-in caching and batch processing capabilities
+- Detailed error handling and response transformation
+
 ### PR interactions
 
 Manage Pull Requests opened on your forgejo repository
