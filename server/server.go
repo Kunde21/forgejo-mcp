@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/Kunde21/forgejo-mcp/client"
 	"github.com/Kunde21/forgejo-mcp/config"
 	"github.com/sirupsen/logrus"
 )
@@ -109,4 +110,81 @@ func (s *Server) Stop() error {
 	}
 	s.logger.Info("MCP server stopped successfully")
 	return nil
+}
+
+// RegisterGiteaSDKHandlers registers handlers that use the Gitea SDK client
+func (s *Server) RegisterGiteaSDKHandlers() error {
+	s.logger.Info("Registering Gitea SDK handlers...")
+
+	// Create Gitea client from configuration
+	giteaClient, err := client.New(s.config.ForgejoURL, s.config.AuthToken)
+	if err != nil {
+		return fmt.Errorf("failed to create Gitea client: %w", err)
+	}
+
+	// Create SDK-based handlers
+	sdkPRHandler := NewGiteaSDKPRListHandler(s.logger, giteaClient)
+	sdkIssueHandler := NewGiteaSDKIssueListHandler(s.logger, giteaClient)
+
+	// Create a new tool system handler with SDK handlers
+	toolHandler := &GiteaSDKToolSystemHandler{
+		registry:     s.toolRegistry,
+		validator:    NewToolValidator(s.logger),
+		prHandler:    sdkPRHandler,
+		issueHandler: sdkIssueHandler,
+		logger:       s.logger,
+	}
+
+	// Replace the existing tool handler
+	s.dispatcher.RegisterHandler("tools/call", toolHandler)
+
+	s.logger.Info("Gitea SDK handlers registered successfully")
+	return nil
+}
+
+// GiteaSDKToolSystemHandler handles tool calls using the Gitea SDK client
+type GiteaSDKToolSystemHandler struct {
+	registry     *ToolRegistry
+	validator    *ToolValidator
+	prHandler    *GiteaSDKPRListHandler
+	issueHandler *GiteaSDKIssueListHandler
+	logger       *logrus.Logger
+}
+
+// HandleRequest handles a tool call request using the Gitea SDK
+func (gtsh *GiteaSDKToolSystemHandler) HandleRequest(ctx context.Context, method string, params map[string]interface{}) (interface{}, error) {
+	gtsh.logger.Debugf("Gitea SDK tool system handling request: %s", method)
+
+	// Extract tool name from params
+	toolName, ok := params["name"].(string)
+	if !ok {
+		return nil, fmt.Errorf("tool name is required and must be a string")
+	}
+
+	// Extract tool arguments
+	arguments, ok := params["arguments"].(map[string]interface{})
+	if !ok {
+		arguments = make(map[string]interface{})
+	}
+
+	// Validate tool exists
+	_, exists := gtsh.registry.GetTool(toolName)
+	if !exists {
+		return nil, fmt.Errorf("unknown tool: %s", toolName)
+	}
+
+	// Validate parameters
+	if err := gtsh.validator.ValidateParameters(toolName, arguments); err != nil {
+		return nil, fmt.Errorf("parameter validation failed: %w", err)
+	}
+
+	// Route to appropriate SDK handler
+	switch toolName {
+	case "pr_list":
+		return gtsh.prHandler.HandleRequest(ctx, toolName, arguments)
+	case "issue_list":
+		return gtsh.issueHandler.HandleRequest(ctx, toolName, arguments)
+	default:
+		return nil, fmt.Errorf("tool handler not implemented: %s", toolName)
+	}
 }

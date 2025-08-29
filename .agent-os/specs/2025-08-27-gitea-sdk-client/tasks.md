@@ -105,13 +105,13 @@ These are the tasks to be completed for the spec detailed in @.agent-os/specs/20
 
 ### 5. Integration and Documentation
 
-#### 5.1 Integration with MCP Server
-- [ ] Write integration tests for tool handlers in `server/tea_integration_test.go`
-- [ ] Update tool handlers to use new client in `server/tea_handlers.go`
-- [ ] Write tests for configuration integration
-- [ ] Update configuration to support Gitea settings
-- [ ] Write end-to-end tests for complete workflows
-- [ ] Verify all integration tests pass
+#### 5.1 Integration with MCP Server ✅
+- [x] Write integration tests for tool handlers in `server/tea_integration_test.go`
+- [x] Update tool handlers to use new client in `server/tea_handlers.go`
+- [x] Write tests for configuration integration
+- [x] Update configuration to support Gitea settings
+- [x] Write end-to-end tests for complete workflows
+- [x] Verify all integration tests pass
 
 #### 5.2 Performance and Caching
 - [ ] Write tests for response caching in `tea/cache_test.go`

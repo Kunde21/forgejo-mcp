@@ -91,6 +91,32 @@ func (c *Config) Validate() error {
 		validation.Field(&c.Port, validation.Required, validation.Min(1), validation.Max(65535)),
 		validation.Field(&c.ReadTimeout, validation.Min(0)),
 		validation.Field(&c.WriteTimeout, validation.Min(0)),
+		validation.Field(&c.ClientTimeout, validation.Min(1), validation.Max(300)), // 1-300 seconds
+		validation.Field(&c.UserAgent, validation.Length(1, 100)),
 		validation.Field(&c.LogLevel, validation.In("trace", "debug", "info", "warn", "error", "fatal", "panic")),
 	)
+}
+
+// ValidateForGiteaClient validates configuration specifically for Gitea SDK client usage
+func (c *Config) ValidateForGiteaClient() error {
+	// First run standard validation
+	if err := c.Validate(); err != nil {
+		return err
+	}
+
+	// Additional Gitea client specific validations
+	if c.ClientTimeout <= 0 {
+		return fmt.Errorf("client_timeout must be greater than 0")
+	}
+
+	if c.UserAgent == "" {
+		return fmt.Errorf("user_agent is required for Gitea client")
+	}
+
+	// Validate that ForgejoURL is accessible (basic format check)
+	if !strings.HasPrefix(c.ForgejoURL, "http://") && !strings.HasPrefix(c.ForgejoURL, "https://") {
+		return fmt.Errorf("forgejo_url must start with http:// or https://")
+	}
+
+	return nil
 }

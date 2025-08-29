@@ -9,6 +9,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Kunde21/forgejo-mcp/client"
+	"github.com/Kunde21/forgejo-mcp/tea"
 	"github.com/sirupsen/logrus"
 )
 
@@ -565,4 +567,253 @@ type Issue struct {
 	State     string   `json:"state"`
 	Labels    []string `json:"labels"`
 	CreatedAt string   `json:"created_at"`
+}
+
+// GiteaSDKPRListHandler handles pr_list tool requests using the Gitea SDK client
+type GiteaSDKPRListHandler struct {
+	logger     *logrus.Logger
+	client     client.Client
+	transformer *tea.PRTransformer
+}
+
+// NewGiteaSDKPRListHandler creates a new Gitea SDK PR list handler
+func NewGiteaSDKPRListHandler(logger *logrus.Logger, giteaClient client.Client) *GiteaSDKPRListHandler {
+	return &GiteaSDKPRListHandler{
+		logger:      logger,
+		client:      giteaClient,
+		transformer: tea.NewPRTransformer(),
+	}
+}
+
+// HandleRequest handles a pr_list request using the Gitea SDK client
+func (h *GiteaSDKPRListHandler) HandleRequest(ctx context.Context, method string, params map[string]interface{}) (interface{}, error) {
+	h.logger.Infof("Handling %s request with Gitea SDK client: %v", method, params)
+
+	// Extract repository information
+	owner, repo, err := extractRepositoryInfo(params)
+	if err != nil {
+		return nil, fmt.Errorf("failed to extract repository info: %w", err)
+	}
+
+	// Build filters from parameters
+	filters, err := buildPRFilters(params)
+	if err != nil {
+		return nil, fmt.Errorf("failed to build PR filters: %w", err)
+	}
+
+	// List pull requests using Gitea SDK client
+	prs, err := h.client.ListPRs(owner, repo, filters)
+	if err != nil {
+		h.logger.Errorf("Gitea SDK client failed to list PRs: %v", err)
+		return nil, fmt.Errorf("failed to list pull requests: %w", err)
+	}
+
+	// Transform to MCP response format
+	mcpPRs, err := h.transformer.TransformPRsToMCP(prs)
+	if err != nil {
+		h.logger.Errorf("Failed to transform PRs to MCP format: %v", err)
+		return nil, fmt.Errorf("failed to transform response: %w", err)
+	}
+
+	result := map[string]interface{}{
+		"pullRequests": mcpPRs,
+		"total":        len(prs),
+		"repository":   fmt.Sprintf("%s/%s", owner, repo),
+	}
+
+	h.logger.Infof("Successfully retrieved %d pull requests", len(prs))
+	return result, nil
+}
+
+// GiteaSDKIssueListHandler handles issue_list tool requests using the Gitea SDK client
+type GiteaSDKIssueListHandler struct {
+	logger     *logrus.Logger
+	client     client.Client
+	transformer *tea.IssueTransformer
+}
+
+// NewGiteaSDKIssueListHandler creates a new Gitea SDK issue list handler
+func NewGiteaSDKIssueListHandler(logger *logrus.Logger, giteaClient client.Client) *GiteaSDKIssueListHandler {
+	return &GiteaSDKIssueListHandler{
+		logger:      logger,
+		client:      giteaClient,
+		transformer: tea.NewIssueTransformer(),
+	}
+}
+
+// HandleRequest handles an issue_list request using the Gitea SDK client
+func (h *GiteaSDKIssueListHandler) HandleRequest(ctx context.Context, method string, params map[string]interface{}) (interface{}, error) {
+	h.logger.Infof("Handling %s request with Gitea SDK client: %v", method, params)
+
+	// Extract repository information
+	owner, repo, err := extractRepositoryInfo(params)
+	if err != nil {
+		return nil, fmt.Errorf("failed to extract repository info: %w", err)
+	}
+
+	// Build filters from parameters
+	filters, err := buildIssueFilters(params)
+	if err != nil {
+		return nil, fmt.Errorf("failed to build issue filters: %w", err)
+	}
+
+	// List issues using Gitea SDK client
+	issues, err := h.client.ListIssues(owner, repo, filters)
+	if err != nil {
+		h.logger.Errorf("Gitea SDK client failed to list issues: %v", err)
+		return nil, fmt.Errorf("failed to list issues: %w", err)
+	}
+
+	// Transform to MCP response format
+	mcpIssues, err := h.transformer.TransformIssuesToMCP(issues)
+	if err != nil {
+		h.logger.Errorf("Failed to transform issues to MCP format: %v", err)
+		return nil, fmt.Errorf("failed to transform response: %w", err)
+	}
+
+	result := map[string]interface{}{
+		"issues":     mcpIssues,
+		"total":      len(issues),
+		"repository": fmt.Sprintf("%s/%s", owner, repo),
+	}
+
+	h.logger.Infof("Successfully retrieved %d issues", len(issues))
+	return result, nil
+}
+
+// Helper functions for SDK integration
+
+// extractRepositoryInfo extracts owner and repository name from parameters
+func extractRepositoryInfo(params map[string]interface{}) (string, string, error) {
+	// Look for repository information in various formats
+	if repo, ok := params["repository"].(string); ok {
+		parts := strings.Split(repo, "/")
+		if len(parts) == 2 {
+			return parts[0], parts[1], nil
+		}
+	}
+
+	// Look for separate owner and repo parameters
+	owner, ownerOk := params["owner"].(string)
+	repo, repoOk := params["repo"].(string)
+	if ownerOk && repoOk {
+		return owner, repo, nil
+	}
+
+	// Default repository if not specified (for testing)
+	return "forgejo", "forgejo", nil
+}
+
+// buildPRFilters builds pull request filters from request parameters
+func buildPRFilters(params map[string]interface{}) (*client.PullRequestFilters, error) {
+	filters := &client.PullRequestFilters{}
+
+	if state, ok := params["state"].(string); ok && state != "" {
+		switch state {
+		case "open":
+			filters.State = client.StateOpen
+		case "closed":
+			filters.State = client.StateClosed
+		case "all":
+			filters.State = client.StateAll
+		default:
+			return nil, fmt.Errorf("invalid state: %s", state)
+		}
+	}
+
+	if limit, ok := params["limit"].(float64); ok && limit > 0 {
+		filters.PageSize = int(limit)
+	}
+
+	if page, ok := params["page"].(float64); ok && page > 0 {
+		filters.Page = int(page)
+	}
+
+	if sort, ok := params["sort"].(string); ok && sort != "" {
+		filters.Sort = sort
+	}
+
+	if milestone, ok := params["milestone"].(float64); ok && milestone > 0 {
+		filters.Milestone = int64(milestone)
+	}
+
+	return filters, nil
+}
+
+// buildIssueFilters builds issue filters from request parameters
+func buildIssueFilters(params map[string]interface{}) (*client.IssueFilters, error) {
+	filters := &client.IssueFilters{}
+
+	if state, ok := params["state"].(string); ok && state != "" {
+		switch state {
+		case "open":
+			filters.State = client.StateOpen
+		case "closed":
+			filters.State = client.StateClosed
+		case "all":
+			filters.State = client.StateAll
+		default:
+			return nil, fmt.Errorf("invalid state: %s", state)
+		}
+	}
+
+	if limit, ok := params["limit"].(float64); ok && limit > 0 {
+		filters.PageSize = int(limit)
+	}
+
+	if page, ok := params["page"].(float64); ok && page > 0 {
+		filters.Page = int(page)
+	}
+
+	if keyword, ok := params["keyword"].(string); ok && keyword != "" {
+		filters.KeyWord = keyword
+	}
+
+	if createdBy, ok := params["created_by"].(string); ok && createdBy != "" {
+		filters.CreatedBy = createdBy
+	}
+
+	if author, ok := params["author"].(string); ok && author != "" {
+		filters.CreatedBy = author // author is an alias for created_by
+	}
+
+	if assignedBy, ok := params["assigned_by"].(string); ok && assignedBy != "" {
+		filters.AssignedBy = assignedBy
+	}
+
+	if mentionedBy, ok := params["mentioned_by"].(string); ok && mentionedBy != "" {
+		filters.MentionedBy = mentionedBy
+	}
+
+	if owner, ok := params["owner"].(string); ok && owner != "" {
+		filters.Owner = owner
+	}
+
+	if team, ok := params["team"].(string); ok && team != "" {
+		filters.Team = team
+	}
+
+	// Handle labels array
+	if labels, ok := params["labels"].([]interface{}); ok && len(labels) > 0 {
+		labelStrings := make([]string, 0, len(labels))
+		for _, label := range labels {
+			if labelStr, ok := label.(string); ok {
+				labelStrings = append(labelStrings, labelStr)
+			}
+		}
+		filters.Labels = labelStrings
+	}
+
+	// Handle milestones array
+	if milestones, ok := params["milestones"].([]interface{}); ok && len(milestones) > 0 {
+		milestoneStrings := make([]string, 0, len(milestones))
+		for _, milestone := range milestones {
+			if milestoneStr, ok := milestone.(string); ok {
+				milestoneStrings = append(milestoneStrings, milestoneStr)
+			}
+		}
+		filters.Milestones = milestoneStrings
+	}
+
+	return filters, nil
 }

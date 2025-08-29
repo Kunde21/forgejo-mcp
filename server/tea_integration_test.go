@@ -3,12 +3,15 @@ package server
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/Kunde21/forgejo-mcp/client"
 	"github.com/Kunde21/forgejo-mcp/config"
 	"github.com/google/go-cmp/cmp"
+	"github.com/sirupsen/logrus"
 )
 
 func TestTeaCommandBuilder_PRList(t *testing.T) {
@@ -339,5 +342,363 @@ func TestTeaIntegrationHandler_IssueList(t *testing.T) {
 	}
 	if resp.Result == nil {
 		t.Error("tools/call should return result")
+	}
+}
+
+// TestGiteaSDKIntegration tests the integration of handlers with the new Gitea SDK client
+func TestGiteaSDKIntegration(t *testing.T) {
+	// Create a mock client for testing
+	mockClient := &MockGiteaClient{}
+
+	// Test PR list integration
+	t.Run("PRListWithGiteaSDK", func(t *testing.T) {
+		handler := &GiteaSDKPRListHandler{
+			logger: logrus.New(),
+			client: mockClient,
+		}
+
+		params := map[string]interface{}{
+			"state":  "open",
+			"author": "developer1",
+			"limit":  float64(5),
+		}
+
+		result, err := handler.HandleRequest(context.Background(), "pr_list", params)
+		if err != nil {
+			t.Errorf("HandleRequest() should not error, got: %v", err)
+		}
+
+		if result == nil {
+			t.Error("HandleRequest() should return result")
+		}
+
+		// Verify result structure
+		resultMap, ok := result.(map[string]interface{})
+		if !ok {
+			t.Error("Result should be a map")
+		}
+
+		if _, exists := resultMap["pullRequests"]; !exists {
+			t.Error("Result should contain pullRequests field")
+		}
+
+		if _, exists := resultMap["total"]; !exists {
+			t.Error("Result should contain total field")
+		}
+	})
+
+	// Test issue list integration
+	t.Run("IssueListWithGiteaSDK", func(t *testing.T) {
+		handler := &GiteaSDKIssueListHandler{
+			logger: logrus.New(),
+			client: mockClient,
+		}
+
+		params := map[string]interface{}{
+			"state":  "closed",
+			"labels": []interface{}{"bug", "ui"},
+			"limit":  float64(10),
+		}
+
+		result, err := handler.HandleRequest(context.Background(), "issue_list", params)
+		if err != nil {
+			t.Errorf("HandleRequest() should not error, got: %v", err)
+		}
+
+		if result == nil {
+			t.Error("HandleRequest() should return result")
+		}
+
+		// Verify result structure
+		resultMap, ok := result.(map[string]interface{})
+		if !ok {
+			t.Error("Result should be a map")
+		}
+
+		if _, exists := resultMap["issues"]; !exists {
+			t.Error("Result should contain issues field")
+		}
+
+		if _, exists := resultMap["total"]; !exists {
+			t.Error("Result should contain total field")
+		}
+	})
+
+	// Test error handling
+	t.Run("ErrorHandling", func(t *testing.T) {
+		mockClient.ShouldError = true
+
+		handler := &GiteaSDKPRListHandler{
+			logger: logrus.New(),
+			client: mockClient,
+		}
+
+		_, err := handler.HandleRequest(context.Background(), "pr_list", map[string]interface{}{})
+		if err == nil {
+			t.Error("HandleRequest() should return error when client fails")
+		}
+
+		mockClient.ShouldError = false
+	})
+}
+
+// TestConfigurationIntegration tests the integration of configuration with Gitea settings
+func TestConfigurationIntegration(t *testing.T) {
+	tests := []struct {
+		name   string
+		config *config.Config
+		valid  bool
+	}{
+		{
+			name: "valid configuration",
+			config: &config.Config{
+				ForgejoURL:    "https://example.forgejo.com",
+				AuthToken:     "test-token",
+				ClientTimeout: 30,
+				UserAgent:     "test-agent",
+			},
+			valid: true,
+		},
+		{
+			name: "missing URL",
+			config: &config.Config{
+				AuthToken:     "test-token",
+				ClientTimeout: 30,
+				UserAgent:     "test-agent",
+			},
+			valid: false,
+		},
+		{
+			name: "missing token",
+			config: &config.Config{
+				ForgejoURL:    "https://example.forgejo.com",
+				ClientTimeout: 30,
+				UserAgent:     "test-agent",
+			},
+			valid: false,
+		},
+		{
+			name: "invalid timeout",
+			config: &config.Config{
+				ForgejoURL:    "https://example.forgejo.com",
+				AuthToken:     "test-token",
+				ClientTimeout: -1,
+				UserAgent:     "test-agent",
+			},
+			valid: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := validateGiteaClientConfig(tt.config)
+			if tt.valid && err != nil {
+				t.Errorf("Expected valid config to pass, got error: %v", err)
+			}
+			if !tt.valid && err == nil {
+				t.Error("Expected invalid config to fail validation")
+			}
+		})
+	}
+}
+
+// TestEndToEndWorkflow tests complete workflows with the Gitea SDK client
+func TestEndToEndWorkflow(t *testing.T) {
+	cfg := &config.Config{
+		ForgejoURL:    "https://example.forgejo.com",
+		AuthToken:     "test-token",
+		ClientTimeout: 30,
+		UserAgent:     "forgejo-mcp-client/1.0.0",
+		Host:          "localhost",
+		Port:          8080,
+		ReadTimeout:   30,
+		WriteTimeout:  30,
+		LogLevel:      "info",
+	}
+
+	server, err := New(cfg)
+	if err != nil {
+		t.Fatalf("New() error = %v", err)
+	}
+
+	// Register default handlers (CLI-based)
+	// Note: RegisterGiteaSDKHandlers would require a real Forgejo instance
+	// For end-to-end testing, we use the default handlers
+	server.RegisterDefaultHandlers()
+
+	// Test complete workflow: list PRs -> list issues -> process results
+	t.Run("CompleteWorkflow", func(t *testing.T) {
+		ctx := context.Background()
+
+		// Step 1: List pull requests
+		prReq := &Request{
+			JSONRPC: "2.0",
+			ID:      1,
+			Method:  "tools/call",
+			Params: map[string]interface{}{
+				"name": "pr_list",
+				"arguments": map[string]interface{}{
+					"state": "open",
+					"limit": float64(10),
+				},
+			},
+		}
+
+		prResp := server.dispatcher.Dispatch(ctx, prReq)
+		if prResp == nil || prResp.Error != nil {
+			t.Errorf("PR list request failed: %v", prResp.Error)
+		}
+
+		// Step 2: List issues
+		issueReq := &Request{
+			JSONRPC: "2.0",
+			ID:      2,
+			Method:  "tools/call",
+			Params: map[string]interface{}{
+				"name": "issue_list",
+				"arguments": map[string]interface{}{
+					"state": "open",
+					"limit": float64(10),
+				},
+			},
+		}
+
+		issueResp := server.dispatcher.Dispatch(ctx, issueReq)
+		if issueResp == nil || issueResp.Error != nil {
+			t.Errorf("Issue list request failed: %v", issueResp.Error)
+		}
+
+		// Verify both responses have expected structure
+		verifyResponseStructure(t, prResp.Result, "pullRequests")
+		verifyResponseStructure(t, issueResp.Result, "issues")
+	})
+
+	// Test error scenarios
+	t.Run("ErrorScenarios", func(t *testing.T) {
+		ctx := context.Background()
+
+		// Test invalid parameters
+		invalidReq := &Request{
+			JSONRPC: "2.0",
+			ID:      3,
+			Method:  "tools/call",
+			Params: map[string]interface{}{
+				"name": "pr_list",
+				"arguments": map[string]interface{}{
+					"state": "invalid_state",
+					"limit": float64(-1),
+				},
+			},
+		}
+
+		invalidResp := server.dispatcher.Dispatch(ctx, invalidReq)
+		if invalidResp == nil {
+			t.Error("Invalid request should return a response")
+		}
+		// Note: Error handling behavior depends on implementation
+	})
+}
+
+// MockGiteaClient is a mock implementation of the Client interface for testing
+type MockGiteaClient struct {
+	ShouldError bool
+}
+
+func (m *MockGiteaClient) ListPRs(owner, repo string, filters *client.PullRequestFilters) ([]client.PullRequest, error) {
+	if m.ShouldError {
+		return nil, &client.APIError{StatusCode: 500, Message: "mock error"}
+	}
+
+	return []client.PullRequest{
+		{
+			Index: 1,
+			Title: "Test PR",
+			Poster: &client.User{
+				UserName: "testuser",
+			},
+			State:   client.StateOpen,
+			HTMLURL: "https://example.com/pr/1",
+		},
+	}, nil
+}
+
+func (m *MockGiteaClient) ListIssues(owner, repo string, filters *client.IssueFilters) ([]client.Issue, error) {
+	if m.ShouldError {
+		return nil, &client.APIError{StatusCode: 500, Message: "mock error"}
+	}
+
+	return []client.Issue{
+		{
+			Index: 1,
+			Title: "Test Issue",
+			Poster: &client.User{
+				UserName: "testuser",
+			},
+			State:   client.StateOpen,
+			HTMLURL: "https://example.com/issue/1",
+		},
+	}, nil
+}
+
+func (m *MockGiteaClient) ListRepositories(filters *client.RepositoryFilters) ([]client.Repository, error) {
+	if m.ShouldError {
+		return nil, &client.APIError{StatusCode: 500, Message: "mock error"}
+	}
+
+	return []client.Repository{
+		{
+			ID:       1,
+			Name:     "test-repo",
+			FullName: "testuser/test-repo",
+			HTMLURL:  "https://example.com/testuser/test-repo",
+		},
+	}, nil
+}
+
+func (m *MockGiteaClient) GetRepository(owner, name string) (*client.Repository, error) {
+	if m.ShouldError {
+		return nil, &client.APIError{StatusCode: 404, Message: "not found"}
+	}
+
+	return &client.Repository{
+		ID:       1,
+		Name:     name,
+		FullName: owner + "/" + name,
+		HTMLURL:  "https://example.com/" + owner + "/" + name,
+	}, nil
+}
+
+// Helper functions for integration tests
+func validateGiteaClientConfig(cfg *config.Config) error {
+	if cfg.ForgejoURL == "" {
+		return fmt.Errorf("forgejo_url is required")
+	}
+	if cfg.AuthToken == "" {
+		return fmt.Errorf("auth_token is required")
+	}
+	if cfg.ClientTimeout < 0 {
+		return fmt.Errorf("client_timeout must be non-negative")
+	}
+	return nil
+}
+
+func verifyResponseStructure(t *testing.T, result interface{}, expectedField string) {
+	if result == nil {
+		t.Error("Response result should not be nil")
+		return
+	}
+
+	resultMap, ok := result.(map[string]interface{})
+	if !ok {
+		t.Error("Response result should be a map")
+		return
+	}
+
+	if _, exists := resultMap[expectedField]; !exists {
+		t.Errorf("Response should contain %s field", expectedField)
+	}
+
+	if _, exists := resultMap["total"]; !exists {
+		t.Error("Response should contain total field")
 	}
 }

@@ -73,3 +73,73 @@ func TestValidate(t *testing.T) {
 		t.Error("Validate() expected error for empty auth token, got nil")
 	}
 }
+
+func TestValidateForGiteaClient(t *testing.T) {
+	tests := []struct {
+		name    string
+		config  *Config
+		wantErr bool
+	}{
+		{
+			name: "valid gitea client config",
+			config: &Config{
+				ForgejoURL:    "https://gitea.example.com",
+				AuthToken:     "valid_token",
+				ClientTimeout: 30,
+				UserAgent:     "test-agent/1.0",
+				Host:          "localhost",
+				Port:          8080,
+				LogLevel:      "info",
+			},
+			wantErr: false,
+		},
+		{
+			name: "missing user agent",
+			config: &Config{
+				ForgejoURL:    "https://gitea.example.com",
+				AuthToken:     "valid_token",
+				ClientTimeout: 30,
+				UserAgent:     "",
+				Host:          "localhost",
+				Port:          8080,
+				LogLevel:      "info",
+			},
+			wantErr: true,
+		},
+		{
+			name: "invalid timeout",
+			config: &Config{
+				ForgejoURL:    "https://gitea.example.com",
+				AuthToken:     "valid_token",
+				ClientTimeout: -1,
+				UserAgent:     "test-agent/1.0",
+				Host:          "localhost",
+				Port:          8080,
+				LogLevel:      "info",
+			},
+			wantErr: true,
+		},
+		{
+			name: "invalid URL scheme",
+			config: &Config{
+				ForgejoURL:    "ftp://gitea.example.com",
+				AuthToken:     "valid_token",
+				ClientTimeout: 30,
+				UserAgent:     "test-agent/1.0",
+				Host:          "localhost",
+				Port:          8080,
+				LogLevel:      "info",
+			},
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := tt.config.ValidateForGiteaClient()
+			if (err != nil) != tt.wantErr {
+				t.Errorf("ValidateForGiteaClient() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}
