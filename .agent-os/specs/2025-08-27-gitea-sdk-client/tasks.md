@@ -95,13 +95,13 @@ These are the tasks to be completed for the spec detailed in @.agent-os/specs/20
 - [x] Verify all enrichment tests pass
 
 #### 4.3 Error Response Handling
-- [ ] Write tests for error response formatting
-- [ ] Implement error response transformation
-- [ ] Write tests for partial success scenarios
-- [ ] Implement partial success handling
-- [ ] Write tests for rate limit responses
-- [ ] Implement rate limit detection and reporting
-- [ ] Verify all error handling tests pass
+- [x] Write tests for error response formatting
+- [x] Implement error response transformation
+- [x] Write tests for partial success scenarios
+- [x] Implement partial success handling
+- [x] Write tests for rate limit responses
+- [x] Implement rate limit detection and reporting
+- [x] Verify all error handling tests pass
 
 ### 5. Integration and Documentation
 
