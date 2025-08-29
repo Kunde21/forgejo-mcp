@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 )
@@ -144,15 +145,29 @@ func (c *Cache) evictLRU() {
 
 // GenerateCacheKey creates a consistent cache key from method parameters
 func GenerateCacheKey(method, owner, repo string, filters map[string]interface{}) string {
+	// Pre-allocate string builder for better performance
+	var keyBuilder strings.Builder
+	keyBuilder.Grow(64) // Pre-allocate reasonable capacity
+
+	keyBuilder.WriteString(method)
+	keyBuilder.WriteString(":")
+	keyBuilder.WriteString(owner)
+	keyBuilder.WriteString(":")
+	keyBuilder.WriteString(repo)
+	keyBuilder.WriteString(":")
+
 	// Convert filters to JSON for consistent key generation
-	filtersJSON := "{}"
 	if filters != nil && len(filters) > 0 {
 		if jsonBytes, err := json.Marshal(filters); err == nil {
-			filtersJSON = string(jsonBytes)
+			keyBuilder.Write(jsonBytes)
+		} else {
+			keyBuilder.WriteString("{}")
 		}
+	} else {
+		keyBuilder.WriteString("{}")
 	}
 
-	return fmt.Sprintf("%s:%s:%s:%s", method, owner, repo, filtersJSON)
+	return keyBuilder.String()
 }
 
 // CachedClient wraps a Gitea client with caching capabilities

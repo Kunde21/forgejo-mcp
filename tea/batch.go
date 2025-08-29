@@ -43,20 +43,33 @@ func NewBatchProcessor(maxConcurrency int) *BatchProcessor {
 	}
 }
 
-// ProcessBatch processes a batch of requests concurrently
+// ProcessBatch processes a batch of requests concurrently with deduplication
 func (bp *BatchProcessor) ProcessBatch(ctx context.Context, requests []BatchRequest) ([]BatchResponse, error) {
 	if len(requests) == 0 {
 		return []BatchResponse{}, nil
 	}
 
-	// Create response channel
-	responsesChan := make(chan BatchResponse, len(requests))
+	// Deduplicate requests by creating cache keys
+	uniqueRequests := make(map[string]BatchRequest)
+	requestMapping := make(map[string][]string) // key -> []requestIDs
+
+	for _, req := range requests {
+		key := GenerateCacheKey(req.Method, req.Owner, req.Repo, req.Filters)
+		if _, exists := uniqueRequests[key]; !exists {
+			uniqueRequests[key] = req
+		}
+		requestMapping[key] = append(requestMapping[key], req.ID)
+	}
+
+	// Pre-allocate response slice for better performance
+	responses := make([]BatchResponse, 0, len(requests))
+	responsesChan := make(chan BatchResponse, len(uniqueRequests))
 	var wg sync.WaitGroup
 
-	// Process each request concurrently with concurrency limit
-	for _, req := range requests {
+	// Process unique requests concurrently
+	for key, req := range uniqueRequests {
 		wg.Add(1)
-		go func(request BatchRequest) {
+		go func(cacheKey string, request BatchRequest) {
 			defer wg.Done()
 
 			// Acquire semaphore for concurrency control
@@ -81,7 +94,7 @@ func (bp *BatchProcessor) ProcessBatch(ctx context.Context, requests []BatchRequ
 				Error:    err,
 				Duration: duration,
 			}
-		}(req)
+		}(key, req)
 	}
 
 	// Wait for all goroutines to complete
@@ -90,10 +103,29 @@ func (bp *BatchProcessor) ProcessBatch(ctx context.Context, requests []BatchRequ
 		close(responsesChan)
 	}()
 
-	// Collect responses
-	var responses []BatchResponse
+	// Collect unique responses and duplicate for all original requests
+	uniqueResponses := make(map[string]BatchResponse)
 	for response := range responsesChan {
-		responses = append(responses, response)
+		// Find the cache key for this response
+		for key, req := range uniqueRequests {
+			if req.ID == response.ID {
+				uniqueResponses[key] = response
+				break
+			}
+		}
+	}
+
+	// Create responses for all original request IDs
+	for key, response := range uniqueResponses {
+		for _, originalID := range requestMapping[key] {
+			responsesCopy := BatchResponse{
+				ID:       originalID,
+				Result:   response.Result,
+				Error:    response.Error,
+				Duration: response.Duration,
+			}
+			responses = append(responses, responsesCopy)
+		}
 	}
 
 	// Check if context was cancelled

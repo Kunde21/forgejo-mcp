@@ -260,3 +260,78 @@ func TestBatchPerformance(t *testing.T) {
 		t.Logf("Performance warning: only %.1f req/sec (expected > 100)", requestsPerSecond)
 	}
 }
+
+// BenchmarkBatchProcessor benchmarks batch processing with different concurrency levels
+func BenchmarkBatchProcessor(b *testing.B) {
+	processor := NewBatchProcessor(10)
+
+	// Create test requests
+	requests := make([]BatchRequest, 50)
+	for i := 0; i < 50; i++ {
+		requests[i] = BatchRequest{
+			ID:     fmt.Sprintf("bench-req-%d", i),
+			Method: "listPRs",
+			Owner:  fmt.Sprintf("org-%d", i%5),
+			Repo:   fmt.Sprintf("repo-%d", i%10),
+			Filters: map[string]interface{}{
+				"state": "open",
+				"page":  (i % 3) + 1,
+			},
+		}
+	}
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		ctx := context.Background()
+		processor.ProcessBatch(ctx, requests)
+	}
+}
+
+// BenchmarkBatchProcessorConcurrency tests different concurrency levels
+func BenchmarkBatchProcessorConcurrency1(b *testing.B)  { benchmarkBatchConcurrency(b, 1) }
+func BenchmarkBatchProcessorConcurrency5(b *testing.B)  { benchmarkBatchConcurrency(b, 5) }
+func BenchmarkBatchProcessorConcurrency10(b *testing.B) { benchmarkBatchConcurrency(b, 10) }
+func BenchmarkBatchProcessorConcurrency20(b *testing.B) { benchmarkBatchConcurrency(b, 20) }
+
+func benchmarkBatchConcurrency(b *testing.B, concurrency int) {
+	processor := NewBatchProcessor(concurrency)
+
+	requests := make([]BatchRequest, 100)
+	for i := 0; i < 100; i++ {
+		requests[i] = BatchRequest{
+			ID:     fmt.Sprintf("req-%d", i),
+			Method: "listPRs",
+			Owner:  "benchorg",
+			Repo:   "benchrepo",
+		}
+	}
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		ctx := context.Background()
+		processor.ProcessBatch(ctx, requests)
+	}
+}
+
+// BenchmarkBatchOptimizer benchmarks batch optimization with caching
+func BenchmarkBatchOptimizer(b *testing.B) {
+	optimizer, _ := NewBatchOptimizer(1000, 5*time.Minute)
+
+	requests := make([]BatchRequest, 100)
+	for i := 0; i < 100; i++ {
+		requests[i] = BatchRequest{
+			ID:     fmt.Sprintf("opt-req-%d", i),
+			Method: "listPRs",
+			Owner:  fmt.Sprintf("org-%d", i%10), // 10 different orgs
+			Repo:   fmt.Sprintf("repo-%d", i%5), // 5 different repos
+			Filters: map[string]interface{}{
+				"state": "open",
+			},
+		}
+	}
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		optimizer.OptimizeBatch(requests)
+	}
+}

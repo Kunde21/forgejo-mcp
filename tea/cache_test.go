@@ -406,3 +406,81 @@ func TestCacheConcurrentAccess(t *testing.T) {
 		t.Error("Cache not functional after concurrent access")
 	}
 }
+
+// BenchmarkCacheSet benchmarks cache set operations
+func BenchmarkCacheSet(b *testing.B) {
+	cache, _ := NewCache(1000, 5*time.Minute)
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		key := fmt.Sprintf("key-%d", i)
+		value := fmt.Sprintf("value-%d", i)
+		cache.Set(key, value)
+	}
+}
+
+// BenchmarkCacheGet benchmarks cache get operations
+func BenchmarkCacheGet(b *testing.B) {
+	cache, _ := NewCache(1000, 5*time.Minute)
+
+	// Pre-populate cache
+	for i := 0; i < 100; i++ {
+		key := fmt.Sprintf("key-%d", i)
+		value := fmt.Sprintf("value-%d", i)
+		cache.Set(key, value)
+	}
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		key := fmt.Sprintf("key-%d", i%100)
+		cache.Get(key)
+	}
+}
+
+// BenchmarkCacheSetGet benchmarks mixed cache operations
+func BenchmarkCacheSetGet(b *testing.B) {
+	cache, _ := NewCache(1000, 5*time.Minute)
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		key := fmt.Sprintf("key-%d", i%100)
+		if i%2 == 0 {
+			cache.Set(key, "value")
+		} else {
+			cache.Get(key)
+		}
+	}
+}
+
+// BenchmarkCacheKeyGeneration benchmarks cache key generation
+func BenchmarkCacheKeyGeneration(b *testing.B) {
+	filters := map[string]interface{}{
+		"state":  "open",
+		"labels": []string{"bug", "priority-high"},
+		"page":   1,
+	}
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		GenerateCacheKey("listPRs", "myorg", "myrepo", filters)
+	}
+}
+
+// BenchmarkCacheConcurrent benchmarks concurrent cache operations
+func BenchmarkCacheConcurrent(b *testing.B) {
+	cache, _ := NewCache(1000, 5*time.Minute)
+
+	b.ResetTimer()
+	b.RunParallel(func(pb *testing.PB) {
+		i := 0
+		for pb.Next() {
+			key := fmt.Sprintf("key-%d", i%100)
+			if i%2 == 0 {
+				cache.Set(key, "value")
+			} else {
+				cache.Get(key)
+			}
+			i++
+		}
+	})
+}

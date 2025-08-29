@@ -113,14 +113,14 @@ These are the tasks to be completed for the spec detailed in @.agent-os/specs/20
 - [x] Write end-to-end tests for complete workflows
 - [x] Verify all integration tests pass
 
-#### 5.2 Performance and Caching
-- [ ] Write tests for response caching in `tea/cache_test.go`
-- [ ] Implement caching layer for frequent requests in `tea/cache.go`
-- [ ] Write tests for batch operations
-- [ ] Implement batch operation support
-- [ ] Write performance benchmarks
-- [ ] Optimize based on benchmark results
-- [ ] Verify all performance tests pass
+#### 5.2 Performance and Caching ✅
+- [x] Write tests for response caching in `tea/cache_test.go`
+- [x] Implement caching layer for frequent requests in `tea/cache.go`
+- [x] Write tests for batch operations
+- [x] Implement batch operation support
+- [x] Write performance benchmarks
+- [x] Optimize based on benchmark results
+- [x] Verify all performance tests pass
 
 #### 5.3 Documentation and Examples
 - [ ] Write unit tests for example code snippets
