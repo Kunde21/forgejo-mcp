@@ -201,11 +201,11 @@ func TestToolDiscoveryThroughManifest(t *testing.T) {
 
 	// Test getting all tool names
 	toolNames := server.GetToolNames()
-	if len(toolNames) != 2 {
-		t.Errorf("Expected 2 tool names, got %d", len(toolNames))
+	if len(toolNames) != 3 {
+		t.Errorf("Expected 3 tool names, got %d", len(toolNames))
 	}
 
-	expectedNames := map[string]bool{"pr_list": false, "issue_list": false}
+	expectedNames := map[string]bool{"pr_list": false, "issue_list": false, "context_detect": false}
 	for _, name := range toolNames {
 		if _, exists := expectedNames[name]; exists {
 			expectedNames[name] = true

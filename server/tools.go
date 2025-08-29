@@ -91,6 +91,8 @@ func (tv *ToolValidator) ValidateParameters(toolName string, params map[string]a
 		return tv.validatePRListParams(params)
 	case "issue_list":
 		return tv.validateIssueListParams(params)
+	case "context_detect":
+		return tv.validateContextDetectParams(params)
 	default:
 		return fmt.Errorf("unknown tool: %s", toolName)
 	}
@@ -204,6 +206,26 @@ func (tv *ToolValidator) validateIssueListParams(params map[string]interface{}) 
 	return nil
 }
 
+// validateContextDetectParams validates parameters for context_detect tool
+func (tv *ToolValidator) validateContextDetectParams(params map[string]interface{}) error {
+	// Validate path parameter if provided
+	if path, exists := params["path"]; exists {
+		if pathStr, ok := path.(string); ok {
+			if pathStr == "" {
+				return fmt.Errorf("path parameter cannot be empty")
+			}
+			// Basic validation for path format
+			if len(pathStr) > 4096 {
+				return fmt.Errorf("path parameter cannot be longer than 4096 characters")
+			}
+		} else {
+			return fmt.Errorf("path parameter must be a string")
+		}
+	}
+
+	return nil
+}
+
 // CreateDefaultTools creates and returns the default tool definitions
 func CreateDefaultTools() []*ToolDefinition {
 	return []*ToolDefinition{
@@ -258,6 +280,19 @@ func CreateDefaultTools() []*ToolDefinition {
 						"description": "Maximum number of issues to return",
 						"minimum":     1,
 						"maximum":     100,
+					},
+				},
+			},
+		},
+		{
+			Name:        "context_detect",
+			Description: "Detect repository context from the current git environment",
+			InputSchema: map[string]interface{}{
+				"type": "object",
+				"properties": map[string]interface{}{
+					"path": map[string]interface{}{
+						"type":        "string",
+						"description": "Path to check for repository context (defaults to current directory)",
 					},
 				},
 			},

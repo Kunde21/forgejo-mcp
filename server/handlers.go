@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 
+	ctxt "github.com/Kunde21/forgejo-mcp/context"
 	"github.com/sirupsen/logrus"
 )
 
@@ -164,10 +165,66 @@ func (h *ToolManifestHandler) HandleRequest(ctx context.Context, method string, 
 				},
 			},
 		},
+		{
+			"name":        "context_detect",
+			"description": "Detect repository context from the current git environment",
+			"inputSchema": map[string]interface{}{
+				"type": "object",
+				"properties": map[string]interface{}{
+					"path": map[string]interface{}{
+						"type":        "string",
+						"description": "Path to check for repository context (defaults to current directory)",
+					},
+				},
+			},
+		},
 	}
 
 	return map[string]interface{}{
 		"tools": tools,
+	}, nil
+}
+
+// ContextDetectHandler handles context_detect tool requests
+type ContextDetectHandler struct {
+	logger *logrus.Logger
+}
+
+// NewContextDetectHandler creates a new context detect handler
+func NewContextDetectHandler(logger *logrus.Logger) *ContextDetectHandler {
+	return &ContextDetectHandler{
+		logger: logger,
+	}
+}
+
+// HandleRequest handles a context_detect request
+func (h *ContextDetectHandler) HandleRequest(ctx context.Context, method string, params map[string]interface{}) (interface{}, error) {
+	h.logger.Infof("Handling %s request with params: %v", method, params)
+
+	// Extract path parameter, default to current directory
+	path := "."
+	if pathParam, exists := params["path"]; exists {
+		if pathStr, ok := pathParam.(string); ok && pathStr != "" {
+			path = pathStr
+		}
+	}
+
+	// Detect repository context
+	repoCtx, err := ctxt.DetectContext(path)
+	if err != nil {
+		h.logger.Errorf("Context detection failed for path %s: %v", path, err)
+		return map[string]interface{}{
+			"error": err.Error(),
+		}, nil
+	}
+
+	h.logger.Infof("Successfully detected context: %s", repoCtx.String())
+
+	return map[string]interface{}{
+		"owner":      repoCtx.Owner,
+		"repository": repoCtx.Repository,
+		"remoteUrl":  repoCtx.RemoteURL,
+		"context":    repoCtx.String(),
 	}, nil
 }
 
@@ -176,12 +233,14 @@ func (s *Server) RegisterDefaultHandlers() {
 	// Register tool handlers
 	prHandler := NewPRListHandler(s.logger)
 	issueHandler := NewIssueListHandler(s.logger)
+	contextHandler := NewContextDetectHandler(s.logger)
 	manifestHandler := NewToolManifestHandler(s.logger)
 
 	s.dispatcher.RegisterHandler("tools/call", &ToolCallRouter{
-		prHandler:    prHandler,
-		issueHandler: issueHandler,
-		logger:       s.logger,
+		prHandler:      prHandler,
+		issueHandler:   issueHandler,
+		contextHandler: contextHandler,
+		logger:         s.logger,
 	})
 	s.dispatcher.RegisterHandler("tools/list", manifestHandler)
 
@@ -190,9 +249,10 @@ func (s *Server) RegisterDefaultHandlers() {
 
 // ToolCallRouter routes tool calls to the appropriate handler based on the tool name
 type ToolCallRouter struct {
-	prHandler    *PRListHandler
-	issueHandler *IssueListHandler
-	logger       *logrus.Logger
+	prHandler      *PRListHandler
+	issueHandler   *IssueListHandler
+	contextHandler *ContextDetectHandler
+	logger         *logrus.Logger
 }
 
 // HandleRequest routes a tool call to the appropriate handler
@@ -217,6 +277,8 @@ func (r *ToolCallRouter) HandleRequest(ctx context.Context, method string, param
 		return r.prHandler.HandleRequest(ctx, toolName, arguments)
 	case "issue_list":
 		return r.issueHandler.HandleRequest(ctx, toolName, arguments)
+	case "context_detect":
+		return r.contextHandler.HandleRequest(ctx, toolName, arguments)
 	default:
 		return nil, fmt.Errorf("unknown tool: %s", toolName)
 	}
