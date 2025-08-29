@@ -6,6 +6,8 @@ import (
 
 	"code.gitea.io/sdk/gitea"
 	"github.com/google/go-cmp/cmp"
+
+	"github.com/Kunde21/forgejo-mcp/client"
 )
 
 func TestTransformRepositoryToMCP(t *testing.T) {
@@ -476,5 +478,179 @@ func TestTransformPullRequestsToMCP(t *testing.T) {
 	got := TransformPullRequestsToMCP(prs)
 	if !cmp.Equal(want, got) {
 		t.Errorf("TransformPullRequestsToMCP() mismatch (-want +got):\n%s", cmp.Diff(want, got))
+	}
+}
+
+// TestPRTransformer tests the PRTransformer type and methods
+func TestPRTransformer(t *testing.T) {
+	transformer := NewPRTransformer()
+	if transformer == nil {
+		t.Error("Expected non-nil transformer")
+	}
+
+	now := time.Now()
+	pastTime := time.Now().Add(-24 * time.Hour)
+
+	user := &client.User{
+		ID:       1,
+		UserName: "testuser",
+		FullName: "Test User",
+		Email:    "test@example.com",
+	}
+
+	label1 := &client.Label{
+		ID:    1,
+		Name:  "feature",
+		Color: "0052cc",
+	}
+
+	label2 := &client.Label{
+		ID:    2,
+		Name:  "review",
+		Color: "0052cd",
+	}
+
+	prs := []client.PullRequest{
+		{
+			ID:        1,
+			Index:     42,
+			Title:     "Test PR",
+			Body:      "This is a test pull request",
+			State:     client.StateOpen,
+			Poster:    user,
+			Labels:    []*client.Label{label1, label2},
+			Created:   &now,
+			Updated:   &now,
+			Closed:    &pastTime,
+			Merged:    &pastTime,
+			HasMerged: true,
+			Base: &client.PRBranchInfo{
+				Ref: "main",
+				SHA: "abc123",
+			},
+			Head: &client.PRBranchInfo{
+				Ref: "feature-branch",
+				SHA: "def456",
+			},
+			HTMLURL: "https://example.com/owner/repo/pulls/42",
+		},
+		{
+			ID:      2,
+			Index:   43,
+			Title:   "Simple PR",
+			State:   client.StateOpen,
+			Created: &now,
+		},
+	}
+
+	result, err := transformer.TransformPRsToMCP(prs)
+	if err != nil {
+		t.Errorf("TransformPRsToMCP failed: %v", err)
+	}
+
+	if len(result) != len(prs) {
+		t.Errorf("Expected %d results, got %d", len(prs), len(result))
+	}
+
+	// Test the first PR transformation
+	firstPR := result[0]
+	if firstPR["id"] != int64(1) {
+		t.Errorf("Expected id=1, got %v", firstPR["id"])
+	}
+
+	if firstPR["title"] != "Test PR" {
+		t.Errorf("Expected title='Test PR', got %v", firstPR["title"])
+	}
+
+	if firstPR["html_url"] != "https://example.com/owner/repo/pulls/42" {
+		t.Errorf("Expected html_url='https://example.com/owner/repo/pulls/42', got %v", firstPR["html_url"])
+	}
+
+	// Test the second PR transformation
+	secondPR := result[1]
+	if secondPR["id"] != int64(2) {
+		t.Errorf("Expected id=2, got %v", secondPR["id"])
+	}
+}
+
+// TestIssueTransformer tests the IssueTransformer type and methods
+func TestIssueTransformer(t *testing.T) {
+	transformer := NewIssueTransformer()
+	if transformer == nil {
+		t.Error("Expected non-nil transformer")
+	}
+
+	now := time.Now()
+	pastTime := time.Now().Add(-24 * time.Hour)
+
+	user := &client.User{
+		ID:       1,
+		UserName: "testuser",
+		FullName: "Test User",
+		Email:    "test@example.com",
+	}
+
+	label1 := &client.Label{
+		ID:    1,
+		Name:  "bug",
+		Color: "e11d21",
+	}
+
+	label2 := &client.Label{
+		ID:    2,
+		Name:  "urgent",
+		Color: "e11d22",
+	}
+
+	issues := []client.Issue{
+		{
+			ID:      1,
+			Index:   42,
+			Title:   "Test Issue",
+			Body:    "This is a test issue",
+			State:   client.StateOpen,
+			Poster:  user,
+			Labels:  []*client.Label{label1, label2},
+			Created: now,
+			Updated: now,
+			Closed:  &pastTime,
+			HTMLURL: "https://example.com/owner/repo/issues/42",
+		},
+		{
+			ID:      2,
+			Index:   43,
+			Title:   "Simple Issue",
+			State:   client.StateOpen,
+			Created: now,
+		},
+	}
+
+	result, err := transformer.TransformIssuesToMCP(issues)
+	if err != nil {
+		t.Errorf("TransformIssuesToMCP failed: %v", err)
+	}
+
+	if len(result) != len(issues) {
+		t.Errorf("Expected %d results, got %d", len(issues), len(result))
+	}
+
+	// Test the first issue transformation
+	firstIssue := result[0]
+	if firstIssue["id"] != int64(1) {
+		t.Errorf("Expected id=1, got %v", firstIssue["id"])
+	}
+
+	if firstIssue["title"] != "Test Issue" {
+		t.Errorf("Expected title='Test Issue', got %v", firstIssue["title"])
+	}
+
+	if firstIssue["html_url"] != "https://example.com/owner/repo/issues/42" {
+		t.Errorf("Expected html_url='https://example.com/owner/repo/issues/42', got %v", firstIssue["html_url"])
+	}
+
+	// Test the second issue transformation
+	secondIssue := result[1]
+	if secondIssue["id"] != int64(2) {
+		t.Errorf("Expected id=2, got %v", secondIssue["id"])
 	}
 }

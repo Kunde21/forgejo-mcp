@@ -296,3 +296,43 @@ func TestCheckRateLimit(t *testing.T) {
 		})
 	}
 }
+
+// FuzzFormatAPIError tests the FormatAPIError function with fuzzing
+func FuzzFormatAPIError(f *testing.F) {
+	// Add some seed corpus
+	f.Add("test error", 404, "404 Not Found")
+	f.Add("auth error", 401, "401 Unauthorized")
+	f.Add("rate limit", 429, "429 Too Many Requests")
+	f.Add("", 200, "200 OK")
+
+	f.Fuzz(func(t *testing.T, errorMsg string, statusCode int, statusText string) {
+		// Ensure statusCode is in a reasonable range
+		if statusCode < 0 || statusCode > 999 {
+			statusCode = 500 // Default to internal server error
+		}
+
+		var err error
+		if errorMsg != "" {
+			err = errors.New(errorMsg)
+		}
+
+		var response *gitea.Response
+		if statusText != "" {
+			response = &gitea.Response{
+				Response: &http.Response{
+					StatusCode: statusCode,
+					Status:     statusText,
+					Header:     make(http.Header),
+				},
+			}
+		}
+
+		// The function should not panic regardless of inputs
+		result := FormatAPIError(err, response)
+
+		// Basic validation - result should be a map
+		if result == nil {
+			t.Errorf("FormatAPIError returned nil")
+		}
+	})
+}

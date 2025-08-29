@@ -114,3 +114,120 @@ func TestGiteaWrapper_ListPullRequests(t *testing.T) {
 		t.Error("Expected error for uninitialized wrapper, got nil")
 	}
 }
+
+func TestGiteaWrapper_Initialize(t *testing.T) {
+	w := &GiteaWrapper{}
+	err := w.Initialize("https://example.com", "test-token")
+	if err == nil {
+		t.Error("Expected error for invalid URL, got nil")
+	}
+
+	// Test with empty token
+	w2 := &GiteaWrapper{}
+	err2 := w2.Initialize("https://example.com", "")
+	if err2 == nil {
+		t.Error("Expected error for empty token, got nil")
+	}
+}
+
+func TestGiteaWrapper_InitializeWithAuth(t *testing.T) {
+	w := &GiteaWrapper{}
+
+	// Test with nil auth config
+	err := w.InitializeWithAuth("https://example.com", nil)
+	if err == nil {
+		t.Error("Expected error for nil auth config, got nil")
+	}
+
+	// Test with empty URL
+	err2 := w.InitializeWithAuth("", &AuthConfig{Type: AuthTypeToken, Token: "test-token"})
+	if err2 == nil {
+		t.Error("Expected error for empty URL, got nil")
+	}
+
+	// Test with valid token auth
+	err3 := w.InitializeWithAuth("https://example.com", &AuthConfig{Type: AuthTypeToken, Token: "test-token"})
+	if err3 == nil {
+		t.Error("Expected error for invalid URL, got nil")
+	}
+
+	// Test with valid basic auth
+	err4 := w.InitializeWithAuth("https://example.com", &AuthConfig{Type: AuthTypeBasic, Username: "user", Password: "pass"})
+	if err4 == nil {
+		t.Error("Expected error for invalid URL, got nil")
+	}
+
+	// Test with empty token
+	err5 := w.InitializeWithAuth("https://example.com", &AuthConfig{Type: AuthTypeToken, Token: ""})
+	if err5 == nil {
+		t.Error("Expected error for empty token, got nil")
+	}
+
+	// Test with empty username
+	err6 := w.InitializeWithAuth("https://example.com", &AuthConfig{Type: AuthTypeBasic, Username: "", Password: "pass"})
+	if err6 == nil {
+		t.Error("Expected error for empty username, got nil")
+	}
+
+	// Test with empty password
+	err7 := w.InitializeWithAuth("https://example.com", &AuthConfig{Type: AuthTypeBasic, Username: "user", Password: ""})
+	if err7 == nil {
+		t.Error("Expected error for empty password, got nil")
+	}
+
+	// Test with unsupported auth type
+	err8 := w.InitializeWithAuth("https://example.com", &AuthConfig{Type: 999})
+	if err8 == nil {
+		t.Error("Expected error for unsupported auth type, got nil")
+	}
+}
+
+func TestGiteaWrapper_IsInitialized(t *testing.T) {
+	w := &GiteaWrapper{}
+
+	// Should be false when not initialized
+	if w.IsInitialized() {
+		t.Error("Expected IsInitialized to return false for uninitialized wrapper")
+	}
+
+	// Note: We can't easily test the true case without a real Gitea client
+}
+
+func TestGiteaWrapper_Ping(t *testing.T) {
+	w := &GiteaWrapper{}
+
+	// Should fail when not initialized
+	err := w.Ping(context.Background())
+	if err == nil {
+		t.Error("Expected error for uninitialized wrapper, got nil")
+	}
+
+	if !strings.Contains(err.Error(), "wrapper not initialized") {
+		t.Errorf("Expected 'wrapper not initialized' error, got %v", err)
+	}
+}
+
+func TestGiteaWrapper_ProcessBatch(t *testing.T) {
+	// Test the processSingleRequest function indirectly through ProcessBatch
+	processor := NewBatchProcessor(1)
+
+	// Test with invalid request (missing owner/repo)
+	requests := []BatchRequest{
+		{ID: "1", Method: "listPRs", Owner: "", Repo: ""}, // Invalid
+	}
+
+	ctx := context.Background()
+	responses, err := processor.ProcessBatch(ctx, requests)
+
+	if err != nil {
+		t.Errorf("ProcessBatch failed: %v", err)
+	}
+
+	if len(responses) != 1 {
+		t.Errorf("Expected 1 response, got %d", len(responses))
+	}
+
+	if responses[0].Error == nil {
+		t.Error("Expected error for invalid request")
+	}
+}

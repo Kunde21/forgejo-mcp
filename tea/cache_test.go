@@ -1,6 +1,7 @@
 package tea
 
 import (
+	"encoding/json"
 	"fmt"
 	"testing"
 	"time"
@@ -483,4 +484,105 @@ func BenchmarkCacheConcurrent(b *testing.B) {
 			i++
 		}
 	})
+}
+
+// FuzzGenerateCacheKey tests the GenerateCacheKey function with fuzzing
+func FuzzGenerateCacheKey(f *testing.F) {
+	// Add some seed corpus
+	f.Add("listPRs", "owner1", "repo1", `{"state":"open"}`)
+	f.Add("listIssues", "owner2", "repo2", `{"labels":["bug"]}`)
+	f.Add("", "", "", `{}`)
+
+	f.Fuzz(func(t *testing.T, method, owner, repo, filtersJSON string) {
+		// Try to parse filtersJSON as JSON
+		var filters map[string]interface{}
+		if filtersJSON != "" {
+			// This might fail, but that's okay for fuzzing
+			json.Unmarshal([]byte(filtersJSON), &filters)
+		}
+
+		// The function should not panic regardless of inputs
+		key := GenerateCacheKey(method, owner, repo, filters)
+
+		// Key should be a string (this is always true, but good to verify)
+		if key == "" {
+			// This is valid, empty inputs produce empty key
+			return
+		}
+	})
+}
+
+// TestNewCachedClient tests the NewCachedClient function
+func TestNewCachedClient(t *testing.T) {
+	// Test successful creation
+	client, err := NewCachedClient("test-client", 100, time.Minute)
+	if err != nil {
+		t.Errorf("NewCachedClient failed: %v", err)
+	}
+
+	if client == nil {
+		t.Error("Expected non-nil client")
+	}
+
+	if client.cache == nil {
+		t.Error("Expected cache to be initialized")
+	}
+
+	// Test error cases
+	client, err = NewCachedClient("test-client", -1, time.Minute)
+	if err == nil {
+		t.Error("Expected error for negative cache size")
+	}
+
+	client, err = NewCachedClient("test-client", 100, -time.Minute)
+	if err == nil {
+		t.Error("Expected error for negative TTL")
+	}
+}
+
+// TestCachedClientCache tests the Cache method
+func TestCachedClientCache(t *testing.T) {
+	client, err := NewCachedClient("test-client", 100, time.Minute)
+	if err != nil {
+		t.Fatalf("Failed to create cached client: %v", err)
+	}
+
+	// Test that we can access the cache
+	cache := client.Cache()
+	if cache == nil {
+		t.Error("Expected non-nil cache")
+	}
+
+	if cache.MaxSize() != 100 {
+		t.Errorf("Expected max size 100, got %d", cache.MaxSize())
+	}
+}
+
+// TestCacheResponse tests the CacheResponse method
+func TestCacheResponse(t *testing.T) {
+	client, err := NewCachedClient("test-client", 100, time.Minute)
+	if err != nil {
+		t.Fatalf("Failed to create cached client: %v", err)
+	}
+
+	// Cache a response
+	key := "test-key"
+	response := map[string]interface{}{"data": "test-value"}
+	client.CacheResponse(key, response)
+
+	// Retrieve the cached response
+	cachedResponse, found := client.GetCachedResponse(key)
+	if !found {
+		t.Error("Expected to find cached response")
+	}
+
+	if !cmp.Equal(response, cachedResponse) {
+		t.Errorf("Cached response mismatch: %v != %v", response, cachedResponse)
+	}
+
+	// Test non-existent key
+	_, found = client.GetCachedResponse("non-existent-key")
+	if found {
+		t.Error("Expected not to find non-existent key")
+	}
 }

@@ -19,7 +19,7 @@ func TestBatchProcessor(t *testing.T) {
 			Method: "listPRs",
 			Owner:  "org1",
 			Repo:   "repo1",
-			Filters: map[string]interface{}{
+			Filters: map[string]any{
 				"state": "open",
 			},
 		},
@@ -28,7 +28,7 @@ func TestBatchProcessor(t *testing.T) {
 			Method: "listIssues",
 			Owner:  "org1",
 			Repo:   "repo1",
-			Filters: map[string]interface{}{
+			Filters: map[string]any{
 				"labels": []string{"bug"},
 			},
 		},
@@ -37,7 +37,7 @@ func TestBatchProcessor(t *testing.T) {
 			Method: "listPRs",
 			Owner:  "org2",
 			Repo:   "repo2",
-			Filters: map[string]interface{}{
+			Filters: map[string]any{
 				"state": "closed",
 			},
 		},
@@ -76,13 +76,13 @@ func TestBatchProcessorConcurrency(t *testing.T) {
 
 	// Create a large batch to test concurrency limits
 	var requests []BatchRequest
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		requests = append(requests, BatchRequest{
 			ID:     fmt.Sprintf("req%d", i),
 			Method: "listPRs",
 			Owner:  "testorg",
 			Repo:   "testrepo",
-			Filters: map[string]interface{}{
+			Filters: map[string]any{
 				"page": i + 1,
 			},
 		})
@@ -164,9 +164,10 @@ func TestBatchProcessorErrorHandling(t *testing.T) {
 	// Find responses by ID
 	var goodResp, badResp *BatchResponse
 	for i, resp := range responses {
-		if resp.ID == "good-req" {
+		switch resp.ID {
+		case "good-req":
 			goodResp = &responses[i]
-		} else if resp.ID == "bad-req" {
+		case "bad-req":
 			badResp = &responses[i]
 		}
 	}
@@ -192,9 +193,9 @@ func TestBatchOptimization(t *testing.T) {
 
 	// Create multiple requests for the same resource
 	requests := []BatchRequest{
-		{ID: "req1", Method: "listPRs", Owner: "sameorg", Repo: "samerepo", Filters: map[string]interface{}{"state": "open"}},
-		{ID: "req2", Method: "listPRs", Owner: "sameorg", Repo: "samerepo", Filters: map[string]interface{}{"state": "open"}},
-		{ID: "req3", Method: "listPRs", Owner: "sameorg", Repo: "samerepo", Filters: map[string]interface{}{"state": "open"}},
+		{ID: "req1", Method: "listPRs", Owner: "sameorg", Repo: "samerepo", Filters: map[string]any{"state": "open"}},
+		{ID: "req2", Method: "listPRs", Owner: "sameorg", Repo: "samerepo", Filters: map[string]any{"state": "open"}},
+		{ID: "req3", Method: "listPRs", Owner: "sameorg", Repo: "samerepo", Filters: map[string]any{"state": "open"}},
 	}
 
 	ctx := context.Background()
@@ -226,13 +227,13 @@ func TestBatchPerformance(t *testing.T) {
 
 	// Create a large batch of requests
 	var requests []BatchRequest
-	for i := 0; i < 100; i++ {
+	for i := range 100 {
 		requests = append(requests, BatchRequest{
 			ID:     fmt.Sprintf("perf-req-%d", i),
 			Method: "listPRs",
 			Owner:  fmt.Sprintf("org-%d", i%5),   // Spread across 5 orgs
 			Repo:   fmt.Sprintf("repo-%d", i%10), // Spread across 10 repos
-			Filters: map[string]interface{}{
+			Filters: map[string]any{
 				"state": "open",
 				"page":  (i % 3) + 1,
 			},
@@ -267,21 +268,20 @@ func BenchmarkBatchProcessor(b *testing.B) {
 
 	// Create test requests
 	requests := make([]BatchRequest, 50)
-	for i := 0; i < 50; i++ {
+	for i := range 50 {
 		requests[i] = BatchRequest{
 			ID:     fmt.Sprintf("bench-req-%d", i),
 			Method: "listPRs",
 			Owner:  fmt.Sprintf("org-%d", i%5),
 			Repo:   fmt.Sprintf("repo-%d", i%10),
-			Filters: map[string]interface{}{
+			Filters: map[string]any{
 				"state": "open",
 				"page":  (i % 3) + 1,
 			},
 		}
 	}
 
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		ctx := context.Background()
 		processor.ProcessBatch(ctx, requests)
 	}
@@ -297,7 +297,7 @@ func benchmarkBatchConcurrency(b *testing.B, concurrency int) {
 	processor := NewBatchProcessor(concurrency)
 
 	requests := make([]BatchRequest, 100)
-	for i := 0; i < 100; i++ {
+	for i := range 100 {
 		requests[i] = BatchRequest{
 			ID:     fmt.Sprintf("req-%d", i),
 			Method: "listPRs",
@@ -306,8 +306,7 @@ func benchmarkBatchConcurrency(b *testing.B, concurrency int) {
 		}
 	}
 
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		ctx := context.Background()
 		processor.ProcessBatch(ctx, requests)
 	}
@@ -318,20 +317,138 @@ func BenchmarkBatchOptimizer(b *testing.B) {
 	optimizer, _ := NewBatchOptimizer(1000, 5*time.Minute)
 
 	requests := make([]BatchRequest, 100)
-	for i := 0; i < 100; i++ {
+	for i := range 100 {
 		requests[i] = BatchRequest{
 			ID:     fmt.Sprintf("opt-req-%d", i),
 			Method: "listPRs",
 			Owner:  fmt.Sprintf("org-%d", i%10), // 10 different orgs
 			Repo:   fmt.Sprintf("repo-%d", i%5), // 5 different repos
-			Filters: map[string]interface{}{
+			Filters: map[string]any{
 				"state": "open",
 			},
 		}
 	}
 
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		optimizer.OptimizeBatch(requests)
+	}
+}
+
+// TestMockListRepositories tests the mockListRepositories function
+func TestMockListRepositories(t *testing.T) {
+	processor := NewBatchProcessor(1)
+	req := BatchRequest{
+		ID:     "1",
+		Method: "listRepositories",
+		Owner:  "test",
+		Repo:   "repo",
+	}
+
+	result := processor.mockListRepositories(req)
+
+	if result == nil {
+		t.Error("Expected non-nil result")
+	}
+
+	// Type assert to map
+	resultMap, ok := result.(map[string]any)
+	if !ok {
+		t.Error("Expected result to be map[string]any")
+	}
+
+	repos, exists := resultMap["repositories"]
+	if !exists {
+		t.Error("Expected 'repositories' key in result")
+	}
+
+	reposSlice, ok := repos.([]map[string]any)
+	if !ok || len(reposSlice) == 0 {
+		t.Error("Expected non-empty repositories slice")
+	}
+}
+
+// TestNewBatchOptimizer tests the NewBatchOptimizer function
+func TestNewBatchOptimizer(t *testing.T) {
+	optimizer, err := NewBatchOptimizer(10, time.Minute)
+
+	if err != nil {
+		t.Errorf("NewBatchOptimizer failed: %v", err)
+	}
+
+	if optimizer == nil {
+		t.Error("Expected non-nil optimizer")
+	}
+
+	if optimizer.cache == nil {
+		t.Error("Expected cache to be initialized")
+	}
+
+	// Test error case
+	optimizer, err = NewBatchOptimizer(-1, time.Minute)
+	if err == nil {
+		t.Error("Expected error for negative cache size")
+	}
+
+	optimizer, err = NewBatchOptimizer(10, -time.Minute)
+	if err == nil {
+		t.Error("Expected error for negative TTL")
+	}
+}
+
+// TestBatchOptimizerOptimizeBatch tests the OptimizeBatch function
+func TestBatchOptimizerOptimizeBatch(t *testing.T) {
+	optimizer, err := NewBatchOptimizer(10, time.Minute)
+	if err != nil {
+		t.Fatalf("Failed to create optimizer: %v", err)
+	}
+
+	// Test with empty requests
+	requests := []BatchRequest{}
+	needProcessing, cachedResults := optimizer.OptimizeBatch(requests)
+
+	if len(needProcessing) != 0 {
+		t.Error("Expected empty needProcessing for empty requests")
+	}
+
+	if len(cachedResults) != 0 {
+		t.Error("Expected empty cachedResults for empty requests")
+	}
+
+	// Test with duplicate requests
+	requests = []BatchRequest{
+		{ID: "1", Method: "listPRs", Owner: "test", Repo: "repo"},
+		{ID: "2", Method: "listPRs", Owner: "test", Repo: "repo"}, // duplicate
+	}
+
+	needProcessing, cachedResults = optimizer.OptimizeBatch(requests)
+
+	if len(needProcessing) != 1 {
+		t.Errorf("Expected 1 unique request, got %d", len(needProcessing))
+	}
+
+	if len(cachedResults) != 0 {
+		t.Error("Expected no cached results initially")
+	}
+}
+
+// TestCacheResults tests the CacheResults function
+func TestCacheResults(t *testing.T) {
+	optimizer, err := NewBatchOptimizer(10, time.Minute)
+	if err != nil {
+		t.Fatalf("Failed to create optimizer: %v", err)
+	}
+
+	results := []BatchResponse{
+		{ID: "1", Result: "test-result", Error: nil},
+		{ID: "2", Result: nil, Error: fmt.Errorf("test error")},
+	}
+
+	// This should not panic
+	optimizer.CacheResults(results)
+
+	// Check that valid results were cached
+	stats := optimizer.cache.Stats()
+	if stats.Size == 0 {
+		t.Error("Expected some items to be cached")
 	}
 }
