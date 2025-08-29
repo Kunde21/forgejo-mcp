@@ -18,6 +18,10 @@ type Config struct {
 	AuthToken  string `mapstructure:"auth_token"`
 	TeaPath    string `mapstructure:"tea_path"`
 
+	// Gitea SDK client configuration
+	ClientTimeout int    `mapstructure:"client_timeout"` // seconds
+	UserAgent     string `mapstructure:"user_agent"`
+
 	// Server configuration
 	Host         string `mapstructure:"host"`
 	Port         int    `mapstructure:"port"`
@@ -41,6 +45,8 @@ func Load() (*Config, error) {
 	v.SetDefault("port", 8080)
 	v.SetDefault("read_timeout", 30)
 	v.SetDefault("write_timeout", 30)
+	v.SetDefault("client_timeout", 30)
+	v.SetDefault("user_agent", "forgejo-mcp-client/1.0.0")
 	v.SetDefault("debug", false)
 	v.SetDefault("log_level", "info")
 
