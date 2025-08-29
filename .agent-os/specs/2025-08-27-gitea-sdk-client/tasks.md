@@ -86,13 +86,13 @@ These are the tasks to be completed for the spec detailed in @.agent-os/specs/20
 - [x] Verify all transformation tests pass
 
 #### 4.2 Metadata and Context Enrichment
-- [ ] Write tests for metadata extraction
-- [ ] Implement metadata extraction from Gitea responses
-- [ ] Write tests for context building (labels, milestones, etc.)
-- [ ] Implement context enrichment logic
-- [ ] Write tests for relationship mapping
-- [ ] Implement relationship mapping between resources
-- [ ] Verify all enrichment tests pass
+- [x] Write tests for metadata extraction
+- [x] Implement metadata extraction from Gitea responses
+- [x] Write tests for context building (labels, milestones, etc.)
+- [x] Implement context enrichment logic
+- [x] Write tests for relationship mapping
+- [x] Implement relationship mapping between resources
+- [x] Verify all enrichment tests pass
 
 #### 4.3 Error Response Handling
 - [ ] Write tests for error response formatting
