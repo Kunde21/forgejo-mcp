@@ -77,13 +77,13 @@ These are the tasks to be completed for the spec detailed in @.agent-os/specs/20
 ### 4. Response Transformation
 
 #### 4.1 MCP Response Formatting
-- [ ] Write tests for repository to MCP resource conversion in `tea/transform_test.go`
-- [ ] Implement repository transformation in `tea/transform.go`
-- [ ] Write tests for issue to MCP resource conversion
-- [ ] Implement issue transformation logic
-- [ ] Write tests for PR to MCP resource conversion
-- [ ] Implement PR transformation logic
-- [ ] Verify all transformation tests pass
+- [x] Write tests for repository to MCP resource conversion in `tea/transform_test.go`
+- [x] Implement repository transformation in `tea/transform.go`
+- [x] Write tests for issue to MCP resource conversion
+- [x] Implement issue transformation logic
+- [x] Write tests for PR to MCP resource conversion
+- [x] Implement PR transformation logic
+- [x] Verify all transformation tests pass
 
 #### 4.2 Metadata and Context Enrichment
 - [ ] Write tests for metadata extraction
