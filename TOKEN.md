@@ -2,7 +2,7 @@
 
 ## Token Source
 
-Environment Variable: FORGEJO_TOKEN
+Environment Variable: GITEA_TOKEN
 Must be masked in any logs or errors.
 
 ## Validation Method

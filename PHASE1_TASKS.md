@@ -199,7 +199,7 @@
 - [ ] Define `type TokenProvider struct` with token field
 - [ ] Implement `NewFromEnv() (*TokenProvider, error)` for env vars
 - [ ] Implement `NewFromFile(path string) (*TokenProvider, error)` for file-based tokens
-- [ ] Support reading from environment variable `FORGEJO_TOKEN`
+- [ ] Support reading from environment variable `GITEA_TOKEN`
 
 ### 6.3 Tea Authentication
 - [ ] Create `auth/tea.go` for tea-based authentication

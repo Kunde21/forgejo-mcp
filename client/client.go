@@ -453,6 +453,11 @@ func (c *ForgejoClient) GetBaseURL() string {
 	return c.baseURL.String()
 }
 
+// GetGiteaClient returns the underlying Gitea SDK client
+func (c *ForgejoClient) GetGiteaClient() *gitea.Client {
+	return c.giteaClient
+}
+
 func (c *ForgejoClient) GetTimeout() time.Duration {
 	return c.timeout
 }

@@ -4,7 +4,7 @@
 
 What are the supported authentication token sources and their priority order?
 
-• Environment variables (FORGEJO_TOKEN)
+• Environment variables (GITEA_TOKEN)
 • Configuration files
 • Command-line parameters
 • Other sources?

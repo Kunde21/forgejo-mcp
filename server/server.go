@@ -4,12 +4,164 @@ package server
 import (
 	"context"
 	"fmt"
+	"sync"
 	"time"
 
+	"code.gitea.io/sdk/gitea"
+	"github.com/Kunde21/forgejo-mcp/auth"
 	"github.com/Kunde21/forgejo-mcp/client"
 	"github.com/Kunde21/forgejo-mcp/config"
 	"github.com/sirupsen/logrus"
 )
+
+// AuthState manages authentication state and validation for the MCP server
+type AuthState struct {
+	validator auth.TokenValidator
+	cache     map[string]bool
+	cacheMu   sync.RWMutex
+	logger    *logrus.Logger
+}
+
+// NewAuthState creates a new authentication state manager
+func NewAuthState(validator auth.TokenValidator, logger *logrus.Logger) *AuthState {
+	return &AuthState{
+		validator: validator,
+		cache:     make(map[string]bool),
+		logger:    logger,
+	}
+}
+
+// ValidateToken validates a token with caching
+func (as *AuthState) ValidateToken(ctx context.Context, baseURL, token string) error {
+	cacheKey := auth.CacheKey(baseURL, token)
+
+	// Check cache first
+	as.cacheMu.RLock()
+	if cached, exists := as.cache[cacheKey]; exists && cached {
+		as.cacheMu.RUnlock()
+		as.logger.Debug("Authentication cache hit for token")
+		return nil
+	}
+	as.cacheMu.RUnlock()
+
+	// Perform validation
+	var err error
+	if as.validator != nil {
+		// For testing, call validator directly to avoid auth package validation
+		err = as.validator.ValidateToken(baseURL, token)
+	} else {
+		err = auth.ValidateTokenWithTimeoutDefault(baseURL, token, as.validator)
+	}
+
+	// Cache successful validation only
+	if err == nil {
+		as.cacheMu.Lock()
+		as.cache[cacheKey] = true
+		as.cacheMu.Unlock()
+		as.logger.Debug("Authentication successful, cached result")
+	} else {
+		as.logger.WithError(err).Debug("Authentication failed")
+	}
+
+	return err
+}
+
+// GiteaTokenValidator implements auth.TokenValidator using Gitea SDK client
+type GiteaTokenValidator struct {
+	client *gitea.Client
+}
+
+// ValidateToken validates a token using the Gitea SDK client
+func (gtv *GiteaTokenValidator) ValidateToken(baseURL, token string) error {
+	if gtv.client == nil {
+		return fmt.Errorf("Gitea client not initialized")
+	}
+
+	// Try to make a simple API call to validate the token
+	// We'll use ListMyRepos as it's lightweight and doesn't require specific repo access
+	_, _, err := gtv.client.ListMyRepos(gitea.ListReposOptions{
+		ListOptions: gitea.ListOptions{
+			Page:     1,
+			PageSize: 1, // Just get one repo to validate token
+		},
+	})
+	if err != nil {
+		// Convert error to appropriate auth error type
+		return auth.WrapErrorWithContext(err, "token validation", "Gitea API call", token)
+	}
+
+	return nil
+}
+
+// ClearCache clears the authentication cache
+func (as *AuthState) ClearCache() {
+	as.cacheMu.Lock()
+	defer as.cacheMu.Unlock()
+	as.cache = make(map[string]bool)
+	as.logger.Debug("Authentication cache cleared")
+}
+
+// AuthenticatedToolHandler handles tool calls with authentication validation
+type AuthenticatedToolHandler struct {
+	registry     *ToolRegistry
+	authState    *AuthState
+	server       *Server
+	innerHandler RequestHandler
+	logger       *logrus.Logger
+}
+
+// NewAuthenticatedToolHandler creates a new authenticated tool handler
+func NewAuthenticatedToolHandler(registry *ToolRegistry, authState *AuthState, server *Server, innerHandler RequestHandler, logger *logrus.Logger) *AuthenticatedToolHandler {
+	return &AuthenticatedToolHandler{
+		registry:     registry,
+		authState:    authState,
+		server:       server,
+		innerHandler: innerHandler,
+		logger:       logger,
+	}
+}
+
+// HandleRequest handles a tool call request with authentication validation
+func (ath *AuthenticatedToolHandler) HandleRequest(ctx context.Context, method string, params map[string]interface{}) (interface{}, error) {
+	ath.logger.Debugf("Authenticated tool handler processing request: %s", method)
+
+	// Extract tool name from params
+	toolName, ok := params["name"].(string)
+	if !ok {
+		return nil, fmt.Errorf("tool name is required and must be a string")
+	}
+
+	// Extract tool arguments
+	arguments, ok := params["arguments"].(map[string]interface{})
+	if !ok {
+		arguments = make(map[string]interface{})
+	}
+
+	// Validate tool exists
+	_, exists := ath.registry.GetTool(toolName)
+	if !exists {
+		return nil, fmt.Errorf("unknown tool: %s", toolName)
+	}
+
+	// Validate authentication
+	if err := ath.authState.ValidateToken(ctx, ath.server.config.ForgejoURL, ath.server.config.AuthToken); err != nil {
+		ath.logger.WithError(err).Error("Authentication validation failed")
+		return nil, fmt.Errorf("authentication failed: %w", err)
+	}
+
+	// Delegate to inner handler for actual tool execution
+	if ath.innerHandler != nil {
+		return ath.innerHandler.HandleRequest(ctx, method, params)
+	}
+
+	// Fallback to placeholder response
+	ath.logger.Debugf("Executing tool: %s", toolName)
+	return map[string]interface{}{
+		"tool":      toolName,
+		"status":    "executed",
+		"arguments": arguments,
+	}, nil
+}
 
 // Server represents the MCP server with all its dependencies
 type Server struct {
@@ -21,6 +173,7 @@ type Server struct {
 	dispatcher   *RequestDispatcher
 	processor    *MessageProcessor
 	toolRegistry *ToolRegistry
+	authState    *AuthState
 }
 
 // New creates a new MCP server instance with the provided configuration
@@ -44,6 +197,24 @@ func New(cfg *config.Config) (*Server, error) {
 
 	transport := NewStdioTransport(cfg, logger)
 	dispatcher := NewRequestDispatcher(logger)
+
+	// Initialize authentication state
+	authState := NewAuthState(nil, logger) // Start with nil validator
+
+	// Try to create Gitea client for authentication validation
+	giteaClient, err := client.New(cfg.ForgejoURL, cfg.AuthToken)
+	if err != nil {
+		logger.WithError(err).Warn("Failed to create Gitea client, authentication may not work")
+	} else {
+		// Get the underlying gitea client
+		underlyingClient := giteaClient.GetGiteaClient()
+		if underlyingClient != nil {
+			validator := &GiteaTokenValidator{client: underlyingClient}
+			authState.validator = validator
+			logger.Info("Gitea client initialized for authentication")
+		}
+	}
+
 	server := &Server{
 		config:     cfg,
 		logger:     logger,
@@ -51,7 +222,9 @@ func New(cfg *config.Config) (*Server, error) {
 		transport:  transport,
 		dispatcher: dispatcher,
 		processor:  NewMessageProcessor(dispatcher, transport, logger),
+		authState:  authState,
 	}
+
 	// Initialize tool system
 	if err := server.InitializeToolSystem(); err != nil {
 		return nil, fmt.Errorf("failed to initialize tool system: %w", err)
@@ -126,8 +299,8 @@ func (s *Server) RegisterGiteaSDKHandlers() error {
 	sdkPRHandler := NewGiteaSDKPRListHandler(s.logger, giteaClient)
 	sdkIssueHandler := NewGiteaSDKIssueListHandler(s.logger, giteaClient)
 
-	// Create a new tool system handler with SDK handlers
-	toolHandler := &GiteaSDKToolSystemHandler{
+	// Create the inner tool handler with SDK handlers
+	innerHandler := &GiteaSDKToolSystemHandler{
 		registry:     s.toolRegistry,
 		validator:    NewToolValidator(s.logger),
 		prHandler:    sdkPRHandler,
@@ -135,8 +308,11 @@ func (s *Server) RegisterGiteaSDKHandlers() error {
 		logger:       s.logger,
 	}
 
-	// Replace the existing tool handler
-	s.dispatcher.RegisterHandler("tools/call", toolHandler)
+	// Wrap with authentication validation
+	authenticatedHandler := NewAuthenticatedToolHandler(s.toolRegistry, s.authState, s, innerHandler, s.logger)
+
+	// Replace the existing tool handler with authentication
+	s.dispatcher.RegisterHandler("tools/call", authenticatedHandler)
 
 	s.logger.Info("Gitea SDK handlers registered successfully")
 	return nil
