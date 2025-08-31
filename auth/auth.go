@@ -28,6 +28,22 @@ type TokenValidationError struct {
 	Field   string
 }
 
+// NewTokenValidationError creates a new TokenValidationError with the given field and message
+func NewTokenValidationError(field, message string) *TokenValidationError {
+	return &TokenValidationError{
+		Message: message,
+		Field:   field,
+	}
+}
+
+// NewTokenValidationErrorf creates a new TokenValidationError with the given field and a formatted message
+func NewTokenValidationErrorf(field string, format string, args ...interface{}) *TokenValidationError {
+	return &TokenValidationError{
+		Message: fmt.Sprintf(format, args...),
+		Field:   field,
+	}
+}
+
 func (e *TokenValidationError) Error() string {
 	return fmt.Sprintf("token validation failed: %s", e.Message)
 }
@@ -37,10 +53,7 @@ func (e *TokenValidationError) Error() string {
 func GetTokenFromEnv() (string, error) {
 	token := os.Getenv("GITEA_TOKEN")
 	if token == "" {
-		return "", &TokenValidationError{
-			Message: "GITEA_TOKEN environment variable is not set",
-			Field:   "GITEA_TOKEN",
-		}
+		return "", NewTokenValidationError("GITEA_TOKEN", "GITEA_TOKEN environment variable is not set")
 	}
 	return token, nil
 }
@@ -49,28 +62,19 @@ func GetTokenFromEnv() (string, error) {
 // Basic validation ensures the token is not empty and contains only valid characters
 func ValidateTokenFormat(token string) error {
 	if token == "" {
-		return &TokenValidationError{
-			Message: "token cannot be empty",
-			Field:   "token",
-		}
+		return NewTokenValidationError("token", "token cannot be empty")
 	}
 
 	// Basic token format validation - tokens should be alphanumeric with some special chars
 	// This is a basic check; actual validation would depend on Forgejo's token format
 	validTokenPattern := regexp.MustCompile(`^[a-zA-Z0-9_\-\.]+$`)
 	if !validTokenPattern.MatchString(token) {
-		return &TokenValidationError{
-			Message: "token contains invalid characters",
-			Field:   "token",
-		}
+		return NewTokenValidationError("token", "token contains invalid characters")
 	}
 
 	// Check minimum length (typical tokens are at least 20 characters)
 	if len(token) < 20 {
-		return &TokenValidationError{
-			Message: "token is too short (minimum 20 characters)",
-			Field:   "token",
-		}
+		return NewTokenValidationError("token", "token is too short (minimum 20 characters)")
 	}
 
 	return nil
@@ -131,17 +135,11 @@ type TokenValidator interface {
 // This function performs actual authentication against the Forgejo server
 func ValidateTokenWithClient(baseURL, token string, validator TokenValidator) error {
 	if baseURL == "" {
-		return &TokenValidationError{
-			Message: "baseURL cannot be empty",
-			Field:   "baseURL",
-		}
+		return NewTokenValidationError("baseURL", "baseURL cannot be empty")
 	}
 
 	if token == "" {
-		return &TokenValidationError{
-			Message: "token cannot be empty",
-			Field:   "token",
-		}
+		return NewTokenValidationError("token", "token cannot be empty")
 	}
 
 	if err := ValidateTokenFormat(token); err != nil {
@@ -169,10 +167,7 @@ func ValidateTokenWithTimeout(baseURL, token string, timeout time.Duration, vali
 	case err := <-resultChan:
 		return err
 	case <-ctx.Done():
-		return &TokenValidationError{
-			Message: fmt.Sprintf("token validation timed out after %v", timeout),
-			Field:   "timeout",
-		}
+		return NewTokenValidationErrorf("timeout", "token validation timed out after %v", timeout)
 	}
 }
 

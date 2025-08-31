@@ -1,0 +1,3 @@
+# Spec Summary (Lite)
+
+Implement comprehensive data types and models for the Forgejo MCP server to standardize data structures for pull requests, issues, and API responses. This feature ensures type safety through strongly-typed Go structs with validation methods and JSON serialization support. The implementation will replace map[string]interface{} usage with proper domain types, improving code maintainability and providing a consistent interface for AI agents consuming the MCP server.
