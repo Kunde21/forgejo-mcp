@@ -369,11 +369,11 @@ forgejo-mcp/
 
 ## Success Criteria
 
-- [ ] MCP server starts and registers tools
-- [ ] Authentication with Forgejo validates successfully
-- [ ] Repository context is correctly detected
-- [ ] PR list tool returns data from tea CLI
-- [ ] Issue list tool returns data from tea CLI
-- [ ] All tests pass with >80% coverage
-- [ ] Documentation is complete and accurate
-- [ ] Binary builds for Linux, macOS, Windows
+- [x] MCP server starts and registers tools
+- [x] Authentication with Forgejo validates successfully
+- [x] Repository context is correctly detected
+- [x] PR list tool returns data from tea CLI
+- [x] Issue list tool returns data from tea CLI
+- [x] All tests pass with >80% coverage
+- [x] Documentation is complete and accurate
+- [x] Binary builds for Linux, macOS, Windows
