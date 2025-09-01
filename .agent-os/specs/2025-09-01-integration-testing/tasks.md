@@ -1,0 +1,53 @@
+# Spec Tasks
+
+These are the tasks to be completed for the spec detailed in @.agent-os/specs/2025-09-01-integration-testing/spec.md
+
+> Created: 2025-09-01
+> Status: Ready for Implementation
+
+## Tasks
+
+- [ ] 1. Unit Test Implementation
+  - [ ] 1.1 Write test structure for server module (server_test.go)
+  - [ ] 1.2 Implement server lifecycle tests (New, Start, Stop)
+  - [ ] 1.3 Create client module tests with mocked Gitea responses
+  - [ ] 1.4 Implement context detection tests for git and Forgejo
+  - [ ] 1.5 Create auth module tests for token validation
+  - [ ] 1.6 Add logging configuration tests
+  - [ ] 1.7 Verify all unit tests pass with >80% coverage
+
+- [ ] 2. Integration Test Framework
+  - [ ] 2.1 Write test harness for MCP server integration
+  - [ ] 2.2 Create mock Gitea client with configurable responses
+  - [ ] 2.3 Implement tool registration and manifest tests
+  - [ ] 2.4 Test pr_list and issue_list handlers with mocks
+  - [ ] 2.5 Implement transport layer and JSON-RPC tests
+  - [ ] 2.6 Add timeout and error handling tests
+  - [ ] 2.7 Verify integration tests run successfully
+
+- [ ] 3. End-to-End Test Suite
+  - [ ] 3.1 Write Docker-based test environment setup
+  - [ ] 3.2 Implement Forgejo container management with dockertest
+  - [ ] 3.3 Create test data seeding for repos, PRs, and issues
+  - [ ] 3.4 Test complete authentication workflow
+  - [ ] 3.5 Test PR and issue listing against real instance
+  - [ ] 3.6 Implement cleanup and teardown procedures
+  - [ ] 3.7 Verify E2E tests complete within 5 minutes
+
+- [ ] 4. Documentation Suite
+  - [ ] 4.1 Write API documentation (docs/API.md)
+  - [ ] 4.2 Create setup guide with installation steps
+  - [ ] 4.3 Document all MCP tools with examples
+  - [ ] 4.4 Create development guide with architecture
+  - [ ] 4.5 Write manual testing procedures
+  - [ ] 4.6 Add troubleshooting section
+  - [ ] 4.7 Verify documentation completeness
+
+- [ ] 5. CI/CD and Build Automation
+  - [ ] 5.1 Write Makefile with standard targets
+  - [ ] 5.2 Create GitHub Actions workflow (ci.yml)
+  - [ ] 5.3 Configure multi-version Go testing
+  - [ ] 5.4 Integrate coverage reporting (Codecov)
+  - [ ] 5.5 Add linting and security scanning
+  - [ ] 5.6 Create release automation script
+  - [ ] 5.7 Verify CI pipeline runs on all commits
