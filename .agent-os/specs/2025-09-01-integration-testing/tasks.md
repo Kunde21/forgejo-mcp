@@ -7,14 +7,14 @@ These are the tasks to be completed for the spec detailed in @.agent-os/specs/20
 
 ## Tasks
 
-- [ ] 1. Unit Test Implementation
-  - [ ] 1.1 Write test structure for server module (server_test.go)
-  - [ ] 1.2 Implement server lifecycle tests (New, Start, Stop)
-  - [ ] 1.3 Create client module tests with mocked Gitea responses
-  - [ ] 1.4 Implement context detection tests for git and Forgejo
-  - [ ] 1.5 Create auth module tests for token validation
-  - [ ] 1.6 Add logging configuration tests
-  - [ ] 1.7 Verify all unit tests pass with >80% coverage
+- [x] 1. Unit Test Implementation
+  - [x] 1.1 Write test structure for server module (server_test.go)
+  - [x] 1.2 Implement server lifecycle tests (New, Start, Stop)
+  - [x] 1.3 Create client module tests with mocked Gitea responses
+  - [x] 1.4 Implement context detection tests for git and Forgejo
+  - [x] 1.5 Create auth module tests for token validation
+  - [x] 1.6 Add logging configuration tests
+  - [x] 1.7 Verify all unit tests pass with >80% coverage
 
 - [ ] 2. Integration Test Framework
   - [ ] 2.1 Write test harness for MCP server integration
