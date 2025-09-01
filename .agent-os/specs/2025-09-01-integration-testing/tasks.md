@@ -25,14 +25,14 @@ These are the tasks to be completed for the spec detailed in @.agent-os/specs/20
    - [x] 2.6 Add timeout and error handling tests
    - [x] 2.7 Verify integration tests run successfully
 
-- [ ] 3. End-to-End Test Suite
-  - [ ] 3.1 Write Docker-based test environment setup
-  - [ ] 3.2 Implement Forgejo container management with dockertest
-  - [ ] 3.3 Create test data seeding for repos, PRs, and issues
-  - [ ] 3.4 Test complete authentication workflow
-  - [ ] 3.5 Test PR and issue listing against real instance
-  - [ ] 3.6 Implement cleanup and teardown procedures
-  - [ ] 3.7 Verify E2E tests complete within 5 minutes
+- [x] 3. End-to-End Test Suite
+  - [x] 3.1 Write Docker-based test environment setup
+  - [x] 3.2 Implement Forgejo container management with dockertest
+  - [x] 3.3 Create test data seeding for repos, PRs, and issues
+  - [x] 3.4 Test complete authentication workflow
+  - [x] 3.5 Test PR and issue listing against real instance
+  - [x] 3.6 Implement cleanup and teardown procedures
+  - [x] 3.7 Verify E2E tests complete within 5 minutes
 
 - [x] 4. Documentation Suite
    - [x] 4.1 Write API documentation (docs/API.md)

@@ -1,0 +1,62 @@
+version: '3.8'
+
+services:
+  forgejo:
+    image: codeberg.org/forgejo/forgejo:1.21.11-0
+    container_name: forgejo-mcp-test
+    environment:
+      - FORGEJO__database__DB_TYPE=sqlite3
+      - FORGEJO__database__PATH=/data/gitea.db
+      - FORGEJO__server__DOMAIN=localhost
+      - FORGEJO__server__HTTP_PORT=3000
+      - FORGEJO__server__ROOT_URL=http://localhost:3000
+      - FORGEJO__security__INSTALL_LOCK=true
+      - FORGEJO__service__DISABLE_REGISTRATION=true
+      - FORGEJO__service__REQUIRE_SIGNIN_VIEW=true
+      - FORGEJO__log__LEVEL=warn
+      - FORGEJO__security__SECRET_KEY=test-secret-key-12345
+      - FORGEJO__security__INTERNAL_TOKEN=test-internal-token-12345
+    ports:
+      - "3000:3000"
+    volumes:
+      - forgejo_data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/api/v1/version"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    networks:
+      - forgejo-mcp-test
+
+  forgejo-init:
+    image: curlimages/curl:8.6.0
+    container_name: forgejo-init
+    depends_on:
+      forgejo:
+        condition: service_healthy
+    command: >
+      sh -c "
+        echo 'Waiting for Forgejo to be ready...' &&
+        sleep 5 &&
+        echo 'Creating test user...' &&
+        curl -X POST http://forgejo:3000/api/v1/admin/users \
+          -H 'Content-Type: application/json' \
+          -H 'Authorization: Bearer test-internal-token-12345' \
+          -d '{
+            \"username\": \"testuser\",
+            \"email\": \"test@example.com\",
+            \"password\": \"testpassword123\",
+            \"must_change_password\": false
+          }' &&
+        echo 'Test user created successfully'
+      "
+    networks:
+      - forgejo-mcp-test
+
+volumes:
+  forgejo_data:
+
+networks:
+  forgejo-mcp-test:
+    driver: bridge
