@@ -238,9 +238,9 @@ Use the project-manager subagent to create a structured summary message with emo
 
 Use the project-manager subagent to play a system sound to alert the user that tasks are complete.
 
-<notification_command tool="bash">
-  `paplay /usr/share/sounds/Pop/stereo/notification/system-ready.oga`
-</notification_command>
+<notify_command>
+  paplay /usr/share/sounds/Pop/stereo/notification/system-ready.oga
+</notify_command>
 
 <instructions>
   ACTION: Play completion sound
