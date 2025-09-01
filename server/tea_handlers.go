@@ -571,8 +571,8 @@ type Issue struct {
 
 // GiteaSDKPRListHandler handles pr_list tool requests using the Gitea SDK client
 type GiteaSDKPRListHandler struct {
-	logger     *logrus.Logger
-	client     client.Client
+	logger      *logrus.Logger
+	client      client.Client
 	transformer *tea.PRTransformer
 }
 
@@ -627,8 +627,8 @@ func (h *GiteaSDKPRListHandler) HandleRequest(ctx context.Context, method string
 
 // GiteaSDKIssueListHandler handles issue_list tool requests using the Gitea SDK client
 type GiteaSDKIssueListHandler struct {
-	logger     *logrus.Logger
-	client     client.Client
+	logger      *logrus.Logger
+	client      client.Client
 	transformer *tea.IssueTransformer
 }
 

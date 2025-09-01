@@ -1,0 +1,45 @@
+# Git
+.git
+.gitignore
+
+# CI/CD
+.github
+
+# Documentation
+*.md
+docs/
+
+# Test files
+*_test.go
+test/
+coverage.out
+coverage.html
+
+# Development files
+Makefile
+scripts/
+.goreleaser.yml
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Build artifacts
+bin/
+*.exe
+*.tar.gz
+*.zip
+
+# Docker files
+Dockerfile
+.dockerignore
+
+# Temporary files
+*.tmp
+*.log

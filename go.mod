@@ -3,15 +3,16 @@ module github.com/Kunde21/forgejo-mcp
 go 1.24.6
 
 require (
+	code.gitea.io/sdk/gitea v0.21.0
 	github.com/go-ozzo/ozzo-validation/v4 v4.3.0
 	github.com/google/go-cmp v0.7.0
+	github.com/ory/dockertest/v3 v3.12.0
 	github.com/sirupsen/logrus v1.9.3
 	github.com/spf13/cobra v1.8.0
 	github.com/spf13/viper v1.20.1
 )
 
 require (
-	code.gitea.io/sdk/gitea v0.21.0 // indirect
 	dario.cat/mergo v1.0.0 // indirect
 	github.com/42wim/httpsig v1.2.2 // indirect
 	github.com/Azure/go-ansiterm v0.0.0-20230124172434-306776ec8161 // indirect
@@ -39,7 +40,6 @@ require (
 	github.com/opencontainers/go-digest v1.0.0 // indirect
 	github.com/opencontainers/image-spec v1.1.0 // indirect
 	github.com/opencontainers/runc v1.2.3 // indirect
-	github.com/ory/dockertest/v3 v3.12.0 // indirect
 	github.com/pelletier/go-toml/v2 v2.2.3 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
