@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
@@ -38,10 +39,25 @@ func SetupTestEnvironment(t *testing.T) *TestEnvironment {
 		t.Fatalf("Could not connect to Docker: %v", err)
 	}
 
-	// Create a network for the test
-	network, err := pool.CreateNetwork("forgejo-mcp-test-net")
+	// Create a network for the test (handle existing networks)
+	networkName := fmt.Sprintf("forgejo-mcp-test-net-%d", time.Now().Unix())
+	network, err := pool.CreateNetwork(networkName)
 	if err != nil {
-		t.Fatalf("Could not create network: %v", err)
+		// If network creation fails, try to remove existing network and retry
+		if strings.Contains(err.Error(), "already exists") {
+			// Try to remove existing network
+			existingNetwork, err := pool.Client.NetworkInfo("forgejo-mcp-test-net")
+			if err == nil && existingNetwork != nil {
+				pool.Client.RemoveNetwork("forgejo-mcp-test-net")
+			}
+			// Retry with original name
+			network, err = pool.CreateNetwork("forgejo-mcp-test-net")
+			if err != nil {
+				t.Fatalf("Could not create network after cleanup: %v", err)
+			}
+		} else {
+			t.Fatalf("Could not create network: %v", err)
+		}
 	}
 
 	// Start Forgejo container
