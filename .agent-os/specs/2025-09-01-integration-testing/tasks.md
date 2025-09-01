@@ -16,14 +16,14 @@ These are the tasks to be completed for the spec detailed in @.agent-os/specs/20
   - [x] 1.6 Add logging configuration tests
   - [x] 1.7 Verify all unit tests pass with >80% coverage
 
-- [ ] 2. Integration Test Framework
-  - [ ] 2.1 Write test harness for MCP server integration
-  - [ ] 2.2 Create mock Gitea client with configurable responses
-  - [ ] 2.3 Implement tool registration and manifest tests
-  - [ ] 2.4 Test pr_list and issue_list handlers with mocks
-  - [ ] 2.5 Implement transport layer and JSON-RPC tests
-  - [ ] 2.6 Add timeout and error handling tests
-  - [ ] 2.7 Verify integration tests run successfully
+- [x] 2. Integration Test Framework
+   - [x] 2.1 Write test harness for MCP server integration
+   - [x] 2.2 Create mock Gitea client with configurable responses
+   - [x] 2.3 Implement tool registration and manifest tests
+   - [x] 2.4 Test pr_list and issue_list handlers with mocks
+   - [x] 2.5 Implement transport layer and JSON-RPC tests
+   - [x] 2.6 Add timeout and error handling tests
+   - [x] 2.7 Verify integration tests run successfully
 
 - [ ] 3. End-to-End Test Suite
   - [ ] 3.1 Write Docker-based test environment setup
@@ -34,14 +34,14 @@ These are the tasks to be completed for the spec detailed in @.agent-os/specs/20
   - [ ] 3.6 Implement cleanup and teardown procedures
   - [ ] 3.7 Verify E2E tests complete within 5 minutes
 
-- [ ] 4. Documentation Suite
-  - [ ] 4.1 Write API documentation (docs/API.md)
-  - [ ] 4.2 Create setup guide with installation steps
-  - [ ] 4.3 Document all MCP tools with examples
-  - [ ] 4.4 Create development guide with architecture
-  - [ ] 4.5 Write manual testing procedures
-  - [ ] 4.6 Add troubleshooting section
-  - [ ] 4.7 Verify documentation completeness
+- [x] 4. Documentation Suite
+   - [x] 4.1 Write API documentation (docs/API.md)
+   - [x] 4.2 Create setup guide with installation steps
+   - [x] 4.3 Document all MCP tools with examples
+   - [x] 4.4 Create development guide with architecture
+   - [x] 4.5 Write manual testing procedures
+   - [x] 4.6 Add troubleshooting section
+   - [x] 4.7 Verify documentation completeness
 
 - [ ] 5. CI/CD and Build Automation
   - [ ] 5.1 Write Makefile with standard targets
