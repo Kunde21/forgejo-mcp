@@ -4,8 +4,10 @@ package server
 import (
 	"context"
 	"fmt"
+	"time"
 
 	ctxt "github.com/Kunde21/forgejo-mcp/context"
+	"github.com/Kunde21/forgejo-mcp/types"
 	"github.com/sirupsen/logrus"
 )
 
@@ -26,31 +28,45 @@ func (h *PRListHandler) HandleRequest(ctx context.Context, method string, params
 	h.logger.Infof("Handling %s request with params: %v", method, params)
 
 	// TODO: Implement actual tea CLI integration
-	// For now, return mock data
+	// For now, return mock data using new types
 
-	mockPRs := []map[string]interface{}{
+	createdAt1, _ := time.Parse(time.RFC3339, "2025-08-26T10:00:00Z")
+	updatedAt1, _ := time.Parse(time.RFC3339, "2025-08-26T15:30:00Z")
+	createdAt2, _ := time.Parse(time.RFC3339, "2025-08-25T09:15:00Z")
+	updatedAt2, _ := time.Parse(time.RFC3339, "2025-08-25T14:45:00Z")
+
+	mockPRs := []types.PullRequest{
 		{
-			"number":    42,
-			"title":     "Add dark mode support",
-			"author":    "developer1",
-			"state":     "open",
-			"createdAt": "2025-08-26T10:00:00Z",
-			"updatedAt": "2025-08-26T15:30:00Z",
+			ID:         42,
+			Number:     42,
+			Title:      "Add dark mode support",
+			State:      types.PRStateOpen,
+			Author:     &types.PRAuthor{Username: "developer1", AvatarURL: "https://example.com/avatar1.jpg", URL: "https://example.com/user/developer1"},
+			HeadBranch: "feature/dark-mode",
+			BaseBranch: "main",
+			CreatedAt:  types.Timestamp{Time: createdAt1},
+			UpdatedAt:  types.Timestamp{Time: updatedAt1},
+			URL:        "https://example.com/pr/42",
+			DiffURL:    "https://example.com/pr/42.diff",
 		},
 		{
-			"number":    41,
-			"title":     "Fix authentication bug",
-			"author":    "developer2",
-			"state":     "merged",
-			"createdAt": "2025-08-25T09:15:00Z",
-			"updatedAt": "2025-08-25T14:45:00Z",
+			ID:         41,
+			Number:     41,
+			Title:      "Fix authentication bug",
+			State:      types.PRStateMerged,
+			Author:     &types.PRAuthor{Username: "developer2", AvatarURL: "https://example.com/avatar2.jpg", URL: "https://example.com/user/developer2"},
+			HeadBranch: "fix/auth-bug",
+			BaseBranch: "main",
+			CreatedAt:  types.Timestamp{Time: createdAt2},
+			UpdatedAt:  types.Timestamp{Time: updatedAt2},
+			MergedAt:   &types.Timestamp{Time: updatedAt2},
+			URL:        "https://example.com/pr/41",
+			DiffURL:    "https://example.com/pr/41.diff",
 		},
 	}
 
-	return map[string]interface{}{
-		"pullRequests": mockPRs,
-		"total":        len(mockPRs),
-	}, nil
+	// Return typed response
+	return types.NewPaginatedResponse(mockPRs, types.NewPagination(1, 10, len(mockPRs))), nil
 }
 
 // IssueListHandler handles issue_list tool requests
@@ -70,31 +86,42 @@ func (h *IssueListHandler) HandleRequest(ctx context.Context, method string, par
 	h.logger.Infof("Handling %s request with params: %v", method, params)
 
 	// TODO: Implement actual tea CLI integration
-	// For now, return mock data
+	// For now, return mock data using new types
 
-	mockIssues := []map[string]interface{}{
+	createdAt1, _ := time.Parse(time.RFC3339, "2025-08-24T08:30:00Z")
+	updatedAt1, _ := time.Parse(time.RFC3339, "2025-08-24T10:15:00Z")
+	createdAt2, _ := time.Parse(time.RFC3339, "2025-08-23T14:20:00Z")
+	updatedAt2, _ := time.Parse(time.RFC3339, "2025-08-23T16:45:00Z")
+	closedAt2, _ := time.Parse(time.RFC3339, "2025-08-23T16:45:00Z")
+
+	mockIssues := []types.Issue{
 		{
-			"number":    123,
-			"title":     "UI responsiveness issue on mobile",
-			"author":    "user1",
-			"state":     "open",
-			"labels":    []string{"bug", "ui", "mobile"},
-			"createdAt": "2025-08-24T08:30:00Z",
+			ID:        123,
+			Number:    123,
+			Title:     "UI responsiveness issue on mobile",
+			State:     types.IssueStateOpen,
+			Author:    &types.User{ID: 1, Username: "user1", Email: "user1@example.com"},
+			Labels:    []types.PRLabel{{Name: "bug"}, {Name: "ui"}, {Name: "mobile"}},
+			CreatedAt: types.Timestamp{Time: createdAt1},
+			UpdatedAt: types.Timestamp{Time: updatedAt1},
+			URL:       "https://example.com/issue/123",
 		},
 		{
-			"number":    122,
-			"title":     "Documentation update needed",
-			"author":    "user2",
-			"state":     "closed",
-			"labels":    []string{"documentation"},
-			"createdAt": "2025-08-23T14:20:00Z",
+			ID:        122,
+			Number:    122,
+			Title:     "Documentation update needed",
+			State:     types.IssueStateClosed,
+			Author:    &types.User{ID: 2, Username: "user2", Email: "user2@example.com"},
+			Labels:    []types.PRLabel{{Name: "documentation"}},
+			CreatedAt: types.Timestamp{Time: createdAt2},
+			UpdatedAt: types.Timestamp{Time: updatedAt2},
+			ClosedAt:  &types.Timestamp{Time: closedAt2},
+			URL:       "https://example.com/issue/122",
 		},
 	}
 
-	return map[string]interface{}{
-		"issues": mockIssues,
-		"total":  len(mockIssues),
-	}, nil
+	// Return typed response
+	return types.NewPaginatedResponse(mockIssues, types.NewPagination(1, 10, len(mockIssues))), nil
 }
 
 // ToolManifestHandler handles tool manifest requests
@@ -213,19 +240,20 @@ func (h *ContextDetectHandler) HandleRequest(ctx context.Context, method string,
 	repoCtx, err := ctxt.DetectContext(path)
 	if err != nil {
 		h.logger.Errorf("Context detection failed for path %s: %v", path, err)
-		return map[string]interface{}{
-			"error": err.Error(),
-		}, nil
+		return types.NewErrorResponse(types.ErrorCodeNotFound, "Failed to detect repository context"), nil
 	}
 
 	h.logger.Infof("Successfully detected context: %s", repoCtx.String())
 
-	return map[string]interface{}{
-		"owner":      repoCtx.Owner,
-		"repository": repoCtx.Repository,
-		"remoteUrl":  repoCtx.RemoteURL,
-		"context":    repoCtx.String(),
-	}, nil
+	// Return typed repository information
+	repository := types.Repository{
+		Owner:    repoCtx.Owner,
+		Name:     repoCtx.Repository,
+		FullName: repoCtx.String(),
+		URL:      repoCtx.RemoteURL,
+	}
+
+	return types.NewSuccessResponse(repository), nil
 }
 
 // RegisterDefaultHandlers registers the default tool handlers
