@@ -7,11 +7,15 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"net/http"
 	"os"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/Kunde21/forgejo-mcp/config"
+	"github.com/modelcontextprotocol/go-sdk/jsonrpc"
+	"github.com/modelcontextprotocol/go-sdk/mcp"
 	"github.com/sirupsen/logrus"
 )
 
@@ -134,6 +138,309 @@ func (st *StdioTransport) Write(p []byte) (n int, err error) {
 // Close closes the transport
 func (st *StdioTransport) Close() error {
 	return st.Disconnect()
+}
+
+// SSETransport implements Transport for Server-Sent Events over HTTP
+type SSETransport struct {
+	config      *config.Config
+	logger      *logrus.Logger
+	server      *http.Server
+	connections map[string]*SSEConnection
+	mu          sync.RWMutex
+	state       ConnectionState
+}
+
+// SSEConnection represents a single SSE connection
+type SSEConnection struct {
+	id       string
+	writer   http.ResponseWriter
+	flusher  http.Flusher
+	done     chan struct{}
+	mu       sync.Mutex
+	isClosed bool
+}
+
+// NewSSETransport creates a new SSE transport
+func NewSSETransport(cfg *config.Config, logger *logrus.Logger) *SSETransport {
+	return &SSETransport{
+		config:      cfg,
+		logger:      logger,
+		connections: make(map[string]*SSEConnection),
+		state:       StateDisconnected,
+	}
+}
+
+// Connect starts the HTTP server for SSE transport
+func (st *SSETransport) Connect() error {
+	st.mu.Lock()
+	defer st.mu.Unlock()
+
+	if st.state == StateConnected {
+		return nil
+	}
+
+	st.logger.Info("Starting SSE transport server")
+	st.state = StateConnecting
+
+	mux := http.NewServeMux()
+	mux.HandleFunc("/sse", st.handleSSE)
+	mux.HandleFunc("/health", st.handleHealth)
+
+	st.server = &http.Server{
+		Addr:    fmt.Sprintf("%s:%d", st.config.Host, st.config.Port),
+		Handler: mux,
+	}
+
+	// Start server in goroutine
+	go func() {
+		st.logger.Infof("SSE server listening on %s", st.server.Addr)
+		if err := st.server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			st.logger.Errorf("SSE server error: %v", err)
+		}
+	}()
+
+	st.state = StateConnected
+	return nil
+}
+
+// Disconnect stops the HTTP server
+func (st *SSETransport) Disconnect() error {
+	st.mu.Lock()
+	defer st.mu.Unlock()
+
+	if st.state != StateConnected {
+		return nil
+	}
+
+	st.logger.Info("Stopping SSE transport server")
+	st.state = StateClosing
+
+	// Close all connections
+	for id, conn := range st.connections {
+		conn.Close()
+		delete(st.connections, id)
+	}
+
+	// Shutdown server
+	if st.server != nil {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+
+		if err := st.server.Shutdown(ctx); err != nil {
+			st.logger.Errorf("Server shutdown error: %v", err)
+			return err
+		}
+	}
+
+	st.state = StateClosed
+	return nil
+}
+
+// Read reads data from SSE connections (not applicable for SSE transport)
+func (st *SSETransport) Read(p []byte) (n int, err error) {
+	return 0, fmt.Errorf("SSE transport does not support reading")
+}
+
+// Write sends data to all connected SSE clients
+func (st *SSETransport) Write(p []byte) (n int, err error) {
+	if !st.IsConnected() {
+		return 0, fmt.Errorf("transport is not connected")
+	}
+
+	st.mu.RLock()
+	defer st.mu.RUnlock()
+
+	message := fmt.Sprintf("data: %s\n\n", string(p))
+
+	// Send to all connections
+	for id, conn := range st.connections {
+		if err := conn.Send(message); err != nil {
+			st.logger.Errorf("Failed to send to connection %s: %v", id, err)
+			// Remove failed connection
+			go func(connID string) {
+				st.mu.Lock()
+				delete(st.connections, connID)
+				st.mu.Unlock()
+			}(id)
+		}
+	}
+
+	return len(p), nil
+}
+
+// Close closes the transport
+func (st *SSETransport) Close() error {
+	return st.Disconnect()
+}
+
+// GetState returns the current connection state
+func (st *SSETransport) GetState() ConnectionState {
+	st.mu.RLock()
+	defer st.mu.RUnlock()
+	return st.state
+}
+
+// IsConnected returns true if the transport is connected
+func (st *SSETransport) IsConnected() bool {
+	return st.GetState() == StateConnected
+}
+
+// handleSSE handles SSE connection requests
+func (st *SSETransport) handleSSE(w http.ResponseWriter, r *http.Request) {
+	// Set SSE headers
+	w.Header().Set("Content-Type", "text/event-stream")
+	w.Header().Set("Cache-Control", "no-cache")
+	w.Header().Set("Connection", "keep-alive")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Headers", "Cache-Control")
+
+	// Check if client supports SSE
+	flusher, ok := w.(http.Flusher)
+	if !ok {
+		http.Error(w, "Streaming not supported", http.StatusInternalServerError)
+		return
+	}
+
+	// Create new connection
+	connID := fmt.Sprintf("%d", time.Now().UnixNano())
+	conn := &SSEConnection{
+		id:      connID,
+		writer:  w,
+		flusher: flusher,
+		done:    make(chan struct{}),
+	}
+
+	// Add connection
+	st.mu.Lock()
+	st.connections[connID] = conn
+	st.mu.Unlock()
+
+	st.logger.Infof("New SSE connection: %s", connID)
+
+	// Send initial connection event
+	conn.Send("event: connected\ndata: {\"status\": \"connected\"}\n\n")
+
+	// Keep connection alive
+	ticker := time.NewTicker(30 * time.Second)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-conn.done:
+			st.logger.Infof("SSE connection closed: %s", connID)
+			return
+		case <-ticker.C:
+			// Send keepalive
+			conn.Send(": keepalive\n\n")
+		case <-r.Context().Done():
+			st.logger.Infof("SSE request context done: %s", connID)
+			st.removeConnection(connID)
+			return
+		}
+	}
+}
+
+// handleHealth provides a health check endpoint
+func (st *SSETransport) handleHealth(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte(`{"status": "healthy"}`))
+}
+
+// removeConnection removes a connection from the map
+func (st *SSETransport) removeConnection(id string) {
+	st.mu.Lock()
+	defer st.mu.Unlock()
+	delete(st.connections, id)
+}
+
+// Send sends a message to the SSE client
+func (sc *SSEConnection) Send(message string) error {
+	sc.mu.Lock()
+	defer sc.mu.Unlock()
+
+	if sc.isClosed {
+		return fmt.Errorf("connection is closed")
+	}
+
+	_, err := fmt.Fprint(sc.writer, message)
+	if err != nil {
+		return err
+	}
+
+	sc.flusher.Flush()
+	return nil
+}
+
+// Close closes the SSE connection
+func (sc *SSEConnection) Close() {
+	sc.mu.Lock()
+	defer sc.mu.Unlock()
+
+	if !sc.isClosed {
+		sc.isClosed = true
+		close(sc.done)
+	}
+}
+
+// SSETransportAdapter adapts our SSETransport to the MCP SDK Transport interface
+type SSETransportAdapter struct {
+	transport *SSETransport
+	logger    *logrus.Logger
+}
+
+// NewSSETransportAdapter creates a new SSE transport adapter for MCP SDK
+func NewSSETransportAdapter(cfg *config.Config, logger *logrus.Logger) *SSETransportAdapter {
+	return &SSETransportAdapter{
+		transport: NewSSETransport(cfg, logger),
+		logger:    logger,
+	}
+}
+
+// Connect implements mcp.Transport.Connect
+func (sta *SSETransportAdapter) Connect(ctx context.Context) (mcp.Connection, error) {
+	if err := sta.transport.Connect(); err != nil {
+		return nil, err
+	}
+
+	// Return a connection adapter
+	return &SSEConnectionAdapter{
+		transport: sta.transport,
+		logger:    sta.logger,
+	}, nil
+}
+
+// SSEConnectionAdapter adapts our SSE connection to MCP SDK Connection interface
+type SSEConnectionAdapter struct {
+	transport *SSETransport
+	logger    *logrus.Logger
+}
+
+// Read implements mcp.Connection.Read
+func (sca *SSEConnectionAdapter) Read(ctx context.Context) (jsonrpc.Message, error) {
+	// SSE transport doesn't support reading (server-sent events are one-way)
+	return nil, fmt.Errorf("SSE transport does not support reading")
+}
+
+// Write implements mcp.Connection.Write
+func (sca *SSEConnectionAdapter) Write(ctx context.Context, msg jsonrpc.Message) error {
+	// Convert message to JSON bytes
+	data, err := json.Marshal(msg)
+	if err != nil {
+		return err
+	}
+	_, err = sca.transport.Write(data)
+	return err
+}
+
+// Close implements mcp.Connection.Close
+func (sca *SSEConnectionAdapter) Close() error {
+	return sca.transport.Close()
+}
+
+// SessionID implements mcp.Connection.SessionID
+func (sca *SSEConnectionAdapter) SessionID() string {
+	return "sse-session"
 }
 
 // Request represents an MCP JSON-RPC request

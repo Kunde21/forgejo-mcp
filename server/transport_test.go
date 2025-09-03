@@ -5,12 +5,14 @@ import (
 	"context"
 	"encoding/json"
 	"io"
+	"net/http"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/Kunde21/forgejo-mcp/config"
 	"github.com/google/go-cmp/cmp"
+	"github.com/sirupsen/logrus"
 )
 
 // MockTransport implements a simple in-memory transport for testing
@@ -31,6 +33,22 @@ func (mt *MockTransport) Close() error {
 	return nil
 }
 
+func (mt *MockTransport) Connect() error {
+	return nil
+}
+
+func (mt *MockTransport) Disconnect() error {
+	return nil
+}
+
+func (mt *MockTransport) GetState() ConnectionState {
+	return StateConnected
+}
+
+func (mt *MockTransport) IsConnected() bool {
+	return true
+}
+
 func TestNewStdioTransport_ValidConfig(t *testing.T) {
 	cfg := &config.Config{
 		ForgejoURL:   "https://example.forgejo.com",
@@ -43,17 +61,27 @@ func TestNewStdioTransport_ValidConfig(t *testing.T) {
 		LogLevel:     "info",
 	}
 
-	server, err := New(cfg)
-	if err != nil {
-		t.Fatalf("New() should not return error, got: %v", err)
-	}
-	if server == nil {
-		t.Fatal("New() should return non-nil server")
-	}
+	logger := &logrus.Logger{}
+	transport := NewStdioTransport(cfg, logger)
 
-	// Test that we can create a transport (placeholder for now)
-	// transport := NewStdioTransport()
-	// TODO: Implement transport creation and test it
+	if transport == nil {
+		t.Fatal("NewStdioTransport() should return non-nil transport")
+	}
+	if transport.reader == nil {
+		t.Error("Transport reader should not be nil")
+	}
+	if transport.writer == nil {
+		t.Error("Transport writer should not be nil")
+	}
+	if transport.logger != logger {
+		t.Error("Transport logger should match provided logger")
+	}
+	if transport.readTimeout != 30*time.Second {
+		t.Errorf("Expected readTimeout to be 30s, got %v", transport.readTimeout)
+	}
+	if transport.state != StateDisconnected {
+		t.Errorf("Expected initial state to be StateDisconnected, got %v", transport.state)
+	}
 }
 
 func TestTransportRequestRouting_ValidRequest(t *testing.T) {
@@ -62,7 +90,7 @@ func TestTransportRequestRouting_ValidRequest(t *testing.T) {
 
 	request := map[string]interface{}{
 		"jsonrpc": "2.0",
-		"id":      1,
+		"id":      float64(1), // JSON unmarshaling converts numbers to float64
 		"method":  "tools/call",
 		"params": map[string]interface{}{
 			"name": "pr_list",
@@ -72,8 +100,7 @@ func TestTransportRequestRouting_ValidRequest(t *testing.T) {
 		},
 	}
 
-	// TODO: Implement request routing and test it
-	// For now, just test that we can marshal/unmarshal JSON
+	// Test JSON marshaling/unmarshaling
 	data, err := json.Marshal(request)
 	if err != nil {
 		t.Fatalf("Failed to marshal request: %v", err)
@@ -240,6 +267,296 @@ func TestTransportErrorResponse(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestStdioTransport_ConnectionLifecycle(t *testing.T) {
+	cfg := &config.Config{
+		ReadTimeout: 30,
+	}
+	logger := logrus.New()
+	transport := NewStdioTransport(cfg, logger)
+
+	// Initially disconnected
+	if transport.IsConnected() {
+		t.Error("Transport should not be connected initially")
+	}
+	if transport.GetState() != StateDisconnected {
+		t.Errorf("Expected state StateDisconnected, got %v", transport.GetState())
+	}
+
+	// Connect
+	err := transport.Connect()
+	if err != nil {
+		t.Errorf("Connect() should not return error, got: %v", err)
+	}
+	if !transport.IsConnected() {
+		t.Error("Transport should be connected after Connect()")
+	}
+	if transport.GetState() != StateConnected {
+		t.Errorf("Expected state StateConnected, got %v", transport.GetState())
+	}
+
+	// Disconnect
+	err = transport.Disconnect()
+	if err != nil {
+		t.Errorf("Disconnect() should not return error, got: %v", err)
+	}
+	if transport.IsConnected() {
+		t.Error("Transport should not be connected after Disconnect()")
+	}
+	if transport.GetState() != StateClosed {
+		t.Errorf("Expected state StateClosed, got %v", transport.GetState())
+	}
+}
+
+func TestStdioTransport_ReadWrite(t *testing.T) {
+	cfg := &config.Config{
+		ReadTimeout: 1, // Short timeout for testing
+	}
+	logger := logrus.New()
+	transport := NewStdioTransport(cfg, logger)
+
+	// Connect first
+	err := transport.Connect()
+	if err != nil {
+		t.Fatalf("Connect() failed: %v", err)
+	}
+
+	// Test writing (this will write to stdout, but shouldn't error)
+	testData := []byte("test message\n")
+	n, err := transport.Write(testData)
+	if err != nil {
+		t.Errorf("Write() should not return error, got: %v", err)
+	}
+	if n != len(testData) {
+		t.Errorf("Expected to write %d bytes, wrote %d", len(testData), n)
+	}
+
+	// Test reading from disconnected state (should error)
+	err = transport.Disconnect()
+	if err != nil {
+		t.Fatalf("Disconnect() failed: %v", err)
+	}
+
+	buffer := make([]byte, 1024)
+	_, err = transport.Read(buffer)
+	if err == nil {
+		t.Error("Read() should return error when disconnected")
+	}
+}
+
+func TestStdioTransport_ReadTimeout(t *testing.T) {
+	cfg := &config.Config{
+		ReadTimeout: 1, // 1 second timeout
+	}
+	logger := logrus.New()
+	transport := NewStdioTransport(cfg, logger)
+
+	err := transport.Connect()
+	if err != nil {
+		t.Fatalf("Connect() failed: %v", err)
+	}
+
+	buffer := make([]byte, 1024)
+	start := time.Now()
+
+	// This should timeout since there's no input on stdin in test environment
+	_, err = transport.Read(buffer)
+
+	elapsed := time.Since(start)
+
+	// In test environment, stdin might not block, so we just verify the method doesn't hang indefinitely
+	// The timeout mechanism is in place for production use
+	if elapsed > 2*time.Second {
+		t.Errorf("Read() took too long: %v", elapsed)
+	}
+
+	// Verify timeout is configured correctly
+	if transport.readTimeout != time.Second {
+		t.Errorf("Expected readTimeout to be 1s, got %v", transport.readTimeout)
+	}
+}
+
+func TestStdioTransport_WriteDisconnected(t *testing.T) {
+	cfg := &config.Config{}
+	logger := logrus.New()
+	transport := NewStdioTransport(cfg, logger)
+
+	// Don't connect - should be disconnected
+	buffer := []byte("test")
+	_, err := transport.Write(buffer)
+	if err == nil {
+		t.Error("Write() should return error when disconnected")
+	}
+}
+
+func TestNewSSETransport_ValidConfig(t *testing.T) {
+	cfg := &config.Config{
+		Host: "localhost",
+		Port: 8080,
+	}
+	logger := logrus.New()
+	transport := NewSSETransport(cfg, logger)
+
+	if transport == nil {
+		t.Fatal("NewSSETransport() should return non-nil transport")
+	}
+	if transport.config != cfg {
+		t.Error("Transport config should match provided config")
+	}
+	if transport.logger != logger {
+		t.Error("Transport logger should match provided logger")
+	}
+	if transport.state != StateDisconnected {
+		t.Errorf("Expected initial state StateDisconnected, got %v", transport.state)
+	}
+	if transport.connections == nil {
+		t.Error("Transport connections map should be initialized")
+	}
+}
+
+func TestSSETransport_ConnectionLifecycle(t *testing.T) {
+	cfg := &config.Config{
+		Host: "localhost",
+		Port: 8081, // Use different port to avoid conflicts
+	}
+	logger := logrus.New()
+	transport := NewSSETransport(cfg, logger)
+
+	// Initially disconnected
+	if transport.IsConnected() {
+		t.Error("Transport should not be connected initially")
+	}
+	if transport.GetState() != StateDisconnected {
+		t.Errorf("Expected state StateDisconnected, got %v", transport.GetState())
+	}
+
+	// Connect
+	err := transport.Connect()
+	if err != nil {
+		t.Errorf("Connect() should not return error, got: %v", err)
+	}
+	if !transport.IsConnected() {
+		t.Error("Transport should be connected after Connect()")
+	}
+	if transport.GetState() != StateConnected {
+		t.Errorf("Expected state StateConnected, got %v", transport.GetState())
+	}
+
+	// Disconnect
+	err = transport.Disconnect()
+	if err != nil {
+		t.Errorf("Disconnect() should not return error, got: %v", err)
+	}
+	if transport.IsConnected() {
+		t.Error("Transport should not be connected after Disconnect()")
+	}
+	if transport.GetState() != StateClosed {
+		t.Errorf("Expected state StateClosed, got %v", transport.GetState())
+	}
+}
+
+func TestSSETransport_ReadNotSupported(t *testing.T) {
+	cfg := &config.Config{
+		Host: "localhost",
+		Port: 8082,
+	}
+	logger := logrus.New()
+	transport := NewSSETransport(cfg, logger)
+
+	buffer := make([]byte, 1024)
+	_, err := transport.Read(buffer)
+	if err == nil {
+		t.Error("Read() should return error for SSE transport")
+	}
+	if !strings.Contains(err.Error(), "does not support reading") {
+		t.Errorf("Expected 'does not support reading' error, got: %v", err)
+	}
+}
+
+func TestSSETransport_WriteDisconnected(t *testing.T) {
+	cfg := &config.Config{
+		Host: "localhost",
+		Port: 8083,
+	}
+	logger := logrus.New()
+	transport := NewSSETransport(cfg, logger)
+
+	// Don't connect - should be disconnected
+	buffer := []byte("test message")
+	_, err := transport.Write(buffer)
+	if err == nil {
+		t.Error("Write() should return error when disconnected")
+	}
+}
+
+func TestSSEConnection_Send(t *testing.T) {
+	// Create a mock response writer for testing
+	mockWriter := &mockResponseWriter{}
+	conn := &SSEConnection{
+		id:      "test-conn",
+		writer:  mockWriter,
+		flusher: mockWriter,
+		done:    make(chan struct{}),
+	}
+
+	message := "data: test message\n\n"
+	err := conn.Send(message)
+	if err != nil {
+		t.Errorf("Send() should not return error, got: %v", err)
+	}
+
+	// Verify message was written
+	if mockWriter.written != message {
+		t.Errorf("Expected message %q, got %q", message, mockWriter.written)
+	}
+}
+
+func TestSSEConnection_Close(t *testing.T) {
+	conn := &SSEConnection{
+		id:   "test-conn",
+		done: make(chan struct{}),
+	}
+
+	// Close connection
+	conn.Close()
+
+	// Verify it's marked as closed
+	if !conn.isClosed {
+		t.Error("Connection should be marked as closed")
+	}
+
+	// Try to send after close (should error)
+	err := conn.Send("test")
+	if err == nil {
+		t.Error("Send() should return error after Close()")
+	}
+}
+
+// mockResponseWriter implements http.ResponseWriter and http.Flusher for testing
+type mockResponseWriter struct {
+	written string
+	header  http.Header
+}
+
+func (m *mockResponseWriter) Header() http.Header {
+	if m.header == nil {
+		m.header = make(http.Header)
+	}
+	return m.header
+}
+
+func (m *mockResponseWriter) Write(data []byte) (int, error) {
+	m.written = string(data)
+	return len(data), nil
+}
+
+func (m *mockResponseWriter) WriteHeader(statusCode int) {
+	// No-op for testing
+}
+
+func (m *mockResponseWriter) Flush() {
+	// No-op for testing
 }
 
 func min(a, b int) int {

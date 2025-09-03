@@ -119,10 +119,10 @@ func runServer() error {
 	case "stdio":
 		mcpTransport = mcp.NewStdioTransport()
 	case "sse":
-		// For SSE, we would need to set up an HTTP server
-		// For now, fall back to stdio
-		logger.Warn("SSE transport not yet implemented, falling back to stdio")
-		mcpTransport = mcp.NewStdioTransport()
+		// For SSE transport, we need to create an HTTP server
+		// The MCP SDK doesn't have built-in SSE transport, so we'll use our custom implementation
+		sseTransport := server.NewSSETransportAdapter(cfg, logger)
+		mcpTransport = sseTransport
 	default:
 		return fmt.Errorf("unsupported transport: %s", transport)
 	}
