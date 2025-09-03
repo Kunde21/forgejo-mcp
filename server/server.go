@@ -1,4 +1,7 @@
 // Package server implements the MCP server functionality for Forgejo repositories
+//
+// Deprecated: This package contains the legacy MCP server implementation.
+// Use NewMCPServer() for new MCP SDK-based server implementation.
 package server
 
 import (
@@ -230,6 +233,9 @@ func New(cfg *config.Config) (*Server, error) {
 		return nil, fmt.Errorf("failed to initialize tool system: %w", err)
 	}
 
+	// Register default handlers
+	server.RegisterDefaultHandlers()
+
 	logger.Info("MCP server created successfully")
 	return server, nil
 }
@@ -328,7 +334,7 @@ type GiteaSDKToolSystemHandler struct {
 }
 
 // HandleRequest handles a tool call request using the Gitea SDK
-func (gtsh *GiteaSDKToolSystemHandler) HandleRequest(ctx context.Context, method string, params map[string]interface{}) (interface{}, error) {
+func (gtsh *GiteaSDKToolSystemHandler) HandleRequest(ctx context.Context, method string, params map[string]any) (any, error) {
 	gtsh.logger.Debugf("Gitea SDK tool system handling request: %s", method)
 
 	// Extract tool name from params
@@ -338,7 +344,7 @@ func (gtsh *GiteaSDKToolSystemHandler) HandleRequest(ctx context.Context, method
 	}
 
 	// Extract tool arguments
-	arguments, ok := params["arguments"].(map[string]interface{})
+	arguments, ok := params["arguments"].(map[string]any)
 	if !ok {
 		arguments = make(map[string]interface{})
 	}

@@ -203,7 +203,7 @@ func TestEndToEndWorkflow(t *testing.T) {
 	}
 
 	// Create MCP server
-	srv, err := server.New(cfg)
+	srv, err := server.NewMCPServer(cfg)
 	if err != nil {
 		t.Fatalf("Failed to create MCP server: %v", err)
 	}

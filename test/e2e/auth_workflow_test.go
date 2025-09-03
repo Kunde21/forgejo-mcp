@@ -83,7 +83,7 @@ func testServerWithAuthentication(t *testing.T, env *TestEnvironment) {
 	}
 
 	// Create MCP server
-	srv, err := server.New(cfg)
+	srv, err := server.NewMCPServer(cfg)
 	if err != nil {
 		t.Fatalf("Failed to create server with authentication: %v", err)
 	}

@@ -256,6 +256,29 @@ func (h *ContextDetectHandler) HandleRequest(ctx context.Context, method string,
 	return types.NewSuccessResponse(repository), nil
 }
 
+// HealthCheckHandler handles health check requests
+type HealthCheckHandler struct {
+	logger *logrus.Logger
+}
+
+// NewHealthCheckHandler creates a new health check handler
+func NewHealthCheckHandler(logger *logrus.Logger) *HealthCheckHandler {
+	return &HealthCheckHandler{
+		logger: logger,
+	}
+}
+
+// HandleRequest handles a health check request
+func (h *HealthCheckHandler) HandleRequest(ctx context.Context, method string, params map[string]interface{}) (interface{}, error) {
+	h.logger.Debug("Handling health check request")
+
+	return map[string]interface{}{
+		"status":    "healthy",
+		"timestamp": time.Now().Format(time.RFC3339),
+		"version":   "1.0.0",
+	}, nil
+}
+
 // RegisterDefaultHandlers registers the default tool handlers
 func (s *Server) RegisterDefaultHandlers() {
 	// Register tool handlers
@@ -263,6 +286,7 @@ func (s *Server) RegisterDefaultHandlers() {
 	issueHandler := NewIssueListHandler(s.logger)
 	contextHandler := NewContextDetectHandler(s.logger)
 	manifestHandler := NewToolManifestHandler(s.logger)
+	healthHandler := NewHealthCheckHandler(s.logger)
 
 	s.dispatcher.RegisterHandler("tools/call", &ToolCallRouter{
 		prHandler:      prHandler,
@@ -271,6 +295,7 @@ func (s *Server) RegisterDefaultHandlers() {
 		logger:         s.logger,
 	})
 	s.dispatcher.RegisterHandler("tools/list", manifestHandler)
+	s.dispatcher.RegisterHandler("health/check", healthHandler)
 
 	s.logger.Info("Registered default MCP tool handlers")
 }
