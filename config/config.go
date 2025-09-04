@@ -38,9 +38,6 @@ func Load() (*Config, error) {
 	v := viper.New()
 
 	// Set default values
-	v.SetDefault("forgejo_url", "https://example.forgejo.com")
-	v.SetDefault("auth_token", "placeholder-token")
-	v.SetDefault("tea_path", "tea")
 	v.SetDefault("host", "localhost")
 	v.SetDefault("port", 8080)
 	v.SetDefault("read_timeout", 30)
@@ -84,14 +81,14 @@ func Load() (*Config, error) {
 // Validate validates the configuration using ozzo-validation
 func (c *Config) Validate() error {
 	return validation.ValidateStruct(c,
-		validation.Field(&c.ForgejoURL, validation.Required, is.URL),
-		validation.Field(&c.AuthToken, validation.Required),
+		validation.Field(&c.ForgejoURL, is.URL),
+		validation.Field(&c.AuthToken, validation.When(c.AuthToken != "", validation.Length(20, 100))),
 		validation.Field(&c.TeaPath),
 		validation.Field(&c.Host, validation.Required),
 		validation.Field(&c.Port, validation.Required, validation.Min(1), validation.Max(65535)),
 		validation.Field(&c.ReadTimeout, validation.Min(0)),
 		validation.Field(&c.WriteTimeout, validation.Min(0)),
-		validation.Field(&c.ClientTimeout, validation.Min(1), validation.Max(300)), // 1-300 seconds
+		validation.Field(&c.ClientTimeout, validation.Min(1), validation.Max(300)),
 		validation.Field(&c.UserAgent, validation.Length(1, 100)),
 		validation.Field(&c.LogLevel, validation.In("trace", "debug", "info", "warn", "error", "fatal", "panic")),
 	)

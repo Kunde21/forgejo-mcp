@@ -46,7 +46,7 @@ type MCPServer struct {
 	config      *config.Config
 	logger      *logrus.Logger
 	authState   *AuthState
-	giteaClient interface{} // Use interface{} to avoid import issues
+	giteaClient *client.ForgejoClient
 }
 
 // NewMCPServer creates a new MCP server using the MCP SDK
@@ -74,19 +74,18 @@ func NewMCPServer(cfg *config.Config) (*MCPServer, error) {
 		Name:    "forgejo-mcp",
 		Version: "1.0.0",
 	}
-	mcpServer := mcp.NewServer(impl, nil)
+	mcpServer := mcp.NewServer(impl, &mcp.ServerOptions{})
 
 	// Initialize authentication state
 	authState := NewAuthState(nil, logger)
 
 	// Try to create Gitea client for authentication validation
-	var giteaClient interface{}
+	var giteaClient *client.ForgejoClient
 	if cfg.ForgejoURL != "" && cfg.AuthToken != "" {
 		giteaClient, err = client.New(cfg.ForgejoURL, cfg.AuthToken)
 		if err != nil {
 			logger.WithError(err).Warn("Failed to create Gitea client, authentication may not work")
 		} else {
-			// We'll handle the client interface later
 			logger.Info("Gitea client initialized for authentication")
 		}
 	}
@@ -234,7 +233,13 @@ func (s *MCPServer) handleContextDetect(ctx context.Context, request *mcp.CallTo
 		FullName: repoCtx.String(),
 		URL:      repoCtx.RemoteURL,
 	}
-
+	if s.config.ForgejoURL != repository.URL {
+		s.config.ForgejoURL = repository.URL
+		s.giteaClient, err = client.New(s.config.ForgejoURL, s.config.AuthToken)
+		if err != nil {
+			return nil, nil, err
+		}
+	}
 	return &mcp.CallToolResult{
 		Content: []mcp.Content{
 			&mcp.TextContent{Text: fmt.Sprintf("Repository: %s", repository.FullName)},

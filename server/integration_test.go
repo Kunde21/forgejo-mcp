@@ -13,7 +13,7 @@ func TestCompleteRequestResponseFlow(t *testing.T) {
 	// Test basic server creation and tool registration
 	cfg := &config.Config{
 		ForgejoURL:   "https://example.forgejo.com",
-		AuthToken:    "test-token",
+		AuthToken:    "testing-auth-token-123",
 		TeaPath:      "tea",
 		Host:         "localhost",
 		Port:         8080,
@@ -43,9 +43,9 @@ func TestCompleteRequestResponseFlow(t *testing.T) {
 		JSONRPC: "2.0",
 		ID:      1,
 		Method:  "tools/call",
-		Params: map[string]interface{}{
+		Params: map[string]any{
 			"name": "pr_list",
-			"arguments": map[string]interface{}{
+			"arguments": map[string]any{
 				"state": "open",
 			},
 		},
@@ -62,7 +62,7 @@ func TestCompleteRequestResponseFlow(t *testing.T) {
 		JSONRPC: "2.0",
 		ID:      2,
 		Method:  "unknown/method",
-		Params:  map[string]interface{}{},
+		Params:  map[string]any{},
 	}
 
 	unknownResponse := server.dispatcher.Dispatch(context.Background(), unknownRequest)
@@ -78,7 +78,7 @@ func TestCompleteRequestResponseFlow(t *testing.T) {
 func TestServerStartupAndConnectionAcceptance(t *testing.T) {
 	cfg := &config.Config{
 		ForgejoURL:   "https://example.forgejo.com",
-		AuthToken:    "test-token",
+		AuthToken:    "testing-auth-token-123",
 		TeaPath:      "tea",
 		Host:         "localhost",
 		Port:         8080,
@@ -100,7 +100,7 @@ func TestServerStartupAndConnectionAcceptance(t *testing.T) {
 		JSONRPC: "2.0",
 		ID:      1,
 		Method:  "tools/list",
-		Params:  map[string]interface{}{},
+		Params:  map[string]any{},
 	}
 
 	response := server.dispatcher.Dispatch(context.Background(), request)
@@ -115,7 +115,7 @@ func TestServerStartupAndConnectionAcceptance(t *testing.T) {
 	}
 
 	// Verify the response contains expected tool information
-	result, ok := response.Result.(map[string]interface{})
+	result, ok := response.Result.(map[string]any)
 	if !ok {
 		t.Error("tools/list result should be a map")
 	}
@@ -125,7 +125,7 @@ func TestServerStartupAndConnectionAcceptance(t *testing.T) {
 		t.Error("tools/list result should contain 'tools' field")
 	}
 
-	toolsArray, ok := tools.([]map[string]interface{})
+	toolsArray, ok := tools.([]map[string]any)
 	if !ok {
 		t.Error("tools should be an array of tool definitions")
 	}
@@ -152,7 +152,7 @@ func TestServerStartupAndConnectionAcceptance(t *testing.T) {
 func TestToolDiscoveryThroughManifest(t *testing.T) {
 	cfg := &config.Config{
 		ForgejoURL:   "https://example.forgejo.com",
-		AuthToken:    "test-token",
+		AuthToken:    "testing-auth-token-123",
 		TeaPath:      "tea",
 		Host:         "localhost",
 		Port:         8080,
@@ -234,8 +234,8 @@ func TestErrorHandlingAndTimeoutScenarios(t *testing.T) {
 				JSONRPC: "2.0",
 				ID:      1,
 				Method:  "tools/call",
-				Params: map[string]interface{}{
-					"arguments": map[string]interface{}{
+				Params: map[string]any{
+					"arguments": map[string]any{
 						"state": "open",
 					},
 				},
@@ -250,9 +250,9 @@ func TestErrorHandlingAndTimeoutScenarios(t *testing.T) {
 				JSONRPC: "2.0",
 				ID:      2,
 				Method:  "tools/call",
-				Params: map[string]interface{}{
+				Params: map[string]any{
 					"name":      "invalid_tool",
-					"arguments": map[string]interface{}{},
+					"arguments": map[string]any{},
 				},
 			},
 			expectError: true,
@@ -265,7 +265,7 @@ func TestErrorHandlingAndTimeoutScenarios(t *testing.T) {
 				JSONRPC: "2.0",
 				ID:      3,
 				Method:  "unknown/method",
-				Params:  map[string]interface{}{},
+				Params:  map[string]any{},
 			},
 			expectError: true,
 			errorCode:   -32601, // Method not found
@@ -277,7 +277,7 @@ func TestErrorHandlingAndTimeoutScenarios(t *testing.T) {
 				JSONRPC: "1.0",
 				ID:      4,
 				Method:  "tools/list",
-				Params:  map[string]interface{}{},
+				Params:  map[string]any{},
 			},
 			expectError: false, // Currently not validated in transport layer
 			errorCode:   0,
@@ -289,7 +289,7 @@ func TestErrorHandlingAndTimeoutScenarios(t *testing.T) {
 				JSONRPC: "2.0",
 				ID:      5,
 				Method:  "",
-				Params:  map[string]interface{}{},
+				Params:  map[string]any{},
 			},
 			expectError: true,
 			errorCode:   -32601, // Method not found (actual behavior)
@@ -301,7 +301,7 @@ func TestErrorHandlingAndTimeoutScenarios(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			cfg := &config.Config{
 				ForgejoURL:   "https://example.forgejo.com",
-				AuthToken:    "test-token",
+				AuthToken:    "testing-auth-token-123",
 				TeaPath:      "tea",
 				Host:         "localhost",
 				Port:         8080,
@@ -344,7 +344,7 @@ func TestErrorHandlingAndTimeoutScenarios(t *testing.T) {
 func TestPRListWithMockedTeaOutput(t *testing.T) {
 	cfg := &config.Config{
 		ForgejoURL:   "https://example.forgejo.com",
-		AuthToken:    "test-token",
+		AuthToken:    "testing-auth-token-123",
 		TeaPath:      "tea",
 		Host:         "localhost",
 		Port:         8080,
@@ -364,44 +364,44 @@ func TestPRListWithMockedTeaOutput(t *testing.T) {
 	// Test pr_list with various parameters
 	testCases := []struct {
 		name     string
-		params   map[string]interface{}
-		expected map[string]interface{}
+		params   map[string]any
+		expected map[string]any
 	}{
 		{
 			name: "pr_list with state filter",
-			params: map[string]interface{}{
+			params: map[string]any{
 				"name": "pr_list",
-				"arguments": map[string]interface{}{
+				"arguments": map[string]any{
 					"state": "open",
 				},
 			},
-			expected: map[string]interface{}{
+			expected: map[string]any{
 				"pullRequests": "mock_data",
 				"total":        "mock_count",
 			},
 		},
 		{
 			name: "pr_list with author filter",
-			params: map[string]interface{}{
+			params: map[string]any{
 				"name": "pr_list",
-				"arguments": map[string]interface{}{
+				"arguments": map[string]any{
 					"author": "developer1",
 				},
 			},
-			expected: map[string]interface{}{
+			expected: map[string]any{
 				"pullRequests": "mock_data",
 				"total":        "mock_count",
 			},
 		},
 		{
 			name: "pr_list with limit",
-			params: map[string]interface{}{
+			params: map[string]any{
 				"name": "pr_list",
-				"arguments": map[string]interface{}{
+				"arguments": map[string]any{
 					"limit": float64(5),
 				},
 			},
-			expected: map[string]interface{}{
+			expected: map[string]any{
 				"pullRequests": "mock_data",
 				"total":        "mock_count",
 			},
@@ -435,7 +435,7 @@ func TestPRListWithMockedTeaOutput(t *testing.T) {
 			}
 
 			// Verify result structure
-			result, ok := response.Result.(map[string]interface{})
+			result, ok := response.Result.(map[string]any)
 			if !ok {
 				t.Error("pr_list result should be a map")
 				return
@@ -455,7 +455,7 @@ func TestPRListWithMockedTeaOutput(t *testing.T) {
 func TestIssueListWithMockedTeaOutput(t *testing.T) {
 	cfg := &config.Config{
 		ForgejoURL:   "https://example.forgejo.com",
-		AuthToken:    "test-token",
+		AuthToken:    "testing-auth-token-123",
 		TeaPath:      "tea",
 		Host:         "localhost",
 		Port:         8080,
@@ -475,44 +475,44 @@ func TestIssueListWithMockedTeaOutput(t *testing.T) {
 	// Test issue_list with various parameters
 	testCases := []struct {
 		name     string
-		params   map[string]interface{}
-		expected map[string]interface{}
+		params   map[string]any
+		expected map[string]any
 	}{
 		{
 			name: "issue_list with state filter",
-			params: map[string]interface{}{
+			params: map[string]any{
 				"name": "issue_list",
-				"arguments": map[string]interface{}{
+				"arguments": map[string]any{
 					"state": "closed",
 				},
 			},
-			expected: map[string]interface{}{
+			expected: map[string]any{
 				"issues": "mock_data",
 				"total":  "mock_count",
 			},
 		},
 		{
 			name: "issue_list with labels",
-			params: map[string]interface{}{
+			params: map[string]any{
 				"name": "issue_list",
-				"arguments": map[string]interface{}{
-					"labels": []interface{}{"bug", "ui"},
+				"arguments": map[string]any{
+					"labels": []any{"bug", "ui"},
 				},
 			},
-			expected: map[string]interface{}{
+			expected: map[string]any{
 				"issues": "mock_data",
 				"total":  "mock_count",
 			},
 		},
 		{
 			name: "issue_list with author filter",
-			params: map[string]interface{}{
+			params: map[string]any{
 				"name": "issue_list",
-				"arguments": map[string]interface{}{
+				"arguments": map[string]any{
 					"author": "user1",
 				},
 			},
-			expected: map[string]interface{}{
+			expected: map[string]any{
 				"issues": "mock_data",
 				"total":  "mock_count",
 			},
@@ -529,30 +529,20 @@ func TestIssueListWithMockedTeaOutput(t *testing.T) {
 			}
 
 			response := server.dispatcher.Dispatch(context.Background(), request)
-
 			if response == nil {
-				t.Error("tools/call should return a response")
-				return
+				t.Fatal("tools/call should return a response")
 			}
-
 			if response.Error != nil {
-				t.Errorf("issue_list should not return error, got: %v", response.Error)
-				return
+				t.Fatalf("issue_list should not return error, got: %v", response.Error)
 			}
-
 			if response.Result == nil {
-				t.Error("issue_list should return result")
-				return
+				t.Fatal("issue_list should return result")
 			}
 
-			// Verify result structure
-			result, ok := response.Result.(map[string]interface{})
+			result, ok := response.Result.(map[string]any)
 			if !ok {
-				t.Error("issue_list result should be a map")
-				return
+				t.Fatalf("issue_list result should be a map %T", response.Result)
 			}
-
-			// Check that expected fields are present
 			for key := range tc.expected {
 				if _, exists := result[key]; !exists {
 					t.Errorf("issue_list result should contain '%s' field", key)

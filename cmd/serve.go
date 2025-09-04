@@ -62,11 +62,11 @@ Examples:
 		return fmt.Errorf("invalid log level '%s', must be one of: %v", logLevel, validLevels)
 	},
 	RunE: func(cmd *cobra.Command, args []string) error {
-		return runServer()
+		return runServer(cmd.Context())
 	},
 }
 
-func runServer() error {
+func runServer(ctx context.Context) error {
 	// Load configuration
 	cfg, err := config.Load()
 	if err != nil {
@@ -117,12 +117,16 @@ func runServer() error {
 	var mcpTransport mcp.Transport
 	switch transport {
 	case "stdio":
-		mcpTransport = mcp.NewStdioTransport()
+		mcpTransport = &mcp.StdioTransport{}
 	case "sse":
 		// For SSE transport, we need to create an HTTP server
 		// The MCP SDK doesn't have built-in SSE transport, so we'll use our custom implementation
 		sseTransport := server.NewSSETransportAdapter(cfg, logger)
 		mcpTransport = sseTransport
+		mcpTransport = &mcp.StreamableServerTransport{
+			Stateless:  true,
+			EventStore: mcp.NewMemoryEventStore(&mcp.MemoryEventStoreOptions{}),
+		}
 	default:
 		return fmt.Errorf("unsupported transport: %s", transport)
 	}

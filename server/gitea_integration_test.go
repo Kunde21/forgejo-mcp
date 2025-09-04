@@ -12,7 +12,7 @@ import (
 func TestGiteaClientConfigurationIntegration(t *testing.T) {
 	cfg := &config.Config{
 		ForgejoURL:    "https://gitea.example.com",
-		AuthToken:     "test-token-123",
+		AuthToken:     "test-testing-auth-token-123",
 		ClientTimeout: 45,
 		UserAgent:     "custom-user-agent/2.0.0",
 		TeaPath:       "tea",
@@ -59,7 +59,7 @@ func TestGiteaClientConfigurationIntegration(t *testing.T) {
 func TestGiteaClientConfigurationCompatibility(t *testing.T) {
 	cfg := &config.Config{
 		ForgejoURL:    "https://gitea.example.com",
-		AuthToken:     "test-token-123",
+		AuthToken:     "test-testing-auth-token-123",
 		ClientTimeout: 30,
 		UserAgent:     "forgejo-mcp-client/1.0.0",
 		TeaPath:       "tea",
@@ -108,7 +108,7 @@ func TestEndToEndWorkflowPreparation(t *testing.T) {
 	// 1. Load configuration (this would normally come from Load())
 	cfg := &config.Config{
 		ForgejoURL:    "https://gitea.example.com",
-		AuthToken:     "test-token-123",
+		AuthToken:     "test-testing-auth-token-123",
 		ClientTimeout: 30,
 		UserAgent:     "forgejo-mcp-client/1.0.0",
 		TeaPath:       "tea",

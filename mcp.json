@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "forgejo": {
+      "type": "stdio",
+      "command": "./forgejo-mcp",
+      "args": ["serve"]
+    }
+  }
+}

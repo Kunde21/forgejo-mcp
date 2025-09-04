@@ -50,7 +50,7 @@ func TestAuthEdgeCases_TokenFormatValidation(t *testing.T) {
 		},
 		{
 			name:        "valid token with special characters",
-			token:       "valid_token-123.456_789",
+			token:       "valid_testing-auth-token-123.456_789",
 			expectError: false,
 		},
 		{
@@ -177,7 +177,7 @@ func TestAuthEdgeCases_ErrorWrapping(t *testing.T) {
 			originalError:  &auth.TokenValidationError{Message: "invalid format", Field: "token"},
 			context:        "tool execution",
 			operation:      "authentication",
-			token:          "secret-token-123",
+			token:          "secret-testing-auth-token-123",
 			expectContains: []string{"authentication failed during tool execution", "invalid format"},
 		},
 		{
@@ -251,14 +251,14 @@ func TestAuthEdgeCases_CacheKeyGeneration(t *testing.T) {
 		{
 			name:     "normal case",
 			baseURL:  "https://example.com",
-			token:    "normal-token-123",
-			expected: "https://example.com:norm********-123",
+			token:    "normal-testing-auth-token-123",
+			expected: "https://example.com:norm*********************-123",
 		},
 		{
 			name:     "empty baseURL",
 			baseURL:  "",
-			token:    "token-123",
-			expected: ":toke*-123",
+			token:    "testing-auth-token-123",
+			expected: ":test**************-123",
 		},
 		{
 			name:     "empty token",
@@ -275,14 +275,14 @@ func TestAuthEdgeCases_CacheKeyGeneration(t *testing.T) {
 		{
 			name:     "very long baseURL",
 			baseURL:  "https://very-long-subdomain.example.com/api/v1/forgejo",
-			token:    "token-123",
-			expected: "https://very-long-subdomain.example.com/api/v1/forgejo:toke*-123",
+			token:    "testing-auth-token-123",
+			expected: "https://very-long-subdomain.example.com/api/v1/forgejo:test**************-123",
 		},
 		{
 			name:     "baseURL with special characters",
 			baseURL:  "https://example.com:8080/path?query=value",
-			token:    "token-123",
-			expected: "https://example.com:8080/path?query=value:toke*-123",
+			token:    "testing-auth-token-123",
+			expected: "https://example.com:8080/path?query=value:test**************-123",
 		},
 	}
 
@@ -307,7 +307,7 @@ func TestAuthEdgeCases_ServerConfigurationEdgeCases(t *testing.T) {
 			name: "config with very long URLs",
 			config: &config.Config{
 				ForgejoURL:   "https://very-long-subdomain.very-long-domain.com/api/v1/forgejo/with/very/long/path",
-				AuthToken:    "token-123",
+				AuthToken:    "testing-auth-token-123",
 				TeaPath:      "/very/long/path/to/tea/binary",
 				Host:         "localhost",
 				Port:         8080,
@@ -321,7 +321,7 @@ func TestAuthEdgeCases_ServerConfigurationEdgeCases(t *testing.T) {
 			name: "config with minimal timeouts",
 			config: &config.Config{
 				ForgejoURL:   "https://example.com",
-				AuthToken:    "token-123",
+				AuthToken:    "testing-auth-token-123",
 				TeaPath:      "tea",
 				Host:         "localhost",
 				Port:         8080,
@@ -335,7 +335,7 @@ func TestAuthEdgeCases_ServerConfigurationEdgeCases(t *testing.T) {
 			name: "config with maximum timeouts",
 			config: &config.Config{
 				ForgejoURL:   "https://example.com",
-				AuthToken:    "token-123",
+				AuthToken:    "testing-auth-token-123",
 				TeaPath:      "tea",
 				Host:         "localhost",
 				Port:         8080,
@@ -349,7 +349,7 @@ func TestAuthEdgeCases_ServerConfigurationEdgeCases(t *testing.T) {
 			name: "config with special characters in paths",
 			config: &config.Config{
 				ForgejoURL:   "https://example.com",
-				AuthToken:    "token-123",
+				AuthToken:    "testing-auth-token-123",
 				TeaPath:      "/path/with spaces/and-dashes_123",
 				Host:         "localhost",
 				Port:         8080,

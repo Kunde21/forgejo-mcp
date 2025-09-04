@@ -36,7 +36,7 @@ func TestAuthIntegration_ServerInitialization(t *testing.T) {
 			name: "valid config with auth token",
 			config: &config.Config{
 				ForgejoURL:   "https://example.forgejo.com",
-				AuthToken:    "valid-token-12345",
+				AuthToken:    "valid-testing-auth-token-12345",
 				TeaPath:      "tea",
 				Host:         "localhost",
 				Port:         8080,
@@ -50,7 +50,7 @@ func TestAuthIntegration_ServerInitialization(t *testing.T) {
 			name: "config with empty auth token",
 			config: &config.Config{
 				ForgejoURL:   "https://example.forgejo.com",
-				AuthToken:    "",
+				AuthToken:    "a",
 				TeaPath:      "tea",
 				Host:         "localhost",
 				Port:         8080,
@@ -58,14 +58,14 @@ func TestAuthIntegration_ServerInitialization(t *testing.T) {
 				WriteTimeout: 30,
 				LogLevel:     "info",
 			},
-			expectError:   true, // Config validation requires non-empty auth token
-			expectedError: "AuthToken: cannot be blank",
+			expectError:   true,
+			expectedError: "AuthToken: the length must be between 20 and 100",
 		},
 		{
 			name: "config with invalid forgejo URL",
 			config: &config.Config{
-				ForgejoURL:   "invalid-url",
-				AuthToken:    "valid-token-12345",
+				ForgejoURL:   ":invalid-url::",
+				AuthToken:    "valid-testing-auth-token-12345",
 				TeaPath:      "tea",
 				Host:         "localhost",
 				Port:         8080,
@@ -122,10 +122,10 @@ func TestAuthIntegration_ToolExecutionWithAuthValidation(t *testing.T) {
 	}{
 		{
 			name:      "successful tool execution with valid auth",
-			authToken: "valid-token-12345-abcdef-very-long-token",
+			authToken: "valid-testing-auth-token-12345-abcdef-very-long-token",
 			mockValidator: &MockTokenValidator{
 				validateFunc: func(baseURL, token string) error {
-					if token == "valid-token-12345-abcdef-very-long-token" {
+					if token == "valid-testing-auth-token-12345-abcdef-very-long-token" {
 						return nil
 					}
 					return errors.New("invalid token")
@@ -137,7 +137,7 @@ func TestAuthIntegration_ToolExecutionWithAuthValidation(t *testing.T) {
 		},
 		{
 			name:      "tool execution fails with invalid auth",
-			authToken: "invalid-token-short",
+			authToken: "invalid-token-2-short",
 			mockValidator: &MockTokenValidator{
 				validateFunc: func(baseURL, token string) error {
 					return auth.NewAuthServerError(401, "Unauthorized")
@@ -150,7 +150,7 @@ func TestAuthIntegration_ToolExecutionWithAuthValidation(t *testing.T) {
 		},
 		{
 			name:      "tool execution fails with network error",
-			authToken: "valid-token-12345-abcdef-very-long-token",
+			authToken: "valid-testing-auth-token-12345-abcdef-very-long-token",
 			mockValidator: &MockTokenValidator{
 				validateFunc: func(baseURL, token string) error {
 					return auth.NewAuthNetworkError("connection failed", "https://example.forgejo.com")
@@ -163,7 +163,7 @@ func TestAuthIntegration_ToolExecutionWithAuthValidation(t *testing.T) {
 		},
 		{
 			name:      "tool execution fails with timeout",
-			authToken: "valid-token-12345-abcdef-very-long-token",
+			authToken: "valid-testing-auth-token-12345-abcdef-very-long-token",
 			mockValidator: &MockTokenValidator{
 				validateFunc: func(baseURL, token string) error {
 					return auth.NewAuthTimeoutError(5 * time.Second)
@@ -241,10 +241,10 @@ func TestAuthIntegration_AuthStateManagement(t *testing.T) {
 	}{
 		{
 			name:      "successful auth state caching",
-			authToken: "valid-token-12345-abcdef-very-long-token",
+			authToken: "valid-testing-auth-token-12345-abcdef-very-long-token",
 			mockValidator: &MockTokenValidator{
 				validateFunc: func(baseURL, token string) error {
-					if token == "valid-token-12345-abcdef-very-long-token" {
+					if token == "valid-testing-auth-token-12345-abcdef-very-long-token" {
 						return nil
 					}
 					return errors.New("invalid token")
@@ -255,7 +255,7 @@ func TestAuthIntegration_AuthStateManagement(t *testing.T) {
 		},
 		{
 			name:      "failed auth not cached",
-			authToken: "invalid-token-short",
+			authToken: "invalid-token-2-short",
 			mockValidator: &MockTokenValidator{
 				validateFunc: func(baseURL, token string) error {
 					return auth.NewAuthServerError(401, "Unauthorized")
@@ -354,7 +354,7 @@ func TestAuthIntegration_AuthStateManagement(t *testing.T) {
 func TestAuthIntegration_ThreadSafeAuthHandling(t *testing.T) {
 	cfg := &config.Config{
 		ForgejoURL:   "https://example.forgejo.com",
-		AuthToken:    "valid-token-12345-abcdef-very-long-token",
+		AuthToken:    "valid-testing-auth-token-12345-abcdef-very-long-token",
 		TeaPath:      "tea",
 		Host:         "localhost",
 		Port:         8080,
@@ -439,7 +439,7 @@ func TestAuthIntegration_ThreadSafeAuthHandling(t *testing.T) {
 func TestAuthIntegration_AuthStateInitialization(t *testing.T) {
 	cfg := &config.Config{
 		ForgejoURL:   "https://example.forgejo.com",
-		AuthToken:    "test-token",
+		AuthToken:    "testing-auth-token-123",
 		TeaPath:      "tea",
 		Host:         "localhost",
 		Port:         8080,
@@ -486,15 +486,15 @@ func TestAuthIntegration_CompleteAuthenticationFlow(t *testing.T) {
 		{
 			name: "complete successful authentication flow",
 			setupEnv: func() {
-				t.Setenv("GITEA_TOKEN", "env-token-12345-abcdef-very-long-token")
+				t.Setenv("GITEA_TOKEN", "env-testing-auth-token-12345-abcdef-very-long-token")
 			},
 			cleanupEnv: func() {
 				// Environment cleanup is handled by t.Setenv
 			},
-			authToken: "env-token-12345-abcdef-very-long-token",
+			authToken: "env-testing-auth-token-12345-abcdef-very-long-token",
 			mockValidator: &MockTokenValidator{
 				validateFunc: func(baseURL, token string) error {
-					if token == "env-token-12345-abcdef-very-long-token" {
+					if token == "env-testing-auth-token-12345-abcdef-very-long-token" {
 						return nil
 					}
 					return auth.NewAuthServerError(401, "Unauthorized")
@@ -514,10 +514,8 @@ func TestAuthIntegration_CompleteAuthenticationFlow(t *testing.T) {
 			setupEnv: func() {
 				t.Setenv("GITEA_TOKEN", "invalid-short-token")
 			},
-			cleanupEnv: func() {
-				// Environment cleanup is handled by t.Setenv
-			},
-			authToken: "invalid-short-token",
+			cleanupEnv: func() {},
+			authToken:  "invalid-2-short-token",
 			mockValidator: &MockTokenValidator{
 				validateFunc: func(baseURL, token string) error {
 					return auth.NewAuthServerError(401, "Unauthorized")
@@ -530,12 +528,12 @@ func TestAuthIntegration_CompleteAuthenticationFlow(t *testing.T) {
 		{
 			name: "authentication flow with network timeout",
 			setupEnv: func() {
-				t.Setenv("GITEA_TOKEN", "timeout-token-12345-abcdef-very-long-token")
+				t.Setenv("GITEA_TOKEN", "timeout-testing-auth-token-12345-abcdef-very-long-token")
 			},
 			cleanupEnv: func() {
 				// Environment cleanup is handled by t.Setenv
 			},
-			authToken: "timeout-token-12345-abcdef-very-long-token",
+			authToken: "timeout-testing-auth-token-12345-abcdef-very-long-token",
 			mockValidator: &MockTokenValidator{
 				validateFunc: func(baseURL, token string) error {
 					return auth.NewAuthTimeoutError(2 * time.Second)
@@ -553,11 +551,9 @@ func TestAuthIntegration_CompleteAuthenticationFlow(t *testing.T) {
 			if tt.setupEnv != nil {
 				tt.setupEnv()
 			}
-			defer func() {
-				if tt.cleanupEnv != nil {
-					tt.cleanupEnv()
-				}
-			}()
+			if tt.cleanupEnv != nil {
+				t.Cleanup(tt.cleanupEnv)
+			}
 
 			// Create server configuration
 			cfg := &config.Config{
@@ -639,7 +635,7 @@ func TestAuthIntegration_ErrorScenarios(t *testing.T) {
 	}{
 		{
 			name:      "server error during validation",
-			authToken: "test-token-12345",
+			authToken: "test-testing-auth-token-12345",
 			mockValidator: &MockTokenValidator{
 				validateFunc: func(baseURL, token string) error {
 					return auth.NewAuthServerError(500, "Internal Server Error")
@@ -652,7 +648,7 @@ func TestAuthIntegration_ErrorScenarios(t *testing.T) {
 		},
 		{
 			name:      "network error during validation",
-			authToken: "test-token-12345",
+			authToken: "test-testing-auth-token-12345",
 			mockValidator: &MockTokenValidator{
 				validateFunc: func(baseURL, token string) error {
 					return auth.NewAuthNetworkError("connection refused", "https://example.forgejo.com")
@@ -665,7 +661,7 @@ func TestAuthIntegration_ErrorScenarios(t *testing.T) {
 		},
 		{
 			name:      "timeout error during validation",
-			authToken: "test-token-12345",
+			authToken: "test-testing-auth-token-12345",
 			mockValidator: &MockTokenValidator{
 				validateFunc: func(baseURL, token string) error {
 					return auth.NewAuthTimeoutError(5 * time.Second)
@@ -678,7 +674,7 @@ func TestAuthIntegration_ErrorScenarios(t *testing.T) {
 		},
 		{
 			name:      "token validation error",
-			authToken: "test-token-12345",
+			authToken: "test-testing-auth-token-12345",
 			mockValidator: &MockTokenValidator{
 				validateFunc: func(baseURL, token string) error {
 					return &auth.TokenValidationError{
