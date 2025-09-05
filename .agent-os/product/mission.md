@@ -1,11 +1,11 @@
 # Product Mission
 
-> Last Updated: 2025-08-26
-> Version: 1.0.0
+> Last Updated: 2025-09-05
+> Version: 1.0.1
 
 ## Pitch
 
-Forgejo MCP is a Model Context Protocol server that enables AI agents to interact with Forgejo repositories through standardized CLI tools. It provides a bridge between AI workflows and Forgejo's Git repository management features.
+Forgejo MCP is a Model Context Protocol server that enables AI agents to interact with Forgejo repositories through standardized SDK libraries. It provides a bridge between AI workflows and Forgejo's Git repository management features.
 
 ## Users
 
@@ -20,14 +20,13 @@ AI agents need a standardized way to interact with Forgejo repositories for comm
 ## Differentiators
 
 - Built specifically for the Model Context Protocol standard
-- Leverages existing `tea` CLI tool functionality from Gitea
-- Works with any Forgejo repository that has a remote configured
+- Leverages existing SDK functionality from Gitea
+- Works with any Forgejo or Gitea repository that has a remote configured
 - Provides a clean interface for AI agents to perform repository management tasks
 
 ## Key Features
 
+- Repository context awareness
 - Pull Request Management (list, comment, review)
 - Issue Management (list, create, close, comment)
-- CLI-based interaction model
 - External authentication model
-- Repository context awareness
