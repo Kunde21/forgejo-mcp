@@ -333,7 +333,7 @@ func (h *SDKPRListHandler) HandlePRListRequest(ctx context.Context, req *mcp.Cal
 
 	// Transform to MCP response format
 	result := map[string]interface{}{
-		"pullRequests": h.transformPRsToResponse(prs),
+		"pullRequests": h.transformPRsToResponse(prs, repoMetadata),
 		"total":        len(prs),
 		"repository":   repoMetadata,
 	}
@@ -348,7 +348,7 @@ func (h *SDKPRListHandler) HandlePRListRequest(ctx context.Context, req *mcp.Cal
 }
 
 // transformPRsToResponse transforms Gitea SDK PR data to MCP response format
-func (h *SDKPRListHandler) transformPRsToResponse(prs []*gitea.PullRequest) []map[string]interface{} {
+func (h *SDKPRListHandler) transformPRsToResponse(prs []*gitea.PullRequest, repoMetadata map[string]interface{}) []map[string]interface{} {
 	result := make([]map[string]interface{}, len(prs))
 	for i, pr := range prs {
 		// Transform to MCP-compatible format
@@ -376,6 +376,9 @@ func (h *SDKPRListHandler) transformPRsToResponse(prs []*gitea.PullRequest) []ma
 		// Add additional metadata for MCP compatibility
 		prData["type"] = "pull_request"
 		prData["url"] = pr.HTMLURL
+
+		// Add repository metadata to individual PR object
+		prData["repository"] = repoMetadata
 
 		result[i] = prData
 	}
@@ -603,7 +606,7 @@ func (h *SDKIssueListHandler) HandleIssueListRequest(ctx context.Context, req *m
 
 	// Transform to MCP response format
 	result := map[string]interface{}{
-		"issues":     h.transformIssuesToResponse(issues),
+		"issues":     h.transformIssuesToResponse(issues, repoMetadata),
 		"total":      len(issues),
 		"repository": repoMetadata,
 	}
@@ -618,7 +621,7 @@ func (h *SDKIssueListHandler) HandleIssueListRequest(ctx context.Context, req *m
 }
 
 // transformIssuesToResponse transforms Gitea SDK issue data to MCP response format
-func (h *SDKIssueListHandler) transformIssuesToResponse(issues []*gitea.Issue) []map[string]interface{} {
+func (h *SDKIssueListHandler) transformIssuesToResponse(issues []*gitea.Issue, repoMetadata map[string]interface{}) []map[string]interface{} {
 	result := make([]map[string]interface{}, len(issues))
 	for i, issue := range issues {
 		// Transform to MCP-compatible format
@@ -642,6 +645,9 @@ func (h *SDKIssueListHandler) transformIssuesToResponse(issues []*gitea.Issue) [
 		// Add additional metadata for MCP compatibility
 		issueData["type"] = "issue"
 		issueData["url"] = issue.HTMLURL
+
+		// Add repository metadata to individual issue object
+		issueData["repository"] = repoMetadata
 
 		result[i] = issueData
 	}
