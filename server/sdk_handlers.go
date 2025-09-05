@@ -129,6 +129,87 @@ func validateRepositoryAccess(client GiteaClientInterface, repoParam string) (bo
 	return true, nil
 }
 
+// resolveCWDToRepository attempts to resolve a CWD path to a repository identifier
+// This is a basic implementation that looks for common patterns
+func resolveCWDToRepository(cwd string) (string, error) {
+	if cwd == "" {
+		return "", fmt.Errorf("CWD is empty")
+	}
+
+	// Remove any trailing slashes
+	cwd = strings.TrimSuffix(cwd, "/")
+
+	// Look for patterns like /owner/repo or owner/repo in the path
+	parts := strings.Split(cwd, "/")
+	if len(parts) < 2 {
+		return "", fmt.Errorf("CWD does not contain a valid repository path")
+	}
+
+	// Find the last two parts that could be owner/repo
+	for i := len(parts) - 1; i >= 1; i-- {
+		potentialOwner := parts[i-1]
+		potentialRepo := parts[i]
+
+		// Skip empty parts
+		if potentialOwner == "" || potentialRepo == "" {
+			continue
+		}
+
+		// Basic validation - should not contain spaces or special chars that aren't allowed in repo names
+		if strings.ContainsAny(potentialOwner, " \t\n\r") || strings.ContainsAny(potentialRepo, " \t\n\r") {
+			continue
+		}
+
+		repoParam := potentialOwner + "/" + potentialRepo
+		if valid, _ := validateRepositoryFormat(repoParam); valid {
+			return repoParam, nil
+		}
+	}
+
+	return "", fmt.Errorf("could not resolve repository from CWD: %s", cwd)
+}
+
+// extractRepositoryMetadata extracts and caches repository metadata
+func extractRepositoryMetadata(client GiteaClientInterface, repoParam string) (map[string]interface{}, error) {
+	valid, err := validateRepositoryFormat(repoParam)
+	if !valid {
+		return nil, err
+	}
+
+	owner, repo, _ := strings.Cut(repoParam, "/")
+	giteaRepo, _, err := client.GetRepo(owner, repo)
+	if err != nil {
+		return nil, fmt.Errorf("failed to extract repository metadata: %w", err)
+	}
+
+	metadata := map[string]interface{}{
+		"id":          giteaRepo.ID,
+		"name":        giteaRepo.Name,
+		"fullName":    giteaRepo.FullName,
+		"description": giteaRepo.Description,
+		"private":     giteaRepo.Private,
+		"fork":        giteaRepo.Fork,
+		"archived":    giteaRepo.Archived,
+		"stars":       giteaRepo.Stars,
+		"forks":       giteaRepo.Forks,
+		"size":        giteaRepo.Size,
+		"url":         giteaRepo.HTMLURL,
+		"sshUrl":      giteaRepo.SSHURL,
+		"cloneUrl":    giteaRepo.CloneURL,
+	}
+
+	if giteaRepo.Owner != nil {
+		metadata["owner"] = map[string]interface{}{
+			"id":       giteaRepo.Owner.ID,
+			"username": giteaRepo.Owner.UserName,
+			"fullName": giteaRepo.Owner.FullName,
+			"email":    giteaRepo.Owner.Email,
+		}
+	}
+
+	return metadata, nil
+}
+
 // SDKPRListHandler handles pr_list tool requests with Gitea SDK integration
 type SDKPRListHandler struct {
 	logger *logrus.Logger
@@ -158,14 +239,18 @@ func (h *SDKPRListHandler) HandlePRListRequest(ctx context.Context, req *mcp.Cal
 	if args.Repository != "" {
 		repoParam = args.Repository
 	} else if args.CWD != "" {
-		// TODO: Implement CWD to repository resolution
-		return &mcp.CallToolResult{
-			Content: []mcp.Content{
-				&mcp.TextContent{
-					Text: "CWD parameter resolution not yet implemented",
+		// Resolve CWD to repository identifier
+		var err error
+		repoParam, err = resolveCWDToRepository(args.CWD)
+		if err != nil {
+			return &mcp.CallToolResult{
+				Content: []mcp.Content{
+					&mcp.TextContent{
+						Text: fmt.Sprintf("Error resolving repository from CWD: %v", err),
+					},
 				},
-			},
-		}, nil, nil
+			}, nil, err
+		}
 	} else {
 		return &mcp.CallToolResult{
 			Content: []mcp.Content{
@@ -421,14 +506,18 @@ func (h *SDKIssueListHandler) HandleIssueListRequest(ctx context.Context, req *m
 	if args.Repository != "" {
 		repoParam = args.Repository
 	} else if args.CWD != "" {
-		// TODO: Implement CWD to repository resolution
-		return &mcp.CallToolResult{
-			Content: []mcp.Content{
-				&mcp.TextContent{
-					Text: "CWD parameter resolution not yet implemented",
+		// Resolve CWD to repository identifier
+		var err error
+		repoParam, err = resolveCWDToRepository(args.CWD)
+		if err != nil {
+			return &mcp.CallToolResult{
+				Content: []mcp.Content{
+					&mcp.TextContent{
+						Text: fmt.Sprintf("Error resolving repository from CWD: %v", err),
+					},
 				},
-			},
-		}, nil, nil
+			}, nil, err
+		}
 	} else {
 		return &mcp.CallToolResult{
 			Content: []mcp.Content{

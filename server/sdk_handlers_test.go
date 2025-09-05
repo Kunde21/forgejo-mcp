@@ -254,9 +254,7 @@ func TestSDKPRListHandler_HandlePRListRequest(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	req := &mcp.CallToolRequest{
-		Repository: "testuser/test-repo",
-	}
+	req := &mcp.CallToolRequest{}
 	args := struct {
 		Repository string `json:"repository,omitempty"`
 		CWD        string `json:"cwd,omitempty"`
@@ -347,14 +345,10 @@ func TestSDKRepositoryHandler_ListRepositories(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	req := &mcp.CallToolRequest{
-		Repository: "testuser/test-repo",
-	}
+	req := &mcp.CallToolRequest{}
 	args := struct {
 		Limit int `json:"limit,omitempty"`
-	}{
-		Repository: "testuser/test-repo",
-	}
+	}{}
 
 	result, data, err := handler.ListRepositories(ctx, req, args)
 
@@ -421,14 +415,10 @@ func TestSDKRepositoryHandler_EmptyResults(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	req := &mcp.CallToolRequest{
-		Repository: "testuser/test-repo",
-	}
+	req := &mcp.CallToolRequest{}
 	args := struct {
 		Limit int `json:"limit,omitempty"`
-	}{
-		Repository: "testuser/test-repo",
-	}
+	}{}
 
 	result, data, err := handler.ListRepositories(ctx, req, args)
 
