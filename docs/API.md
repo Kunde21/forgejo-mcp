@@ -4,7 +4,7 @@ This document describes the API endpoints and tools available through the Forgej
 
 ## Overview
 
-The Forgejo MCP server provides a Model Context Protocol interface that allows AI agents to interact with Forgejo repositories through standardized CLI tools. All interactions are performed within the context of a git repository that has a Forgejo remote configured.
+The Forgejo MCP server provides a Model Context Protocol interface that allows AI agents to interact with Forgejo repositories using the official Gitea SDK for direct API integration. This provides improved performance, reliability, and comprehensive error handling compared to CLI-based approaches.
 
 ## Authentication
 
@@ -55,6 +55,31 @@ Authentication to the server must happen outside of the MCP calls, before the ag
       "state": "open",
       "labels": ["enhancement", "ui"],
       "created_at": "2025-08-26T09:15:00Z"
+    }
+  ]
+}
+```
+
+### Repository List Tool
+
+**Name:** `repo_list`
+
+**Description:** Lists all repositories accessible to the authenticated user.
+
+**Parameters:** None
+
+**Response:**
+```json
+{
+  "repositories": [
+    {
+      "id": 123,
+      "name": "my-project",
+      "full_name": "user/my-project",
+      "description": "A sample project",
+      "private": false,
+      "owner": "user",
+      "url": "https://forgejo.example.com/user/my-project"
     }
   ]
 }

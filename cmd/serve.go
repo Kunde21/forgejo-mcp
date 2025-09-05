@@ -21,8 +21,9 @@ func registerTools(mcpServer *mcp.Server, cfg *config.Config, logger *logrus.Log
 	}
 
 	// Create handlers with SDK client
-	prHandler := server.NewTeaPRListHandler(logger, giteaClient)
-	issueHandler := server.NewTeaIssueListHandler(logger, giteaClient)
+	prHandler := server.NewSDKPRListHandler(logger, giteaClient)
+	issueHandler := server.NewSDKIssueListHandler(logger, giteaClient)
+	repoHandler := server.NewSDKRepositoryHandler(logger, giteaClient)
 
 	// Register PR list tool
 	mcp.AddTool(mcpServer, &mcp.Tool{
@@ -36,7 +37,13 @@ func registerTools(mcpServer *mcp.Server, cfg *config.Config, logger *logrus.Log
 		Description: "List issues from the Forgejo repository",
 	}, issueHandler.HandleIssueListRequest)
 
-	logger.Info("Registered MCP tools with tea CLI integration")
+	// Register repository list tool
+	mcp.AddTool(mcpServer, &mcp.Tool{
+		Name:        "repo_list",
+		Description: "List repositories from the Forgejo instance",
+	}, repoHandler.ListRepositories)
+
+	logger.Info("Registered MCP tools with Gitea SDK integration")
 	return nil
 }
 

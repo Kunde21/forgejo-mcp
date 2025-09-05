@@ -4,13 +4,13 @@ Model Context Protocol server for interacting with Forgejo repositories.
 
 ## Description
 
-This server wraps the functionality of the `tea` cli tool, originally from the `gitea` project, to provide MCP (Model Context Protocol) access to Forgejo repository features. It enables AI agents to interact with Forgejo repositories for common development tasks like managing pull requests and issues.
+This server provides MCP (Model Context Protocol) access to Forgejo repository features using the official Gitea SDK. It enables AI agents to interact with Forgejo repositories for common development tasks like managing pull requests and issues with direct API integration for improved performance and reliability.
 
 ## Prerequisites
 
 - Go 1.24.6 or later
-- `tea` CLI tool installed and configured
 - Access to a Forgejo instance
+- Authentication token for Forgejo API access
 
 ## Installation
 
@@ -34,7 +34,6 @@ The application can be configured through environment variables or a configurati
 
 - `FORGEJO_MCP_FORGEJO_URL` - URL of your Forgejo instance
 - `FORGEJO_MCP_AUTH_TOKEN` - Authentication token for Forgejo API
-- `FORGEJO_MCP_TEA_PATH` - Path to the tea CLI executable (default: "tea")
 - `FORGEJO_MCP_DEBUG` - Enable debug logging (default: false)
 - `FORGEJO_MCP_LOG_LEVEL` - Log level (default: "info")
 
@@ -45,7 +44,6 @@ Create a `config.yaml` file in the current directory or in `~/.forgejo-mcp/confi
 ```yaml
 forgejo_url: "https://your.forgejo.instance"
 auth_token: "your-auth-token"
-tea_path: "/path/to/tea"
 debug: false
 log_level: "info"
 ```
@@ -89,12 +87,11 @@ The forgejo-mcp CLI provides the following commands:
 
 ## Features
 
-### CLI interactions
+### SDK Integration
 
-This server wraps the functionality of the `tea` cli tool, originally from the `gitea` project.
-Authentication to the server must happen outside of the mcp calls, before the agent connects.
+This server uses the official Gitea SDK for direct API integration with Forgejo instances, providing improved performance, reliability, and comprehensive error handling compared to CLI-based approaches.
 
-All calls are expected to come from a git repository with a forgejo server remote.
+Authentication is handled through API tokens configured at startup. All operations are performed directly via the Forgejo REST API.
 
 ### PR interactions
 
@@ -120,7 +117,7 @@ Tools List:
 ### Prerequisites
 
 - Go 1.24.6 or later
-- `tea` CLI tool for testing
+- Access to a Forgejo instance for testing
 
 ### Building
 

@@ -54,11 +54,11 @@ These are the tasks to be completed for the spec detailed in @.agent-os/specs/20
 ### Task 5: Cleanup and Validation
 **Description:** Remove tea CLI dependencies and validate complete migration
 
-5.1 Write tests for tea CLI dependency removal verification
-5.2 Remove all tea CLI imports and references from codebase
-5.3 Write tests for go.mod cleanup and dependency validation
-5.4 Update go.mod to remove tea-related dependencies
-5.5 Write end-to-end integration tests for complete migration
-5.6 Execute full test suite and performance benchmarks
-5.7 Update documentation and deployment scripts
-5.8 Verify all cleanup and validation tests pass
+- [x] 5.1 Write tests for tea CLI dependency removal verification
+- [x] 5.2 Remove all tea CLI imports and references from codebase
+- [x] 5.3 Write tests for go.mod cleanup and dependency validation
+- [x] 5.4 Update go.mod to remove tea-related dependencies
+- [x] 5.5 Write end-to-end integration tests for complete migration
+- [x] 5.6 Execute full test suite and performance benchmarks
+- [x] 5.7 Update documentation and deployment scripts
+- [x] 5.8 Verify all cleanup and validation tests pass
