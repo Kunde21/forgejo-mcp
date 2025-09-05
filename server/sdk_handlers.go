@@ -74,6 +74,61 @@ type GiteaClientInterface interface {
 	ListRepoCommits(owner, repo string, opt gitea.ListCommitOptions) ([]*gitea.Commit, *gitea.Response, error)
 }
 
+// validateRepositoryFormat validates that a repository parameter follows the owner/repo format
+func validateRepositoryFormat(repoParam string) (bool, error) {
+	if repoParam == "" {
+		return false, fmt.Errorf("invalid repository format: expected 'owner/repo'")
+	}
+
+	owner, repo, ok := strings.Cut(repoParam, "/")
+	if !ok {
+		return false, fmt.Errorf("invalid repository format: expected 'owner/repo'")
+	}
+	if owner == "" {
+		return false, fmt.Errorf("invalid repository format: owner cannot be empty")
+	}
+	if repo == "" {
+		return false, fmt.Errorf("invalid repository format: repository name cannot be empty")
+	}
+
+	// Basic validation - allow common special characters
+	// Let the API handle more complex validation and security
+	validChars := "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_.<>@"
+	for _, char := range owner + repo {
+		if !strings.ContainsRune(validChars, char) {
+			return false, fmt.Errorf("invalid repository format: expected 'owner/repo'")
+		}
+	}
+	return true, nil
+}
+
+// validateRepositoryExistence checks if a repository exists via Gitea API
+func validateRepositoryExistence(client GiteaClientInterface, repoParam string) (bool, error) {
+	valid, err := validateRepositoryFormat(repoParam)
+	if !valid {
+		return false, err
+	}
+	owner, repo, _ := strings.Cut(repoParam, "/")
+	if _, _, err = client.GetRepo(owner, repo); err != nil {
+		return false, fmt.Errorf("failed to validate repository existence: %w", err)
+	}
+	return true, nil
+}
+
+// validateRepositoryAccess checks if the user has access to the repository
+func validateRepositoryAccess(client GiteaClientInterface, repoParam string) (bool, error) {
+	valid, err := validateRepositoryFormat(repoParam)
+	if !valid {
+		return false, err
+	}
+	owner, repo, _ := strings.Cut(repoParam, "/")
+	_, _, err = client.GetRepo(owner, repo)
+	if err != nil {
+		return false, fmt.Errorf("failed to validate repository access: %w", err)
+	}
+	return true, nil
+}
+
 // SDKPRListHandler handles pr_list tool requests with Gitea SDK integration
 type SDKPRListHandler struct {
 	logger *logrus.Logger
@@ -90,11 +145,60 @@ func NewSDKPRListHandler(logger *logrus.Logger, client GiteaClientInterface) *SD
 
 // HandlePRListRequest handles a pr_list request with Gitea SDK integration
 func (h *SDKPRListHandler) HandlePRListRequest(ctx context.Context, req *mcp.CallToolRequest, args struct {
-	State  string `json:"state,omitempty"`
-	Author string `json:"author,omitempty"`
-	Limit  int    `json:"limit,omitempty"`
+	Repository string `json:"repository,omitempty"`
+	CWD        string `json:"cwd,omitempty"`
+	State      string `json:"state,omitempty"`
+	Author     string `json:"author,omitempty"`
+	Limit      int    `json:"limit,omitempty"`
 }) (*mcp.CallToolResult, any, error) {
 	h.logger.Info("Handling pr_list request with Gitea SDK")
+
+	// Validate repository parameter
+	var repoParam string
+	if args.Repository != "" {
+		repoParam = args.Repository
+	} else if args.CWD != "" {
+		// TODO: Implement CWD to repository resolution
+		return &mcp.CallToolResult{
+			Content: []mcp.Content{
+				&mcp.TextContent{
+					Text: "CWD parameter resolution not yet implemented",
+				},
+			},
+		}, nil, nil
+	} else {
+		return &mcp.CallToolResult{
+			Content: []mcp.Content{
+				&mcp.TextContent{
+					Text: "Error: repository parameter or cwd parameter is required",
+				},
+			},
+		}, nil, fmt.Errorf("repository parameter or cwd parameter is required")
+	}
+
+	// Validate repository format and access
+	if valid, err := validateRepositoryFormat(repoParam); !valid {
+		return &mcp.CallToolResult{
+			Content: []mcp.Content{
+				&mcp.TextContent{
+					Text: fmt.Sprintf("Error: %v", err),
+				},
+			},
+		}, nil, err
+	}
+
+	if valid, err := validateRepositoryAccess(h.client, repoParam); !valid {
+		return &mcp.CallToolResult{
+			Content: []mcp.Content{
+				&mcp.TextContent{
+					Text: fmt.Sprintf("Error: %v", err),
+				},
+			},
+		}, nil, err
+	}
+
+	// Parse repository identifier
+	owner, repo, _ := strings.Cut(repoParam, "/")
 
 	// Build SDK options from parameters
 	opts := gitea.ListPullRequestsOptions{}
@@ -120,11 +224,6 @@ func (h *SDKPRListHandler) HandlePRListRequest(ctx context.Context, req *mcp.Cal
 	if args.Limit > 0 {
 		opts.ListOptions.PageSize = args.Limit
 	}
-
-	// For this example, we'll use placeholder owner/repo
-	// In a real implementation, this would come from context or configuration
-	owner := "example-owner"
-	repo := "example-repo"
 
 	prs, _, err := h.client.ListRepoPullRequests(owner, repo, opts)
 	if err != nil {
@@ -308,28 +407,72 @@ func NewSDKIssueListHandler(logger *logrus.Logger, client GiteaClientInterface) 
 
 // HandleIssueListRequest handles an issue_list request with Gitea SDK integration
 func (h *SDKIssueListHandler) HandleIssueListRequest(ctx context.Context, req *mcp.CallToolRequest, args struct {
-	State  string   `json:"state,omitempty"`
-	Author string   `json:"author,omitempty"`
-	Labels []string `json:"labels,omitempty"`
-	Limit  int      `json:"limit,omitempty"`
+	Repository string   `json:"repository,omitempty"`
+	CWD        string   `json:"cwd,omitempty"`
+	State      string   `json:"state,omitempty"`
+	Author     string   `json:"author,omitempty"`
+	Labels     []string `json:"labels,omitempty"`
+	Limit      int      `json:"limit,omitempty"`
 }) (*mcp.CallToolResult, any, error) {
 	h.logger.Info("Handling issue_list request with Gitea SDK")
 
+	// Validate repository parameter
+	var repoParam string
+	if args.Repository != "" {
+		repoParam = args.Repository
+	} else if args.CWD != "" {
+		// TODO: Implement CWD to repository resolution
+		return &mcp.CallToolResult{
+			Content: []mcp.Content{
+				&mcp.TextContent{
+					Text: "CWD parameter resolution not yet implemented",
+				},
+			},
+		}, nil, nil
+	} else {
+		return &mcp.CallToolResult{
+			Content: []mcp.Content{
+				&mcp.TextContent{
+					Text: "Error: repository parameter or cwd parameter is required",
+				},
+			},
+		}, nil, fmt.Errorf("repository parameter or cwd parameter is required")
+	}
+
+	// Validate repository format and access
+	if valid, err := validateRepositoryFormat(repoParam); !valid {
+		return &mcp.CallToolResult{
+			Content: []mcp.Content{
+				&mcp.TextContent{
+					Text: fmt.Sprintf("Error: %v", err),
+				},
+			},
+		}, nil, err
+	}
+
+	if valid, err := validateRepositoryAccess(h.client, repoParam); !valid {
+		return &mcp.CallToolResult{
+			Content: []mcp.Content{
+				&mcp.TextContent{
+					Text: fmt.Sprintf("Error: %v", err),
+				},
+			},
+		}, nil, err
+	}
+
+	// Parse repository identifier (for future use in repository-specific queries)
+	_, _, _ = strings.Cut(repoParam, "/")
+
 	// Build SDK options from parameters
 	opts := gitea.ListIssueOption{}
-
-	if args.State != "" {
-		switch args.State {
-		case "open":
-			opts.State = gitea.StateOpen
-		case "closed":
-			opts.State = gitea.StateClosed
-		case "all":
-			opts.State = gitea.StateAll
-		default:
-			opts.State = gitea.StateOpen // default to open
-		}
-	} else {
+	switch args.State {
+	case "open":
+		opts.State = gitea.StateOpen
+	case "closed":
+		opts.State = gitea.StateClosed
+	case "all":
+		opts.State = gitea.StateAll
+	default:
 		opts.State = gitea.StateOpen // default to open
 	}
 

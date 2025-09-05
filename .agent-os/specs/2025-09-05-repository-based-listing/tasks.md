@@ -8,46 +8,46 @@ These are the tasks to be completed for the spec detailed in @.agent-os/specs/20
 ## Tasks
 
 ### Task 1: Write Repository Parameter Validation Tests
-**Status:** Pending
+**Status:** Completed
 **Priority:** High
 **Description:** Create comprehensive tests for repository parameter validation logic
 
-- Write unit tests for repository format validation (owner/repo format)
-- Test invalid repository formats (missing slash, extra slashes, empty parts)
-- Create tests for repository existence validation
-- Test access permission validation for private repositories
-- Write tests for organization-owned vs user-owned repository handling
-- Create mock scenarios for repository not found errors
-- Test edge cases like special characters in repository names
-- Verify error messages are descriptive and actionable
+- [x] Write unit tests for repository format validation (owner/repo format)
+- [x] Test invalid repository formats (missing slash, extra slashes, empty parts)
+- [x] Create tests for repository existence validation
+- [x] Test access permission validation for private repositories
+- [x] Write tests for organization-owned vs user-owned repository handling
+- [x] Create mock scenarios for repository not found errors
+- [x] Test edge cases like special characters in repository names
+- [x] Verify error messages are descriptive and actionable
 
 ### Task 2: Write API Handler Tests for Repository Parameters
-**Status:** Pending
+**Status:** Completed
 **Priority:** High
 **Description:** Create tests for updated PR and issue list handlers with repository parameters
 
-- Write tests for PR list handler with repository parameter
-- Write tests for issue list handler with repository parameter
-- Test CWD parameter resolution to repository identifier
-- Create tests for parameter precedence (repository vs cwd)
-- Test missing repository parameter error handling
-- Write tests for both repository and cwd parameter combinations
-- Create integration tests for end-to-end repository-based queries
-- Test pagination and filtering with repository context
+- [x] Write tests for PR list handler with repository parameter
+- [x] Write tests for issue list handler with repository parameter
+- [x] Test CWD parameter resolution to repository identifier
+- [x] Create tests for parameter precedence (repository vs cwd)
+- [x] Test missing repository parameter error handling
+- [x] Write tests for both repository and cwd parameter combinations
+- [x] Create integration tests for end-to-end repository-based queries
+- [x] Test pagination and filtering with repository context
 
 ### Task 3: Write Response Format Tests
-**Status:** Pending
+**Status:** Completed
 **Priority:** High
 **Description:** Create tests for updated response formats with repository metadata
 
-- Test PR response includes repository metadata
-- Test issue response includes repository metadata
-- Write tests for repository information in response headers
-- Create tests for backward compatibility of response structure
-- Test total count accuracy with repository filtering
-- Write tests for pagination metadata preservation
-- Create tests for error response formats
-- Verify response format consistency between PR and issue endpoints
+- [x] Test PR response includes repository metadata
+- [x] Test issue response includes repository metadata
+- [x] Write tests for repository information in response headers
+- [x] Create tests for backward compatibility of response structure
+- [x] Test total count accuracy with repository filtering
+- [x] Write tests for pagination metadata preservation
+- [x] Create tests for error response formats
+- [x] Verify response format consistency between PR and issue endpoints
 
 ### Task 4: Implement Repository Parameter Validation
 **Status:** Pending

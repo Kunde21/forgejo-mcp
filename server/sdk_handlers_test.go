@@ -254,13 +254,18 @@ func TestSDKPRListHandler_HandlePRListRequest(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	req := &mcp.CallToolRequest{}
+	req := &mcp.CallToolRequest{
+		Repository: "testuser/test-repo",
+	}
 	args := struct {
-		State  string `json:"state,omitempty"`
-		Author string `json:"author,omitempty"`
-		Limit  int    `json:"limit,omitempty"`
+		Repository string `json:"repository,omitempty"`
+		CWD        string `json:"cwd,omitempty"`
+		State      string `json:"state,omitempty"`
+		Author     string `json:"author,omitempty"`
+		Limit      int    `json:"limit,omitempty"`
 	}{
-		State: "open",
+		Repository: "example-owner/example-repo",
+		State:      "open",
 	}
 
 	result, data, err := handler.HandlePRListRequest(ctx, req, args)
@@ -342,10 +347,14 @@ func TestSDKRepositoryHandler_ListRepositories(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	req := &mcp.CallToolRequest{}
+	req := &mcp.CallToolRequest{
+		Repository: "testuser/test-repo",
+	}
 	args := struct {
 		Limit int `json:"limit,omitempty"`
-	}{}
+	}{
+		Repository: "testuser/test-repo",
+	}
 
 	result, data, err := handler.ListRepositories(ctx, req, args)
 
@@ -412,10 +421,14 @@ func TestSDKRepositoryHandler_EmptyResults(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	req := &mcp.CallToolRequest{}
+	req := &mcp.CallToolRequest{
+		Repository: "testuser/test-repo",
+	}
 	args := struct {
 		Limit int `json:"limit,omitempty"`
-	}{}
+	}{
+		Repository: "testuser/test-repo",
+	}
 
 	result, data, err := handler.ListRepositories(ctx, req, args)
 
@@ -495,14 +508,18 @@ func TestSDKHandlersIntegration(t *testing.T) {
 	repoHandler := &SDKRepositoryHandler{logger: logger, client: mockClient}
 
 	ctx := context.Background()
-	req := &mcp.CallToolRequest{}
+	req := &mcp.CallToolRequest{
+		Repository: "testuser/test-repo",
+	}
 
 	// Test PR handler
 	prArgs := struct {
-		State  string `json:"state,omitempty"`
-		Author string `json:"author,omitempty"`
-		Limit  int    `json:"limit,omitempty"`
-	}{State: "open"}
+		Repository string `json:"repository,omitempty"`
+		CWD        string `json:"cwd,omitempty"`
+		State      string `json:"state,omitempty"`
+		Author     string `json:"author,omitempty"`
+		Limit      int    `json:"limit,omitempty"`
+	}{Repository: "testuser/test-repo", State: "open"}
 
 	prResult, prData, prErr := prHandler.HandlePRListRequest(ctx, req, prArgs)
 	if prErr != nil {
@@ -521,7 +538,7 @@ func TestSDKHandlersIntegration(t *testing.T) {
 		Author string   `json:"author,omitempty"`
 		Labels []string `json:"labels,omitempty"`
 		Limit  int      `json:"limit,omitempty"`
-	}{State: "open"}
+	}{Repository: "testuser/test-repo", State: "open"}
 
 	issueResult, issueData, issueErr := issueHandler.HandleIssueListRequest(ctx, req, issueArgs)
 	if issueErr != nil {
@@ -537,7 +554,9 @@ func TestSDKHandlersIntegration(t *testing.T) {
 	// Test repository handler
 	repoArgs := struct {
 		Limit int `json:"limit,omitempty"`
-	}{}
+	}{
+		Repository: "testuser/test-repo",
+	}
 
 	repoResult, repoData, repoErr := repoHandler.ListRepositories(ctx, req, repoArgs)
 	if repoErr != nil {
@@ -587,11 +606,15 @@ func TestSDKPRListHandler_EmptyResults(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	req := &mcp.CallToolRequest{}
+	req := &mcp.CallToolRequest{
+		Repository: "testuser/test-repo",
+	}
 	args := struct {
-		State  string `json:"state,omitempty"`
-		Author string `json:"author,omitempty"`
-		Limit  int    `json:"limit,omitempty"`
+		Repository string `json:"repository,omitempty"`
+		CWD        string `json:"cwd,omitempty"`
+		State      string `json:"state,omitempty"`
+		Author     string `json:"author,omitempty"`
+		Limit      int    `json:"limit,omitempty"`
 	}{
 		State: "closed",
 	}
@@ -826,12 +849,18 @@ func TestSDKErrorHandling_SDKErrorTransformation(t *testing.T) {
 			}
 
 			ctx := context.Background()
-			req := &mcp.CallToolRequest{}
+			req := &mcp.CallToolRequest{
+				Repository: "testuser/test-repo",
+			}
 			args := struct {
-				State  string `json:"state,omitempty"`
-				Author string `json:"author,omitempty"`
-				Limit  int    `json:"limit,omitempty"`
-			}{}
+				Repository string `json:"repository,omitempty"`
+				CWD        string `json:"cwd,omitempty"`
+				State      string `json:"state,omitempty"`
+				Author     string `json:"author,omitempty"`
+				Limit      int    `json:"limit,omitempty"`
+			}{
+				Repository: "testuser/test-repo",
+			}
 
 			result, data, err := handler.HandlePRListRequest(ctx, req, args)
 
@@ -880,13 +909,17 @@ func TestSDKErrorHandling_IssueHandlerErrorTransformation(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	req := &mcp.CallToolRequest{}
+	req := &mcp.CallToolRequest{
+		Repository: "testuser/test-repo",
+	}
 	args := struct {
 		State  string   `json:"state,omitempty"`
 		Author string   `json:"author,omitempty"`
 		Labels []string `json:"labels,omitempty"`
 		Limit  int      `json:"limit,omitempty"`
-	}{}
+	}{
+		Repository: "testuser/test-repo",
+	}
 
 	result, data, err := handler.HandleIssueListRequest(ctx, req, args)
 
@@ -930,10 +963,14 @@ func TestSDKErrorHandling_RepositoryHandlerErrorTransformation(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	req := &mcp.CallToolRequest{}
+	req := &mcp.CallToolRequest{
+		Repository: "testuser/test-repo",
+	}
 	args := struct {
 		Limit int `json:"limit,omitempty"`
-	}{}
+	}{
+		Repository: "testuser/test-repo",
+	}
 
 	result, data, err := handler.ListRepositories(ctx, req, args)
 
@@ -978,12 +1015,18 @@ func TestSDKErrorHandling_ErrorContextPreservation(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	req := &mcp.CallToolRequest{}
+	req := &mcp.CallToolRequest{
+		Repository: "testuser/test-repo",
+	}
 	args := struct {
-		State  string `json:"state,omitempty"`
-		Author string `json:"author,omitempty"`
-		Limit  int    `json:"limit,omitempty"`
-	}{}
+		Repository string `json:"repository,omitempty"`
+		CWD        string `json:"cwd,omitempty"`
+		State      string `json:"state,omitempty"`
+		Author     string `json:"author,omitempty"`
+		Limit      int    `json:"limit,omitempty"`
+	}{
+		Repository: "testuser/test-repo",
+	}
 
 	result, _, err := handler.HandlePRListRequest(ctx, req, args)
 
@@ -1240,7 +1283,9 @@ func TestSDKResponseTransformation_EmptyResults(t *testing.T) {
 
 	// Test empty PRs
 	prHandler := &SDKPRListHandler{logger: logger}
-	emptyPRs := []*gitea.PullRequest{}
+	emptyPRs := []*gitea.PullRequest{
+		Repository: "testuser/test-repo",
+	}
 	prResult := prHandler.transformPRsToResponse(emptyPRs)
 	if len(prResult) != 0 {
 		t.Errorf("Expected empty PR result, got %d items", len(prResult))
@@ -1248,7 +1293,9 @@ func TestSDKResponseTransformation_EmptyResults(t *testing.T) {
 
 	// Test empty issues
 	issueHandler := &SDKIssueListHandler{logger: logger}
-	emptyIssues := []*gitea.Issue{}
+	emptyIssues := []*gitea.Issue{
+		Repository: "testuser/test-repo",
+	}
 	issueResult := issueHandler.transformIssuesToResponse(emptyIssues)
 	if len(issueResult) != 0 {
 		t.Errorf("Expected empty issue result, got %d items", len(issueResult))
@@ -1256,7 +1303,9 @@ func TestSDKResponseTransformation_EmptyResults(t *testing.T) {
 
 	// Test empty repositories
 	repoHandler := &SDKRepositoryHandler{logger: logger}
-	emptyRepos := []*gitea.Repository{}
+	emptyRepos := []*gitea.Repository{
+		Repository: "testuser/test-repo",
+	}
 	repoResult := repoHandler.transformReposToResponse(emptyRepos)
 	if len(repoResult) != 0 {
 		t.Errorf("Expected empty repository result, got %d items", len(repoResult))
@@ -1313,14 +1362,18 @@ func TestSDKMigration_CLIToSDKCompatibility(t *testing.T) {
 	repoHandler := &SDKRepositoryHandler{logger: logger, client: mockClient}
 
 	ctx := context.Background()
-	req := &mcp.CallToolRequest{}
+	req := &mcp.CallToolRequest{
+		Repository: "testuser/test-repo",
+	}
 
 	// Test PR migration
 	prArgs := struct {
-		State  string `json:"state,omitempty"`
-		Author string `json:"author,omitempty"`
-		Limit  int    `json:"limit,omitempty"`
-	}{State: "open"}
+		Repository string `json:"repository,omitempty"`
+		CWD        string `json:"cwd,omitempty"`
+		State      string `json:"state,omitempty"`
+		Author     string `json:"author,omitempty"`
+		Limit      int    `json:"limit,omitempty"`
+	}{Repository: "testuser/test-repo", State: "open"}
 
 	prResult, prData, prErr := prHandler.HandlePRListRequest(ctx, req, prArgs)
 	if prErr != nil {
@@ -1355,7 +1408,7 @@ func TestSDKMigration_CLIToSDKCompatibility(t *testing.T) {
 		Author string   `json:"author,omitempty"`
 		Labels []string `json:"labels,omitempty"`
 		Limit  int      `json:"limit,omitempty"`
-	}{State: "open"}
+	}{Repository: "testuser/test-repo", State: "open"}
 
 	issueResult, issueData, issueErr := issueHandler.HandleIssueListRequest(ctx, req, issueArgs)
 	if issueErr != nil {
@@ -1387,7 +1440,9 @@ func TestSDKMigration_CLIToSDKCompatibility(t *testing.T) {
 	// Test Repository migration
 	repoArgs := struct {
 		Limit int `json:"limit,omitempty"`
-	}{}
+	}{
+		Repository: "testuser/test-repo",
+	}
 
 	repoResult, repoData, repoErr := repoHandler.ListRepositories(ctx, req, repoArgs)
 	if repoErr != nil {
@@ -1445,15 +1500,19 @@ func TestSDKMigration_CommandBuilderCompatibility(t *testing.T) {
 	issueHandler := &SDKIssueListHandler{logger: logger, client: mockClient}
 
 	ctx := context.Background()
-	req := &mcp.CallToolRequest{}
+	req := &mcp.CallToolRequest{
+		Repository: "testuser/test-repo",
+	}
 
 	// Test parameters that would be generated by CLI command builders
 	testCases := []struct {
 		name   string
 		prArgs struct {
-			State  string `json:"state,omitempty"`
-			Author string `json:"author,omitempty"`
-			Limit  int    `json:"limit,omitempty"`
+			Repository string `json:"repository,omitempty"`
+			CWD        string `json:"cwd,omitempty"`
+			State      string `json:"state,omitempty"`
+			Author     string `json:"author,omitempty"`
+			Limit      int    `json:"limit,omitempty"`
 		}
 		issueArgs struct {
 			State  string   `json:"state,omitempty"`
@@ -1465,44 +1524,50 @@ func TestSDKMigration_CommandBuilderCompatibility(t *testing.T) {
 		{
 			name: "open state",
 			prArgs: struct {
-				State  string `json:"state,omitempty"`
-				Author string `json:"author,omitempty"`
-				Limit  int    `json:"limit,omitempty"`
-			}{State: "open"},
+				Repository string `json:"repository,omitempty"`
+				CWD        string `json:"cwd,omitempty"`
+				State      string `json:"state,omitempty"`
+				Author     string `json:"author,omitempty"`
+				Limit      int    `json:"limit,omitempty"`
+			}{Repository: "testuser/test-repo", State: "open"},
 			issueArgs: struct {
 				State  string   `json:"state,omitempty"`
 				Author string   `json:"author,omitempty"`
 				Labels []string `json:"labels,omitempty"`
 				Limit  int      `json:"limit,omitempty"`
-			}{State: "open"},
+			}{Repository: "testuser/test-repo", State: "open"},
 		},
 		{
 			name: "closed state",
 			prArgs: struct {
-				State  string `json:"state,omitempty"`
-				Author string `json:"author,omitempty"`
-				Limit  int    `json:"limit,omitempty"`
-			}{State: "closed"},
+				Repository string `json:"repository,omitempty"`
+				CWD        string `json:"cwd,omitempty"`
+				State      string `json:"state,omitempty"`
+				Author     string `json:"author,omitempty"`
+				Limit      int    `json:"limit,omitempty"`
+			}{Repository: "testuser/test-repo", State: "closed"},
 			issueArgs: struct {
 				State  string   `json:"state,omitempty"`
 				Author string   `json:"author,omitempty"`
 				Labels []string `json:"labels,omitempty"`
 				Limit  int      `json:"limit,omitempty"`
-			}{State: "closed"},
+			}{Repository: "testuser/test-repo", State: "closed"},
 		},
 		{
 			name: "with limit",
 			prArgs: struct {
-				State  string `json:"state,omitempty"`
-				Author string `json:"author,omitempty"`
-				Limit  int    `json:"limit,omitempty"`
-			}{State: "open", Limit: 10},
+				Repository string `json:"repository,omitempty"`
+				CWD        string `json:"cwd,omitempty"`
+				State      string `json:"state,omitempty"`
+				Author     string `json:"author,omitempty"`
+				Limit      int    `json:"limit,omitempty"`
+			}{Repository: "testuser/test-repo", State: "open", Limit: 10},
 			issueArgs: struct {
 				State  string   `json:"state,omitempty"`
 				Author string   `json:"author,omitempty"`
 				Labels []string `json:"labels,omitempty"`
 				Limit  int      `json:"limit,omitempty"`
-			}{State: "open", Limit: 10},
+			}{Repository: "testuser/test-repo", State: "open", Limit: 10},
 		},
 	}
 
@@ -1578,7 +1643,9 @@ func TestSDKMockSetupAndTeardown(t *testing.T) {
 		{
 			name: "empty mock setup",
 			setupFunc: func() *MockGiteaClient {
-				return &MockGiteaClient{}
+				return &MockGiteaClient{
+					Repository: "testuser/test-repo",
+				}
 			},
 			teardownFunc: func(mock *MockGiteaClient) {
 				// No-op teardown for empty mock
@@ -1607,13 +1674,19 @@ func TestSDKMockSetupAndTeardown(t *testing.T) {
 
 			// Validate initial state
 			if mock.mockPRs == nil {
-				mock.mockPRs = []*gitea.PullRequest{}
+				mock.mockPRs = []*gitea.PullRequest{
+					Repository: "testuser/test-repo",
+				}
 			}
 			if mock.mockIssues == nil {
-				mock.mockIssues = []*gitea.Issue{}
+				mock.mockIssues = []*gitea.Issue{
+					Repository: "testuser/test-repo",
+				}
 			}
 			if mock.mockRepos == nil {
-				mock.mockRepos = []*gitea.Repository{}
+				mock.mockRepos = []*gitea.Repository{
+					Repository: "testuser/test-repo",
+				}
 			}
 
 			// Test mock functionality
@@ -1701,14 +1774,18 @@ func TestSDKMockSetupTeardownIntegration(t *testing.T) {
 	repoHandler := &SDKRepositoryHandler{logger: logger, client: mock}
 
 	ctx := context.Background()
-	req := &mcp.CallToolRequest{}
+	req := &mcp.CallToolRequest{
+		Repository: "testuser/test-repo",
+	}
 
 	// Test PR handler
 	prArgs := struct {
-		State  string `json:"state,omitempty"`
-		Author string `json:"author,omitempty"`
-		Limit  int    `json:"limit,omitempty"`
-	}{State: "open"}
+		Repository string `json:"repository,omitempty"`
+		CWD        string `json:"cwd,omitempty"`
+		State      string `json:"state,omitempty"`
+		Author     string `json:"author,omitempty"`
+		Limit      int    `json:"limit,omitempty"`
+	}{Repository: "testuser/test-repo", State: "open"}
 
 	prResult, prData, prErr := prHandler.HandlePRListRequest(ctx, req, prArgs)
 	if prErr != nil {
@@ -1727,7 +1804,7 @@ func TestSDKMockSetupTeardownIntegration(t *testing.T) {
 		Author string   `json:"author,omitempty"`
 		Labels []string `json:"labels,omitempty"`
 		Limit  int      `json:"limit,omitempty"`
-	}{State: "open"}
+	}{Repository: "testuser/test-repo", State: "open"}
 
 	issueResult, issueData, issueErr := issueHandler.HandleIssueListRequest(ctx, req, issueArgs)
 	if issueErr != nil {
@@ -1743,7 +1820,9 @@ func TestSDKMockSetupTeardownIntegration(t *testing.T) {
 	// Test repository handler
 	repoArgs := struct {
 		Limit int `json:"limit,omitempty"`
-	}{}
+	}{
+		Repository: "testuser/test-repo",
+	}
 
 	repoResult, repoData, repoErr := repoHandler.ListRepositories(ctx, req, repoArgs)
 	if repoErr != nil {
@@ -1800,12 +1879,18 @@ func TestSDKAuthenticationErrors_InvalidToken(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	req := &mcp.CallToolRequest{}
+	req := &mcp.CallToolRequest{
+		Repository: "testuser/test-repo",
+	}
 	args := struct {
-		State  string `json:"state,omitempty"`
-		Author string `json:"author,omitempty"`
-		Limit  int    `json:"limit,omitempty"`
-	}{}
+		Repository string `json:"repository,omitempty"`
+		CWD        string `json:"cwd,omitempty"`
+		State      string `json:"state,omitempty"`
+		Author     string `json:"author,omitempty"`
+		Limit      int    `json:"limit,omitempty"`
+	}{
+		Repository: "testuser/test-repo",
+	}
 
 	result, data, err := handler.HandlePRListRequest(ctx, req, args)
 
@@ -1849,10 +1934,14 @@ func TestSDKAuthenticationErrors_ExpiredToken(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	req := &mcp.CallToolRequest{}
+	req := &mcp.CallToolRequest{
+		Repository: "testuser/test-repo",
+	}
 	args := struct {
 		Limit int `json:"limit,omitempty"`
-	}{}
+	}{
+		Repository: "testuser/test-repo",
+	}
 
 	result, data, err := handler.ListRepositories(ctx, req, args)
 
@@ -1892,13 +1981,17 @@ func TestSDKAuthenticationErrors_InsufficientPermissions(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	req := &mcp.CallToolRequest{}
+	req := &mcp.CallToolRequest{
+		Repository: "testuser/test-repo",
+	}
 	args := struct {
 		State  string   `json:"state,omitempty"`
 		Author string   `json:"author,omitempty"`
 		Labels []string `json:"labels,omitempty"`
 		Limit  int      `json:"limit,omitempty"`
-	}{}
+	}{
+		Repository: "testuser/test-repo",
+	}
 
 	result, data, err := handler.HandleIssueListRequest(ctx, req, args)
 
@@ -1938,12 +2031,18 @@ func TestSDKAuthenticationErrors_MissingToken(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	req := &mcp.CallToolRequest{}
+	req := &mcp.CallToolRequest{
+		Repository: "testuser/test-repo",
+	}
 	args := struct {
-		State  string `json:"state,omitempty"`
-		Author string `json:"author,omitempty"`
-		Limit  int    `json:"limit,omitempty"`
-	}{}
+		Repository string `json:"repository,omitempty"`
+		CWD        string `json:"cwd,omitempty"`
+		State      string `json:"state,omitempty"`
+		Author     string `json:"author,omitempty"`
+		Limit      int    `json:"limit,omitempty"`
+	}{
+		Repository: "testuser/test-repo",
+	}
 
 	result, data, err := handler.HandlePRListRequest(ctx, req, args)
 
@@ -1979,10 +2078,14 @@ func TestSDKAuthenticationErrors_RateLimit(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	req := &mcp.CallToolRequest{}
+	req := &mcp.CallToolRequest{
+		Repository: "testuser/test-repo",
+	}
 	args := struct {
 		Limit int `json:"limit,omitempty"`
-	}{}
+	}{
+		Repository: "testuser/test-repo",
+	}
 
 	result, data, err := handler.ListRepositories(ctx, req, args)
 
@@ -2001,7 +2104,945 @@ func TestSDKAuthenticationErrors_RateLimit(t *testing.T) {
 	}
 
 	if data != nil {
-		t.Error("ListRepositories should return nil data on rate limit error")
+		t.Error("ListRepositories should return nil data on auth error")
+	}
+}
+
+// TestSDKResponseFormat_PRResponseIncludesRepositoryMetadata tests that PR responses include repository metadata
+func TestSDKResponseFormat_PRResponseIncludesRepositoryMetadata(t *testing.T) {
+	logger := logrus.New()
+	mockClient := &MockGiteaClient{
+		mockPRs: []*gitea.PullRequest{
+			{
+				ID:     1,
+				Index:  1,
+				Title:  "Test PR",
+				State:  gitea.StateOpen,
+				Poster: &gitea.User{UserName: "testuser"},
+			},
+		},
+	}
+
+	handler := &SDKPRListHandler{
+		logger: logger,
+		client: mockClient,
+	}
+
+	ctx := context.Background()
+	req := &mcp.CallToolRequest{
+		Repository: "testuser/test-repo",
+	}
+	args := struct {
+		Repository string `json:"repository,omitempty"`
+		CWD        string `json:"cwd,omitempty"`
+		State      string `json:"state,omitempty"`
+		Author     string `json:"author,omitempty"`
+		Limit      int    `json:"limit,omitempty"`
+	}{
+		Repository: "owner/repo",
+		State:      "open",
+	}
+
+	result, data, err := handler.HandlePRListRequest(ctx, req, args)
+
+	if err != nil {
+		t.Fatalf("HandlePRListRequest failed: %v", err)
+	}
+
+	if result == nil {
+		t.Fatal("HandlePRListRequest returned nil result")
+	}
+
+	if data == nil {
+		t.Fatal("HandlePRListRequest returned nil data")
+	}
+
+	// Verify response structure includes repository metadata
+	dataMap, ok := data.(map[string]interface{})
+	if !ok {
+		t.Fatal("HandlePRListRequest returned data of wrong type")
+	}
+
+	prs, exists := dataMap["pullRequests"]
+	if !exists {
+		t.Fatal("HandlePRListRequest data missing pullRequests field")
+	}
+
+	prsSlice, ok := prs.([]map[string]interface{})
+	if !ok {
+		t.Fatal("pullRequests field is not a slice")
+	}
+
+	if len(prsSlice) != 1 {
+		t.Errorf("Expected 1 PR, got %d", len(prsSlice))
+	}
+
+	// Verify PR includes repository metadata
+	if len(prsSlice) > 0 {
+		pr := prsSlice[0]
+		if pr["type"] != "pull_request" {
+			t.Errorf("Expected PR type 'pull_request', got %v", pr["type"])
+		}
+		if pr["url"] == "" {
+			t.Error("Expected PR to include URL")
+		}
+	}
+}
+
+// TestSDKResponseFormat_IssueResponseIncludesRepositoryMetadata tests that issue responses include repository metadata
+func TestSDKResponseFormat_IssueResponseIncludesRepositoryMetadata(t *testing.T) {
+	logger := logrus.New()
+	mockClient := &MockGiteaClient{
+		mockIssues: []*gitea.Issue{
+			{
+				ID:      1,
+				Index:   1,
+				Title:   "Test Issue",
+				State:   "open",
+				Poster:  &gitea.User{UserName: "testuser"},
+				Created: time.Date(2023, 1, 1, 12, 0, 0, 0, time.UTC),
+				Updated: time.Date(2023, 1, 2, 12, 0, 0, 0, time.UTC),
+			},
+		},
+	}
+
+	handler := &SDKIssueListHandler{
+		logger: logger,
+		client: mockClient,
+	}
+
+	ctx := context.Background()
+	req := &mcp.CallToolRequest{
+		Repository: "testuser/test-repo",
+	}
+	args := struct {
+		Repository string   `json:"repository,omitempty"`
+		CWD        string   `json:"cwd,omitempty"`
+		State      string   `json:"state,omitempty"`
+		Author     string   `json:"author,omitempty"`
+		Labels     []string `json:"labels,omitempty"`
+		Limit      int      `json:"limit,omitempty"`
+	}{
+		Repository: "owner/repo",
+		State:      "open",
+	}
+
+	result, data, err := handler.HandleIssueListRequest(ctx, req, args)
+
+	if err != nil {
+		t.Fatalf("HandleIssueListRequest failed: %v", err)
+	}
+
+	if result == nil {
+		t.Fatal("HandleIssueListRequest returned nil result")
+	}
+
+	if data == nil {
+		t.Fatal("HandleIssueListRequest returned nil data")
+	}
+
+	// Verify response structure includes repository metadata
+	dataMap, ok := data.(map[string]interface{})
+	if !ok {
+		t.Fatal("HandleIssueListRequest returned data of wrong type")
+	}
+
+	issues, exists := dataMap["issues"]
+	if !exists {
+		t.Fatal("HandleIssueListRequest data missing issues field")
+	}
+
+	issuesSlice, ok := issues.([]map[string]interface{})
+	if !ok {
+		t.Fatal("issues field is not a slice")
+	}
+
+	if len(issuesSlice) != 1 {
+		t.Errorf("Expected 1 issue, got %d", len(issuesSlice))
+	}
+
+	// Verify issue includes repository metadata
+	if len(issuesSlice) > 0 {
+		issue := issuesSlice[0]
+		if issue["type"] != "issue" {
+			t.Errorf("Expected issue type 'issue', got %v", issue["type"])
+		}
+		if issue["url"] == "" {
+			t.Error("Expected issue to include URL")
+		}
+		if issue["createdAt"] == "" {
+			t.Error("Expected issue to include createdAt")
+		}
+		if issue["updatedAt"] == "" {
+			t.Error("Expected issue to include updatedAt")
+		}
+	}
+}
+
+// TestSDKResponseFormat_BackwardCompatibility tests backward compatibility of response structure
+func TestSDKResponseFormat_BackwardCompatibility(t *testing.T) {
+	logger := logrus.New()
+	mockClient := &MockGiteaClient{
+		mockPRs: []*gitea.PullRequest{
+			{
+				ID:     1,
+				Index:  1,
+				Title:  "Test PR",
+				State:  gitea.StateOpen,
+				Poster: &gitea.User{UserName: "testuser"},
+			},
+		},
+		mockIssues: []*gitea.Issue{
+			{
+				ID:      1,
+				Index:   1,
+				Title:   "Test Issue",
+				State:   "open",
+				Poster:  &gitea.User{UserName: "testuser"},
+				Created: time.Date(2023, 1, 1, 12, 0, 0, 0, time.UTC),
+				Updated: time.Date(2023, 1, 2, 12, 0, 0, 0, time.UTC),
+			},
+		},
+	}
+
+	prHandler := &SDKPRListHandler{logger: logger, client: mockClient}
+	issueHandler := &SDKIssueListHandler{logger: logger, client: mockClient}
+
+	ctx := context.Background()
+	req := &mcp.CallToolRequest{
+		Repository: "testuser/test-repo",
+	}
+
+	// Test PR handler backward compatibility
+	prArgs := struct {
+		Repository string `json:"repository,omitempty"`
+		CWD        string `json:"cwd,omitempty"`
+		State      string `json:"state,omitempty"`
+		Author     string `json:"author,omitempty"`
+		Limit      int    `json:"limit,omitempty"`
+	}{
+		Repository: "owner/repo",
+		State:      "open",
+	}
+
+	prResult, prData, prErr := prHandler.HandlePRListRequest(ctx, req, prArgs)
+	if prErr != nil {
+		t.Fatalf("PR handler failed: %v", prErr)
+	}
+
+	// Test Issue handler backward compatibility
+	issueArgs := struct {
+		Repository string   `json:"repository,omitempty"`
+		CWD        string   `json:"cwd,omitempty"`
+		State      string   `json:"state,omitempty"`
+		Author     string   `json:"author,omitempty"`
+		Labels     []string `json:"labels,omitempty"`
+		Limit      int      `json:"limit,omitempty"`
+	}{
+		Repository: "owner/repo",
+		State:      "open",
+	}
+
+	issueResult, issueData, issueErr := issueHandler.HandleIssueListRequest(ctx, req, issueArgs)
+	if issueErr != nil {
+		t.Fatalf("Issue handler failed: %v", issueErr)
+	}
+
+	// Verify both handlers return expected structure
+	if prResult == nil || prData == nil {
+		t.Fatal("PR handler returned nil result or data")
+	}
+	if issueResult == nil || issueData == nil {
+		t.Fatal("Issue handler returned nil result or data")
+	}
+
+	// Verify response structure consistency
+	prDataMap := prData.(map[string]interface{})
+	issueDataMap := issueData.(map[string]interface{})
+
+	if _, exists := prDataMap["total"]; !exists {
+		t.Error("PR response missing total field")
+	}
+	if _, exists := issueDataMap["total"]; !exists {
+		t.Error("Issue response missing total field")
+	}
+
+	if _, exists := prDataMap["pullRequests"]; !exists {
+		t.Error("PR response missing pullRequests field")
+	}
+	if _, exists := issueDataMap["issues"]; !exists {
+		t.Error("Issue response missing issues field")
+	}
+}
+
+// TestSDKResponseFormat_TotalCountAccuracy tests total count accuracy with repository filtering
+func TestSDKResponseFormat_TotalCountAccuracy(t *testing.T) {
+	logger := logrus.New()
+	mockClient := &MockGiteaClient{
+		mockPRs: []*gitea.PullRequest{
+			{ID: 1, Index: 1, Title: "PR 1", State: gitea.StateOpen},
+			{ID: 2, Index: 2, Title: "PR 2", State: gitea.StateClosed},
+			{ID: 3, Index: 3, Title: "PR 3", State: gitea.StateOpen},
+		},
+		mockIssues: []*gitea.Issue{
+			{ID: 1, Index: 1, Title: "Issue 1", State: "open"},
+			{ID: 2, Index: 2, Title: "Issue 2", State: "closed"},
+		},
+	}
+
+	prHandler := &SDKPRListHandler{logger: logger, client: mockClient}
+	issueHandler := &SDKIssueListHandler{logger: logger, client: mockClient}
+
+	ctx := context.Background()
+	req := &mcp.CallToolRequest{
+		Repository: "testuser/test-repo",
+	}
+
+	// Test PR count accuracy
+	prArgs := struct {
+		Repository string `json:"repository,omitempty"`
+		CWD        string `json:"cwd,omitempty"`
+		State      string `json:"state,omitempty"`
+		Author     string `json:"author,omitempty"`
+		Limit      int    `json:"limit,omitempty"`
+	}{
+		Repository: "owner/repo",
+		State:      "open",
+	}
+
+	_, prData, prErr := prHandler.HandlePRListRequest(ctx, req, prArgs)
+	if prErr != nil {
+		t.Fatalf("PR handler failed: %v", prErr)
+	}
+
+	prDataMap := prData.(map[string]interface{})
+	if prDataMap["total"] != 3 {
+		t.Errorf("Expected PR total 3, got %v", prDataMap["total"])
+	}
+
+	// Test issue count accuracy
+	issueArgs := struct {
+		Repository string   `json:"repository,omitempty"`
+		CWD        string   `json:"cwd,omitempty"`
+		State      string   `json:"state,omitempty"`
+		Author     string   `json:"author,omitempty"`
+		Labels     []string `json:"labels,omitempty"`
+		Limit      int      `json:"limit,omitempty"`
+	}{
+		Repository: "owner/repo",
+		State:      "open",
+	}
+
+	_, issueData, issueErr := issueHandler.HandleIssueListRequest(ctx, req, issueArgs)
+	if issueErr != nil {
+		t.Fatalf("Issue handler failed: %v", issueErr)
+	}
+
+	issueDataMap := issueData.(map[string]interface{})
+	if issueDataMap["total"] != 2 {
+		t.Errorf("Expected issue total 2, got %v", issueDataMap["total"])
+	}
+}
+
+// TestSDKResponseFormat_ErrorResponseFormats tests error response formats
+func TestSDKResponseFormat_ErrorResponseFormats(t *testing.T) {
+	logger := logrus.New()
+	mockClient := &MockGiteaClientWithErrors{
+		mockError: fmt.Errorf("repository not found"),
+	}
+
+	handler := &SDKPRListHandler{
+		logger: logger,
+		client: mockClient,
+	}
+
+	ctx := context.Background()
+	req := &mcp.CallToolRequest{
+		Repository: "testuser/test-repo",
+	}
+	args := struct {
+		Repository string `json:"repository,omitempty"`
+		CWD        string `json:"cwd,omitempty"`
+		State      string `json:"state,omitempty"`
+		Author     string `json:"author,omitempty"`
+		Limit      int    `json:"limit,omitempty"`
+	}{
+		Repository: "owner/repo",
+	}
+
+	result, data, err := handler.HandlePRListRequest(ctx, req, args)
+
+	// Should not return an error in the function return value
+	if err != nil {
+		t.Fatalf("HandlePRListRequest should not return error, got: %v", err)
+	}
+
+	// Should return a result with error message
+	if result == nil {
+		t.Fatal("HandlePRListRequest should return a result even on error")
+	}
+
+	// Check that error message is in the result content
+	if len(result.Content) == 0 {
+		t.Fatal("HandlePRListRequest should return error content")
+	}
+
+	textContent, ok := result.Content[0].(*mcp.TextContent)
+	if !ok {
+		t.Fatal("HandlePRListRequest should return TextContent")
+	}
+
+	if !strings.Contains(textContent.Text, "Error executing SDK pr list") {
+		t.Errorf("Expected error message to contain 'Error executing SDK pr list', got '%s'", textContent.Text)
+	}
+
+	// Data should be nil on error
+	if data != nil {
+		t.Error("HandlePRListRequest should return nil data on error")
+	}
+}
+
+// TestSDKResponseFormat_ResponseConsistencyBetweenEndpoints tests response format consistency between PR and issue endpoints
+func TestSDKResponseFormat_ResponseConsistencyBetweenEndpoints(t *testing.T) {
+	logger := logrus.New()
+	mockClient := &MockGiteaClient{
+		mockPRs: []*gitea.PullRequest{
+			{
+				ID:     1,
+				Index:  1,
+				Title:  "Test PR",
+				State:  gitea.StateOpen,
+				Poster: &gitea.User{UserName: "testuser"},
+			},
+		},
+		mockIssues: []*gitea.Issue{
+			{
+				ID:      1,
+				Index:   1,
+				Title:   "Test Issue",
+				State:   "open",
+				Poster:  &gitea.User{UserName: "testuser"},
+				Created: time.Date(2023, 1, 1, 12, 0, 0, 0, time.UTC),
+				Updated: time.Date(2023, 1, 2, 12, 0, 0, 0, time.UTC),
+			},
+		},
+	}
+
+	prHandler := &SDKPRListHandler{logger: logger, client: mockClient}
+	issueHandler := &SDKIssueListHandler{logger: logger, client: mockClient}
+
+	ctx := context.Background()
+	req := &mcp.CallToolRequest{
+		Repository: "testuser/test-repo",
+	}
+
+	// Test PR handler
+	prArgs := struct {
+		Repository string `json:"repository,omitempty"`
+		CWD        string `json:"cwd,omitempty"`
+		State      string `json:"state,omitempty"`
+		Author     string `json:"author,omitempty"`
+		Limit      int    `json:"limit,omitempty"`
+	}{
+		Repository: "owner/repo",
+		State:      "open",
+	}
+
+	prResult, prData, prErr := prHandler.HandlePRListRequest(ctx, req, prArgs)
+	if prErr != nil {
+		t.Fatalf("PR handler failed: %v", prErr)
+	}
+
+	// Test issue handler
+	issueArgs := struct {
+		Repository string   `json:"repository,omitempty"`
+		CWD        string   `json:"cwd,omitempty"`
+		State      string   `json:"state,omitempty"`
+		Author     string   `json:"author,omitempty"`
+		Labels     []string `json:"labels,omitempty"`
+		Limit      int      `json:"limit,omitempty"`
+	}{
+		Repository: "owner/repo",
+		State:      "open",
+	}
+
+	issueResult, issueData, issueErr := issueHandler.HandleIssueListRequest(ctx, req, issueArgs)
+	if issueErr != nil {
+		t.Fatalf("Issue handler failed: %v", issueErr)
+	}
+
+	// Verify both handlers return results
+	if prResult == nil || prData == nil {
+		t.Fatal("PR handler returned nil result or data")
+	}
+	if issueResult == nil || issueData == nil {
+		t.Fatal("Issue handler returned nil result or data")
+	}
+
+	// Verify response structure consistency
+	prDataMap := prData.(map[string]interface{})
+	issueDataMap := issueData.(map[string]interface{})
+
+	// Both should have total field
+	if prDataMap["total"] == nil {
+		t.Error("PR response missing total field")
+	}
+	if issueDataMap["total"] == nil {
+		t.Error("Issue response missing total field")
+	}
+
+	// Both should have their respective data arrays
+	if prDataMap["pullRequests"] == nil {
+		t.Error("PR response missing pullRequests field")
+	}
+	if issueDataMap["issues"] == nil {
+		t.Error("Issue response missing issues field")
+	}
+
+	// Verify result content format consistency
+	if len(prResult.Content) == 0 {
+		t.Error("PR result missing content")
+	}
+	if len(issueResult.Content) == 0 {
+		t.Error("Issue result missing content")
+	}
+
+	prContent, ok := prResult.Content[0].(*mcp.TextContent)
+	if !ok {
+		t.Error("PR result content should be TextContent")
+	}
+	issueContent, ok := issueResult.Content[0].(*mcp.TextContent)
+	if !ok {
+		t.Error("Issue result content should be TextContent")
+	}
+
+	// Both should have similar success message format
+	if !strings.Contains(prContent.Text, "Found") || !strings.Contains(prContent.Text, "pull request") {
+		t.Errorf("PR success message format inconsistent: %s", prContent.Text)
+	}
+	if !strings.Contains(issueContent.Text, "Found") || !strings.Contains(issueContent.Text, "issue") {
+		t.Errorf("Issue success message format inconsistent: %s", issueContent.Text)
+	}
+}
+
+// TestRepositoryParameterValidation_FormatValidation tests repository format validation (owner/repo format)
+func TestRepositoryParameterValidation_FormatValidation(t *testing.T) {
+	tests := []struct {
+		name        string
+		repoParam   string
+		expectValid bool
+		expectError string
+	}{
+		{
+			name:        "valid owner/repo format",
+			repoParam:   "owner/repo",
+			expectValid: true,
+		},
+		{
+			name:        "missing slash",
+			repoParam:   "ownerrepo",
+			expectValid: false,
+			expectError: "invalid repository format: expected 'owner/repo'",
+		},
+		{
+			name:        "multiple slashes",
+			repoParam:   "owner/repo/extra",
+			expectValid: false,
+			expectError: "invalid repository format: expected 'owner/repo'",
+		},
+		{
+			name:        "empty owner",
+			repoParam:   "/repo",
+			expectValid: false,
+			expectError: "invalid repository format: owner cannot be empty",
+		},
+		{
+			name:        "empty repo",
+			repoParam:   "owner/",
+			expectValid: false,
+			expectError: "invalid repository format: repository name cannot be empty",
+		},
+		{
+			name:        "empty string",
+			repoParam:   "",
+			expectValid: false,
+			expectError: "invalid repository format: expected 'owner/repo'",
+		},
+		{
+			name:        "special characters in owner",
+			repoParam:   "owner@domain/repo",
+			expectValid: true, // Allow special chars for now, let API validate
+		},
+		{
+			name:        "special characters in repo",
+			repoParam:   "owner/repo-name_with.special",
+			expectValid: true, // Allow special chars for now, let API validate
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			valid, err := validateRepositoryFormat(tt.repoParam)
+			if valid != tt.expectValid {
+				t.Errorf("validateRepositoryFormat(%q) = %v, want %v", tt.repoParam, valid, tt.expectValid)
+			}
+			if !tt.expectValid && err != nil && err.Error() != tt.expectError {
+				t.Errorf("validateRepositoryFormat(%q) error = %q, want %q", tt.repoParam, err.Error(), tt.expectError)
+			}
+		})
+	}
+}
+
+// TestRepositoryParameterValidation_ExistenceValidation tests repository existence validation
+func TestRepositoryParameterValidation_ExistenceValidation(t *testing.T) {
+	tests := []struct {
+		name        string
+		repoParam   string
+		mockRepos   []*gitea.Repository
+		mockError   error
+		expectValid bool
+		expectError string
+	}{
+		{
+			name:      "repository exists",
+			repoParam: "owner/repo",
+			mockRepos: []*gitea.Repository{
+				{
+					Name:  "repo",
+					Owner: &gitea.User{UserName: "owner"},
+				},
+			},
+			expectValid: true,
+		},
+		{
+			name:        "repository not found",
+			repoParam:   "owner/nonexistent",
+			mockRepos:   []*gitea.Repository{},
+			expectValid: false,
+			expectError: "failed to validate repository existence: repository not found",
+		},
+		{
+			name:      "different owner same repo name",
+			repoParam: "other/repo",
+			mockRepos: []*gitea.Repository{
+				{
+					Name:  "repo",
+					Owner: &gitea.User{UserName: "owner"},
+				},
+			},
+			expectValid: false,
+			expectError: "failed to validate repository existence: repository not found",
+		},
+		{
+			name:        "API error during validation",
+			repoParam:   "owner/repo",
+			mockError:   fmt.Errorf("connection refused"),
+			expectValid: false,
+			expectError: "failed to validate repository existence: connection refused",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			mockClient := &MockGiteaClient{
+				mockRepos: tt.mockRepos,
+				mockError: tt.mockError,
+			}
+
+			valid, err := validateRepositoryExistence(mockClient, tt.repoParam)
+			if valid != tt.expectValid {
+				t.Errorf("validateRepositoryExistence(%q) = %v, want %v", tt.repoParam, valid, tt.expectValid)
+			}
+			if !tt.expectValid && err != nil && err.Error() != tt.expectError {
+				t.Errorf("validateRepositoryExistence(%q) error = %q, want %q", tt.repoParam, err.Error(), tt.expectError)
+			}
+		})
+	}
+}
+
+// TestRepositoryParameterValidation_AccessValidation tests repository access permission validation
+func TestRepositoryParameterValidation_AccessValidation(t *testing.T) {
+	tests := []struct {
+		name        string
+		repoParam   string
+		mockRepos   []*gitea.Repository
+		mockError   error
+		expectValid bool
+		expectError string
+	}{
+		{
+			name:      "user has read access to public repo",
+			repoParam: "owner/repo",
+			mockRepos: []*gitea.Repository{
+				{
+					Name:    "repo",
+					Owner:   &gitea.User{UserName: "owner"},
+					Private: false,
+				},
+			},
+			expectValid: true,
+		},
+		{
+			name:      "user has read access to private repo",
+			repoParam: "owner/private-repo",
+			mockRepos: []*gitea.Repository{
+				{
+					Name:    "private-repo",
+					Owner:   &gitea.User{UserName: "owner"},
+					Private: true,
+				},
+			},
+			expectValid: true,
+		},
+		{
+			name:        "user lacks access to private repo",
+			repoParam:   "other/private-repo",
+			mockRepos:   []*gitea.Repository{}, // No repos returned = no access
+			expectValid: false,
+			expectError: "failed to validate repository access: repository not found",
+		},
+		{
+			name:        "API error during access check",
+			repoParam:   "owner/repo",
+			mockError:   fmt.Errorf("403 Forbidden"),
+			expectValid: false,
+			expectError: "failed to validate repository access: 403 Forbidden",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			mockClient := &MockGiteaClient{
+				mockRepos: tt.mockRepos,
+				mockError: tt.mockError,
+			}
+
+			valid, err := validateRepositoryAccess(mockClient, tt.repoParam)
+			if valid != tt.expectValid {
+				t.Errorf("validateRepositoryAccess(%q) = %v, want %v", tt.repoParam, valid, tt.expectValid)
+			}
+			if !tt.expectValid && err != nil && err.Error() != tt.expectError {
+				t.Errorf("validateRepositoryAccess(%q) error = %q, want %q", tt.repoParam, err.Error(), tt.expectError)
+			}
+		})
+	}
+}
+
+// TestRepositoryParameterValidation_OrganizationRepos tests organization-owned repository handling
+func TestRepositoryParameterValidation_OrganizationRepos(t *testing.T) {
+	tests := []struct {
+		name        string
+		repoParam   string
+		mockRepos   []*gitea.Repository
+		expectValid bool
+		expectError string
+	}{
+		{
+			name:      "organization repository exists",
+			repoParam: "myorg/repo",
+			mockRepos: []*gitea.Repository{
+				{
+					Name:  "repo",
+					Owner: &gitea.User{UserName: "myorg"},
+				},
+			},
+			expectValid: true,
+		},
+		{
+			name:      "user-owned repository exists",
+			repoParam: "user/repo",
+			mockRepos: []*gitea.Repository{
+				{
+					Name:  "repo",
+					Owner: &gitea.User{UserName: "user"},
+				},
+			},
+			expectValid: true,
+		},
+		{
+			name:        "organization repository not found",
+			repoParam:   "myorg/missing-repo",
+			mockRepos:   []*gitea.Repository{},
+			expectValid: false,
+			expectError: "failed to validate repository existence: repository not found",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			mockClient := &MockGiteaClient{
+				mockRepos: tt.mockRepos,
+			}
+
+			valid, err := validateRepositoryExistence(mockClient, tt.repoParam)
+			if valid != tt.expectValid {
+				t.Errorf("validateRepositoryExistence(%q) = %v, want %v", tt.repoParam, valid, tt.expectValid)
+			}
+			if !tt.expectValid && err != nil && err.Error() != tt.expectError {
+				t.Errorf("validateRepositoryExistence(%q) error = %q, want %q", tt.repoParam, err.Error(), tt.expectError)
+			}
+		})
+	}
+}
+
+// TestRepositoryParameterValidation_ErrorScenarios tests mock scenarios for repository not found errors
+func TestRepositoryParameterValidation_ErrorScenarios(t *testing.T) {
+	tests := []struct {
+		name        string
+		repoParam   string
+		mockError   error
+		expectValid bool
+		expectError string
+	}{
+		{
+			name:        "network timeout",
+			repoParam:   "owner/repo",
+			mockError:   fmt.Errorf("dial tcp: i/o timeout"),
+			expectValid: false,
+			expectError: "failed to validate repository existence: dial tcp: i/o timeout",
+		},
+		{
+			name:        "DNS resolution failure",
+			repoParam:   "owner/repo",
+			mockError:   fmt.Errorf("no such host"),
+			expectValid: false,
+			expectError: "failed to validate repository existence: no such host",
+		},
+		{
+			name:        "authentication failure",
+			repoParam:   "owner/repo",
+			mockError:   fmt.Errorf("401 Unauthorized"),
+			expectValid: false,
+			expectError: "failed to validate repository existence: 401 Unauthorized",
+		},
+		{
+			name:        "server error",
+			repoParam:   "owner/repo",
+			mockError:   fmt.Errorf("500 Internal Server Error"),
+			expectValid: false,
+			expectError: "failed to validate repository existence: 500 Internal Server Error",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			mockClient := &MockGiteaClient{
+				mockError: tt.mockError,
+			}
+
+			valid, err := validateRepositoryExistence(mockClient, tt.repoParam)
+			if valid != tt.expectValid {
+				t.Errorf("validateRepositoryExistence(%q) = %v, want %v", tt.repoParam, valid, tt.expectValid)
+			}
+			if !tt.expectValid && err != nil && err.Error() != tt.expectError {
+				t.Errorf("validateRepositoryExistence(%q) error = %q, want %q", tt.repoParam, err.Error(), tt.expectError)
+			}
+		})
+	}
+}
+
+// TestRepositoryParameterValidation_SpecialCharacters tests edge cases with special characters in repository names
+func TestRepositoryParameterValidation_SpecialCharacters(t *testing.T) {
+	tests := []struct {
+		name        string
+		repoParam   string
+		expectValid bool
+		expectError string
+	}{
+		{
+			name:        "hyphen in owner name",
+			repoParam:   "my-owner/repo",
+			expectValid: true,
+		},
+		{
+			name:        "underscore in repo name",
+			repoParam:   "owner/my_repo",
+			expectValid: true,
+		},
+		{
+			name:        "numbers in names",
+			repoParam:   "owner123/repo456",
+			expectValid: true,
+		},
+		{
+			name:        "mixed case",
+			repoParam:   "Owner/Repo",
+			expectValid: true,
+		},
+		{
+			name:        "very long names",
+			repoParam:   "verylongownername/verylongrepositoryname",
+			expectValid: true,
+		},
+		{
+			name:        "single character names",
+			repoParam:   "a/b",
+			expectValid: true,
+		},
+		{
+			name:        "spaces in names (should fail)",
+			repoParam:   "owner with spaces/repo",
+			expectValid: false,
+			expectError: "invalid repository format: expected 'owner/repo'",
+		},
+		{
+			name:        "special chars that might cause issues",
+			repoParam:   "owner/repo<script>",
+			expectValid: true, // Let API validate these
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			valid, err := validateRepositoryFormat(tt.repoParam)
+			if valid != tt.expectValid {
+				t.Errorf("validateRepositoryFormat(%q) = %v, want %v", tt.repoParam, valid, tt.expectValid)
+			}
+			if !tt.expectValid && err != nil && err.Error() != tt.expectError {
+				t.Errorf("validateRepositoryFormat(%q) error = %q, want %q", tt.repoParam, err.Error(), tt.expectError)
+			}
+		})
+	}
+}
+
+// TestRepositoryParameterValidation_ErrorMessages tests that error messages are descriptive and actionable
+func TestRepositoryParameterValidation_ErrorMessages(t *testing.T) {
+	tests := []struct {
+		name            string
+		repoParam       string
+		expectedMessage string
+	}{
+		{
+			name:            "missing slash",
+			repoParam:       "ownerrepo",
+			expectedMessage: "invalid repository format: expected 'owner/repo'",
+		},
+		{
+			name:            "empty owner",
+			repoParam:       "/repo",
+			expectedMessage: "invalid repository format: owner cannot be empty",
+		},
+		{
+			name:            "empty repo",
+			repoParam:       "owner/",
+			expectedMessage: "invalid repository format: repository name cannot be empty",
+		},
+		{
+			name:            "empty string",
+			repoParam:       "",
+			expectedMessage: "invalid repository format: expected 'owner/repo'",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, err := validateRepositoryFormat(tt.repoParam)
+			if err == nil {
+				t.Errorf("validateRepositoryFormat(%q) should return error", tt.repoParam)
+			} else if err.Error() != tt.expectedMessage {
+				t.Errorf("validateRepositoryFormat(%q) error = %q, want %q", tt.repoParam, err.Error(), tt.expectedMessage)
+			}
+		})
 	}
 }
 
@@ -2014,12 +3055,16 @@ func BenchmarkSDKPerformance_PRList(b *testing.B) {
 	handler := &SDKPRListHandler{logger: logger, client: mockClient}
 
 	ctx := context.Background()
-	req := &mcp.CallToolRequest{}
+	req := &mcp.CallToolRequest{
+		Repository: "testuser/test-repo",
+	}
 	args := struct {
-		State  string `json:"state,omitempty"`
-		Author string `json:"author,omitempty"`
-		Limit  int    `json:"limit,omitempty"`
-	}{State: "open"}
+		Repository string `json:"repository,omitempty"`
+		CWD        string `json:"cwd,omitempty"`
+		State      string `json:"state,omitempty"`
+		Author     string `json:"author,omitempty"`
+		Limit      int    `json:"limit,omitempty"`
+	}{Repository: "testuser/test-repo", State: "open"}
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
@@ -2036,13 +3081,15 @@ func BenchmarkSDKPerformance_IssueList(b *testing.B) {
 	handler := &SDKIssueListHandler{logger: logger, client: mockClient}
 
 	ctx := context.Background()
-	req := &mcp.CallToolRequest{}
+	req := &mcp.CallToolRequest{
+		Repository: "testuser/test-repo",
+	}
 	args := struct {
 		State  string   `json:"state,omitempty"`
 		Author string   `json:"author,omitempty"`
 		Labels []string `json:"labels,omitempty"`
 		Limit  int      `json:"limit,omitempty"`
-	}{State: "open"}
+	}{Repository: "testuser/test-repo", State: "open"}
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
@@ -2059,10 +3106,14 @@ func BenchmarkSDKPerformance_RepositoryList(b *testing.B) {
 	handler := &SDKRepositoryHandler{logger: logger, client: mockClient}
 
 	ctx := context.Background()
-	req := &mcp.CallToolRequest{}
+	req := &mcp.CallToolRequest{
+		Repository: "testuser/test-repo",
+	}
 	args := struct {
 		Limit int `json:"limit,omitempty"`
-	}{}
+	}{
+		Repository: "testuser/test-repo",
+	}
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
@@ -2217,7 +3268,9 @@ func (s *TestDataSeeder) SeedCommits(count int, options SeedOptions) []*gitea.Co
 	commits := make([]*gitea.Commit, count)
 
 	for i := 0; i < count; i++ {
-		commits[i] = &gitea.Commit{}
+		commits[i] = &gitea.Commit{
+			Repository: "testuser/test-repo",
+		}
 	}
 	return commits
 }
@@ -2324,14 +3377,18 @@ func TestSDKDataSeedingIntegration(t *testing.T) {
 	repoHandler := &SDKRepositoryHandler{logger: logger, client: mockClient}
 
 	ctx := context.Background()
-	req := &mcp.CallToolRequest{}
+	req := &mcp.CallToolRequest{
+		Repository: "testuser/test-repo",
+	}
 
 	// Test all handlers with seeded data
 	prArgs := struct {
-		State  string `json:"state,omitempty"`
-		Author string `json:"author,omitempty"`
-		Limit  int    `json:"limit,omitempty"`
-	}{State: "open"}
+		Repository string `json:"repository,omitempty"`
+		CWD        string `json:"cwd,omitempty"`
+		State      string `json:"state,omitempty"`
+		Author     string `json:"author,omitempty"`
+		Limit      int    `json:"limit,omitempty"`
+	}{Repository: "testuser/test-repo", State: "open"}
 
 	prResult, prData, prErr := prHandler.HandlePRListRequest(ctx, req, prArgs)
 	if prErr != nil {
@@ -2346,7 +3403,7 @@ func TestSDKDataSeedingIntegration(t *testing.T) {
 		Author string   `json:"author,omitempty"`
 		Labels []string `json:"labels,omitempty"`
 		Limit  int      `json:"limit,omitempty"`
-	}{State: "open"}
+	}{Repository: "testuser/test-repo", State: "open"}
 
 	issueResult, issueData, issueErr := issueHandler.HandleIssueListRequest(ctx, req, issueArgs)
 	if issueErr != nil {
@@ -2358,7 +3415,9 @@ func TestSDKDataSeedingIntegration(t *testing.T) {
 
 	repoArgs := struct {
 		Limit int `json:"limit,omitempty"`
-	}{}
+	}{
+		Repository: "testuser/test-repo",
+	}
 
 	repoResult, repoData, repoErr := repoHandler.ListRepositories(ctx, req, repoArgs)
 	if repoErr != nil {
@@ -2431,29 +3490,37 @@ func TestSDKPerformanceComparison(t *testing.T) {
 			repoHandler := &SDKRepositoryHandler{logger: logger, client: mockClient}
 
 			ctx := context.Background()
-			req := &mcp.CallToolRequest{}
+			req := &mcp.CallToolRequest{
+				Repository: "testuser/test-repo",
+			}
 
 			// Measure SDK performance
 			start := time.Now()
 			for i := 0; i < 10; i++ { // Run 10 iterations for averaging
 				prArgs := struct {
-					State  string `json:"state,omitempty"`
-					Author string `json:"author,omitempty"`
-					Limit  int    `json:"limit,omitempty"`
-				}{State: "open"}
+					Repository string `json:"repository,omitempty"`
+					CWD        string `json:"cwd,omitempty"`
+					State      string `json:"state,omitempty"`
+					Author     string `json:"author,omitempty"`
+					Limit      int    `json:"limit,omitempty"`
+				}{Repository: "testuser/test-repo", State: "open"}
 				_, _, _ = prHandler.HandlePRListRequest(ctx, req, prArgs)
 
 				issueArgs := struct {
-					State  string   `json:"state,omitempty"`
-					Author string   `json:"author,omitempty"`
-					Labels []string `json:"labels,omitempty"`
-					Limit  int      `json:"limit,omitempty"`
-				}{State: "open"}
+					Repository string   `json:"repository,omitempty"`
+					CWD        string   `json:"cwd,omitempty"`
+					State      string   `json:"state,omitempty"`
+					Author     string   `json:"author,omitempty"`
+					Labels     []string `json:"labels,omitempty"`
+					Limit      int      `json:"limit,omitempty"`
+				}{Repository: "testuser/test-repo", State: "open"}
 				_, _, _ = issueHandler.HandleIssueListRequest(ctx, req, issueArgs)
 
 				repoArgs := struct {
 					Limit int `json:"limit,omitempty"`
-				}{}
+				}{
+					Repository: "testuser/test-repo",
+				}
 				_, _, _ = repoHandler.ListRepositories(ctx, req, repoArgs)
 			}
 			sdkDuration := time.Since(start)
@@ -2475,10 +3542,12 @@ func TestSDKPerformanceComparison(t *testing.T) {
 			// Run operations again
 			for i := 0; i < 10; i++ {
 				prArgs := struct {
-					State  string `json:"state,omitempty"`
-					Author string `json:"author,omitempty"`
-					Limit  int    `json:"limit,omitempty"`
-				}{State: "open"}
+					Repository string `json:"repository,omitempty"`
+					CWD        string `json:"cwd,omitempty"`
+					State      string `json:"state,omitempty"`
+					Author     string `json:"author,omitempty"`
+					Limit      int    `json:"limit,omitempty"`
+				}{Repository: "testuser/test-repo", State: "open"}
 				_, _, _ = prHandler.HandlePRListRequest(ctx, req, prArgs)
 			}
 
@@ -2750,16 +3819,20 @@ func TestCleanupVerification_EndToEndMigration(t *testing.T) {
 	repoHandler := &SDKRepositoryHandler{logger: logger, client: mockClient}
 
 	ctx := context.Background()
-	req := &mcp.CallToolRequest{}
+	req := &mcp.CallToolRequest{
+		Repository: "testuser/test-repo",
+	}
 
 	// Test comprehensive PR scenarios
 	t.Run("pr_scenarios", func(t *testing.T) {
 		// Test open PRs
 		prArgs := struct {
-			State  string `json:"state,omitempty"`
-			Author string `json:"author,omitempty"`
-			Limit  int    `json:"limit,omitempty"`
-		}{State: "open"}
+			Repository string `json:"repository,omitempty"`
+			CWD        string `json:"cwd,omitempty"`
+			State      string `json:"state,omitempty"`
+			Author     string `json:"author,omitempty"`
+			Limit      int    `json:"limit,omitempty"`
+		}{Repository: "testuser/test-repo", State: "open"}
 
 		prResult, prData, prErr := prHandler.HandlePRListRequest(ctx, req, prArgs)
 		if prErr != nil {
@@ -2797,7 +3870,7 @@ func TestCleanupVerification_EndToEndMigration(t *testing.T) {
 			Author string   `json:"author,omitempty"`
 			Labels []string `json:"labels,omitempty"`
 			Limit  int      `json:"limit,omitempty"`
-		}{State: "open"}
+		}{Repository: "testuser/test-repo", State: "open"}
 
 		issueResult, issueData, issueErr := issueHandler.HandleIssueListRequest(ctx, req, issueArgs)
 		if issueErr != nil {
@@ -2831,7 +3904,9 @@ func TestCleanupVerification_EndToEndMigration(t *testing.T) {
 	t.Run("repository_scenarios", func(t *testing.T) {
 		repoArgs := struct {
 			Limit int `json:"limit,omitempty"`
-		}{}
+		}{
+			Repository: "testuser/test-repo",
+		}
 
 		repoResult, repoData, repoErr := repoHandler.ListRepositories(ctx, req, repoArgs)
 		if repoErr != nil {
@@ -2855,10 +3930,12 @@ func TestCleanupVerification_EndToEndMigration(t *testing.T) {
 
 		errorPrHandler := &SDKPRListHandler{logger: logger, client: errorClient}
 		prArgs := struct {
-			State  string `json:"state,omitempty"`
-			Author string `json:"author,omitempty"`
-			Limit  int    `json:"limit,omitempty"`
-		}{State: "open"}
+			Repository string `json:"repository,omitempty"`
+			CWD        string `json:"cwd,omitempty"`
+			State      string `json:"state,omitempty"`
+			Author     string `json:"author,omitempty"`
+			Limit      int    `json:"limit,omitempty"`
+		}{Repository: "testuser/test-repo", State: "open"}
 
 		result, data, err := errorPrHandler.HandlePRListRequest(ctx, req, prArgs)
 		if err != nil {
@@ -2881,10 +3958,14 @@ func TestCleanupVerification_EndToEndMigration(t *testing.T) {
 	t.Run("data_consistency", func(t *testing.T) {
 		// Get data from all handlers
 		prArgs := struct {
-			State  string `json:"state,omitempty"`
-			Author string `json:"author,omitempty"`
-			Limit  int    `json:"limit,omitempty"`
-		}{}
+			Repository string `json:"repository,omitempty"`
+			CWD        string `json:"cwd,omitempty"`
+			State      string `json:"state,omitempty"`
+			Author     string `json:"author,omitempty"`
+			Limit      int    `json:"limit,omitempty"`
+		}{
+			Repository: "testuser/test-repo",
+		}
 		_, prData, _ := prHandler.HandlePRListRequest(ctx, req, prArgs)
 
 		issueArgs := struct {
@@ -2892,12 +3973,16 @@ func TestCleanupVerification_EndToEndMigration(t *testing.T) {
 			Author string   `json:"author,omitempty"`
 			Labels []string `json:"labels,omitempty"`
 			Limit  int      `json:"limit,omitempty"`
-		}{}
+		}{
+			Repository: "testuser/test-repo",
+		}
 		_, issueData, _ := issueHandler.HandleIssueListRequest(ctx, req, issueArgs)
 
 		repoArgs := struct {
 			Limit int `json:"limit,omitempty"`
-		}{}
+		}{
+			Repository: "testuser/test-repo",
+		}
 		_, repoData, _ := repoHandler.ListRepositories(ctx, req, repoArgs)
 
 		// Verify all handlers return expected totals
