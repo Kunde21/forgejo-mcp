@@ -24,7 +24,7 @@ type TeaPRListHandler struct {
 func NewTeaPRListHandler(logger *logrus.Logger) *TeaPRListHandler {
 	return &TeaPRListHandler{
 		logger:         logger,
-		executor:       NewTeaExecutor(),
+		executor:       NewTeaExecutor(logger),
 		parser:         NewTeaOutputParser(),
 		commandBuilder: NewTeaCommandBuilder(),
 	}
@@ -135,7 +135,7 @@ type TeaIssueListHandler struct {
 func NewTeaIssueListHandler(logger *logrus.Logger) *TeaIssueListHandler {
 	return &TeaIssueListHandler{
 		logger:         logger,
-		executor:       NewTeaExecutor(),
+		executor:       NewTeaExecutor(logger),
 		parser:         NewTeaOutputParser(),
 		commandBuilder: NewTeaCommandBuilder(),
 	}
@@ -254,8 +254,8 @@ type TeaExecutor struct {
 }
 
 // NewTeaExecutor creates a new tea executor
-func NewTeaExecutor() *TeaExecutor {
-	return &TeaExecutor{}
+func NewTeaExecutor(logger *logrus.Logger) *TeaExecutor {
+	return &TeaExecutor{logger: logger}
 }
 
 // ExecuteCommand executes a tea command and returns the output
