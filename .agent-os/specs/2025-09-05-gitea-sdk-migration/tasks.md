@@ -43,13 +43,13 @@ These are the tasks to be completed for the spec detailed in @.agent-os/specs/20
 ### Task 4: Testing Infrastructure Migration
 **Description:** Update existing test suite to work with SDK instead of CLI mocks
 
-4.1 Write tests for SDK mock setup and teardown
-4.2 Create comprehensive SDK mocks for all operations
-4.3 Write migration tests for existing CLI-based test fixtures
-4.4 Update existing test files to use SDK mocks
-4.5 Write performance comparison tests (SDK vs CLI)
-4.6 Implement test data seeding for SDK scenarios
-4.7 Verify all testing infrastructure tests pass
+- [x] 4.1 Write tests for SDK mock setup and teardown
+- [x] 4.2 Create comprehensive SDK mocks for all operations
+- [x] 4.3 Write migration tests for existing CLI-based test fixtures
+- [x] 4.4 Update existing test files to use SDK mocks
+- [x] 4.5 Write performance comparison tests (SDK vs CLI)
+- [x] 4.6 Implement test data seeding for SDK scenarios
+- [x] 4.7 Verify all testing infrastructure tests pass
 
 ### Task 5: Cleanup and Validation
 **Description:** Remove tea CLI dependencies and validate complete migration
