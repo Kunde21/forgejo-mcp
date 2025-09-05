@@ -6,30 +6,18 @@ import (
 	"code.gitea.io/sdk/gitea"
 )
 
-// SDKClientFactory handles creation of Gitea SDK clients
-type SDKClientFactory struct {
-	config *Config
-}
-
-// NewSDKClientFactory creates a new SDK client factory
-func NewSDKClientFactory(config *Config) *SDKClientFactory {
-	return &SDKClientFactory{
-		config: config,
-	}
-}
-
-// CreateClient creates a new Gitea SDK client with token-based authentication
-func (f *SDKClientFactory) CreateClient() (*gitea.Client, error) {
-	if f.config.ForgejoURL == "" {
+// CreateGiteaClient creates a new Gitea SDK client with token-based authentication
+func (c *Config) CreateGiteaClient() (*gitea.Client, error) {
+	if c.ForgejoURL == "" {
 		return nil, fmt.Errorf("ForgejoURL is required for SDK client creation")
 	}
 
-	if f.config.AuthToken == "" {
+	if c.AuthToken == "" {
 		return nil, fmt.Errorf("AuthToken is required for SDK client authentication")
 	}
 
 	// Create client with token authentication
-	client, err := gitea.NewClient(f.config.ForgejoURL, gitea.SetToken(f.config.AuthToken))
+	client, err := gitea.NewClient(c.ForgejoURL, gitea.SetToken(c.AuthToken))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create Gitea SDK client: %w", err)
 	}
@@ -37,13 +25,13 @@ func (f *SDKClientFactory) CreateClient() (*gitea.Client, error) {
 	return client, nil
 }
 
-// ValidateConfiguration validates that the configuration is suitable for SDK client creation
-func (f *SDKClientFactory) ValidateConfiguration() error {
-	if f.config.ForgejoURL == "" {
+// ValidateForSDK validates that the configuration is suitable for SDK client creation
+func (c *Config) ValidateForSDK() error {
+	if c.ForgejoURL == "" {
 		return fmt.Errorf("ForgejoURL cannot be empty")
 	}
 
-	if f.config.AuthToken == "" {
+	if c.AuthToken == "" {
 		return fmt.Errorf("AuthToken cannot be empty")
 	}
 

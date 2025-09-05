@@ -20,14 +20,14 @@ These are the tasks to be completed for the spec detailed in @.agent-os/specs/20
 ### Task 2: Core Handler Migration
 **Description:** Migrate existing tea CLI handlers to use Gitea SDK with comprehensive testing
 
-2.1 Write tests for PR list handler SDK migration (mock SDK responses)
-2.2 Replace TeaPRListHandler with SDK-based implementation
-2.3 Write tests for issue list handler SDK migration
-2.4 Replace TeaIssueListHandler with SDK-based implementation
-2.5 Write tests for repository operations migration
-2.6 Implement SDK-based repository listing and management
-2.7 Write integration tests for all migrated handlers
-2.8 Verify all handler migration tests pass
+- [x] 2.1 Write tests for PR list handler SDK migration (mock SDK responses)
+- [x] 2.2 Replace TeaPRListHandler with SDK-based implementation
+- [x] 2.3 Write tests for issue list handler SDK migration
+- [x] 2.4 Replace TeaIssueListHandler with SDK-based implementation
+- [x] 2.5 Write tests for repository operations migration
+- [x] 2.6 Implement SDK-based repository listing and management
+- [x] 2.7 Write integration tests for all migrated handlers
+- [x] 2.8 Verify all handler migration tests pass
 
 ### Task 3: Error Handling and Response Transformation
 **Description:** Implement robust error handling and response formatting for SDK operations

@@ -12,7 +12,8 @@ func TestTeaPRListHandler_HandlePRListRequest(t *testing.T) {
 	logger := logrus.New()
 	logger.SetLevel(logrus.InfoLevel)
 
-	handler := NewTeaPRListHandler(logger)
+	mockClient := &MockGiteaClient{}
+	handler := NewTeaPRListHandler(logger, mockClient)
 	if handler == nil {
 		t.Fatal("NewTeaPRListHandler returned nil")
 	}
@@ -44,7 +45,8 @@ func TestTeaIssueListHandler_HandleIssueListRequest(t *testing.T) {
 	logger := logrus.New()
 	logger.SetLevel(logrus.InfoLevel)
 
-	handler := NewTeaIssueListHandler(logger)
+	mockClient := &MockGiteaClient{}
+	handler := NewTeaIssueListHandler(logger, mockClient)
 	if handler == nil {
 		t.Fatal("NewTeaIssueListHandler returned nil")
 	}

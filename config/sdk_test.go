@@ -164,15 +164,13 @@ func TestSDKClientFactory(t *testing.T) {
 		AuthToken:  "test-token-123",
 	}
 
-	factory := NewSDKClientFactory(validConfig)
-
 	// Test configuration validation
-	if err := factory.ValidateConfiguration(); err != nil {
-		t.Errorf("ValidateConfiguration() should not error with valid config, got: %v", err)
+	if err := validConfig.ValidateForSDK(); err != nil {
+		t.Errorf("ValidateForSDK() should not error with valid config, got: %v", err)
 	}
 
 	// Test client creation (this will fail in test environment without network, but tests the factory logic)
-	_, err := factory.CreateClient()
+	_, err := validConfig.CreateGiteaClient()
 	// We expect this to fail in test environment, but it should be a network-related error, not a configuration error
 	if err == nil {
 		t.Log("Client creation succeeded unexpectedly (network available)")
@@ -222,8 +220,7 @@ func TestSDKClientFactoryValidation(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			factory := NewSDKClientFactory(tc.config)
-			err := factory.ValidateConfiguration()
+			err := tc.config.ValidateForSDK()
 
 			if tc.expectError && err == nil {
 				t.Errorf("Expected error but got none")
@@ -251,22 +248,20 @@ func TestSDKClientIntegration(t *testing.T) {
 		AuthToken:  "test-token-123",
 	}
 
-	factory := NewSDKClientFactory(validConfig)
-
 	// Test configuration validation passes
-	if err := factory.ValidateConfiguration(); err != nil {
-		t.Fatalf("ValidateConfiguration() failed: %v", err)
+	if err := validConfig.ValidateForSDK(); err != nil {
+		t.Fatalf("ValidateForSDK() failed: %v", err)
 	}
 
 	// Test that client creation doesn't panic with valid config
 	// (It will fail due to invalid domain, but should not panic)
 	defer func() {
 		if r := recover(); r != nil {
-			t.Fatalf("CreateClient() panicked: %v", r)
+			t.Fatalf("CreateGiteaClient() panicked: %v", r)
 		}
 	}()
 
-	client, err := factory.CreateClient()
+	client, err := validConfig.CreateGiteaClient()
 	// We expect this to fail due to invalid domain, but it should be a network error
 	if err == nil {
 		t.Log("Client creation succeeded unexpectedly")
@@ -313,10 +308,8 @@ func TestSDKClientInitializationErrorHandling(t *testing.T) {
 				AuthToken:  tc.authToken,
 			}
 
-			factory := NewSDKClientFactory(config)
-
 			// First validate configuration (only checks for empty strings)
-			err := factory.ValidateConfiguration()
+			err := config.ValidateForSDK()
 			if tc.name == "empty URL" || tc.name == "empty token" {
 				if tc.expectError && err == nil {
 					t.Errorf("Expected validation error but got none")
@@ -327,7 +320,7 @@ func TestSDKClientInitializationErrorHandling(t *testing.T) {
 			} // For invalid URL format, validation passes but client creation fails
 
 			// Test client creation
-			client, err := factory.CreateClient()
+			client, err := config.CreateGiteaClient()
 			if tc.expectError {
 				if err == nil {
 					t.Errorf("Expected client creation error but got none")

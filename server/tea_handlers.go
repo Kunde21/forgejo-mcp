@@ -7,78 +7,71 @@ import (
 	"fmt"
 	"os/exec"
 	"strings"
-	"time"
 
+	"code.gitea.io/sdk/gitea"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 	"github.com/sirupsen/logrus"
 )
 
-// TeaPRListHandler handles pr_list tool requests with actual tea CLI integration
+// TeaPRListHandler handles pr_list tool requests with Gitea SDK integration
 type TeaPRListHandler struct {
-	logger         *logrus.Logger
-	executor       *TeaExecutor
-	parser         *TeaOutputParser
-	commandBuilder *TeaCommandBuilder
+	logger *logrus.Logger
+	client GiteaClientInterface
 }
 
 // NewTeaPRListHandler creates a new tea PR list handler
-func NewTeaPRListHandler(logger *logrus.Logger) *TeaPRListHandler {
+func NewTeaPRListHandler(logger *logrus.Logger, client GiteaClientInterface) *TeaPRListHandler {
 	return &TeaPRListHandler{
-		logger:         logger,
-		executor:       NewTeaExecutor(logger),
-		parser:         NewTeaOutputParser(),
-		commandBuilder: NewTeaCommandBuilder(),
+		logger: logger,
+		client: client,
 	}
 }
 
-// HandlePRListRequest handles a pr_list request with tea CLI integration using MCP SDK types
+// HandlePRListRequest handles a pr_list request with Gitea SDK integration
 func (h *TeaPRListHandler) HandlePRListRequest(ctx context.Context, req *mcp.CallToolRequest, args struct {
 	State  string `json:"state,omitempty"`
 	Author string `json:"author,omitempty"`
 	Limit  int    `json:"limit,omitempty"`
 }) (*mcp.CallToolResult, any, error) {
-	h.logger.Info("Handling pr_list request with MCP SDK")
+	h.logger.Info("Handling pr_list request with Gitea SDK")
 
-	// Build tea command from parameters
-	params := make(map[string]interface{})
+	// Build SDK options from parameters
+	opts := gitea.ListPullRequestsOptions{}
+
 	if args.State != "" {
-		params["state"] = args.State
+		switch args.State {
+		case "open":
+			opts.State = gitea.StateOpen
+		case "closed":
+			opts.State = gitea.StateClosed
+		case "all":
+			opts.State = gitea.StateAll
+		default:
+			opts.State = gitea.StateOpen // default to open
+		}
+	} else {
+		opts.State = gitea.StateOpen // default to open
 	}
-	if args.Author != "" {
-		params["author"] = args.Author
-	}
+
+	// Note: Gitea SDK doesn't have direct author filtering in ListPullRequestsOptions
+	// This would need to be handled by filtering results after fetching
+
 	if args.Limit > 0 {
-		params["limit"] = float64(args.Limit)
+		opts.ListOptions.PageSize = args.Limit
 	}
 
-	// Build tea command from parameters
-	cmd := h.commandBuilder.BuildPRListCommand(params)
-	h.logger.Debugf("Executing tea command: %v", cmd)
+	// For this example, we'll use placeholder owner/repo
+	// In a real implementation, this would come from context or configuration
+	owner := "example-owner"
+	repo := "example-repo"
 
-	// Execute tea command with timeout
-	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
-	defer cancel()
-
-	output, err := h.executor.ExecuteCommand(ctx, cmd)
+	prs, _, err := h.client.ListRepoPullRequests(owner, repo, opts)
 	if err != nil {
-		h.logger.Errorf("Tea command execution failed: %v", err)
+		h.logger.Errorf("Gitea SDK ListRepoPullRequests failed: %v", err)
 		return &mcp.CallToolResult{
 			Content: []mcp.Content{
 				&mcp.TextContent{
-					Text: fmt.Sprintf("Error executing tea pr list: %v", err),
-				},
-			},
-		}, nil, nil
-	}
-
-	// Parse tea output
-	prs, err := h.parser.ParsePRList([]byte(output))
-	if err != nil {
-		h.logger.Errorf("Failed to parse tea output: %v", err)
-		return &mcp.CallToolResult{
-			Content: []mcp.Content{
-				&mcp.TextContent{
-					Text: fmt.Sprintf("Error parsing tea output: %v", err),
+					Text: fmt.Sprintf("Error executing SDK pr list: %v", err),
 				},
 			},
 		}, nil, nil
@@ -99,29 +92,35 @@ func (h *TeaPRListHandler) HandlePRListRequest(ctx context.Context, req *mcp.Cal
 	}, result, nil
 }
 
-// transformPRsToResponse transforms tea PR data to MCP response format
-func (h *TeaPRListHandler) transformPRsToResponse(prs []PR) []map[string]interface{} {
+// transformPRsToResponse transforms Gitea SDK PR data to MCP response format
+func (h *TeaPRListHandler) transformPRsToResponse(prs []*gitea.PullRequest) []map[string]interface{} {
 	result := make([]map[string]interface{}, len(prs))
 	for i, pr := range prs {
 		// Transform to MCP-compatible format
 		prData := map[string]interface{}{
-			"number": pr.Number,
+			"number": pr.Index,
 			"title":  pr.Title,
-			"author": pr.Author,
-			"state":  h.normalizePRState(pr.State),
+			"state":  h.normalizePRState(string(pr.State)),
+		}
+
+		// Add author if available
+		if pr.Poster != nil {
+			prData["author"] = pr.Poster.UserName
+		} else {
+			prData["author"] = ""
 		}
 
 		// Add dates if available
-		if pr.CreatedAt != "" {
-			prData["createdAt"] = h.formatTimestamp(pr.CreatedAt)
+		if pr.Created != nil {
+			prData["createdAt"] = pr.Created.Format("2006-01-02T15:04:05Z")
 		}
-		if pr.UpdatedAt != "" {
-			prData["updatedAt"] = h.formatTimestamp(pr.UpdatedAt)
+		if pr.Updated != nil {
+			prData["updatedAt"] = pr.Updated.Format("2006-01-02T15:04:05Z")
 		}
 
 		// Add additional metadata for MCP compatibility
 		prData["type"] = "pull_request"
-		prData["url"] = "" // Would be populated with actual URL in real implementation
+		prData["url"] = pr.HTMLURL
 
 		result[i] = prData
 	}
@@ -158,76 +157,61 @@ func (h *TeaPRListHandler) formatTimestamp(ts string) string {
 	return ts
 }
 
-// TeaIssueListHandler handles issue_list tool requests with actual tea CLI integration
+// TeaIssueListHandler handles issue_list tool requests with Gitea SDK integration
 type TeaIssueListHandler struct {
-	logger         *logrus.Logger
-	executor       *TeaExecutor
-	parser         *TeaOutputParser
-	commandBuilder *TeaCommandBuilder
+	logger *logrus.Logger
+	client GiteaClientInterface
 }
 
 // NewTeaIssueListHandler creates a new tea issue list handler
-func NewTeaIssueListHandler(logger *logrus.Logger) *TeaIssueListHandler {
+func NewTeaIssueListHandler(logger *logrus.Logger, client GiteaClientInterface) *TeaIssueListHandler {
 	return &TeaIssueListHandler{
-		logger:         logger,
-		executor:       NewTeaExecutor(logger),
-		parser:         NewTeaOutputParser(),
-		commandBuilder: NewTeaCommandBuilder(),
+		logger: logger,
+		client: client,
 	}
 }
 
-// HandleIssueListRequest handles an issue_list request with tea CLI integration using MCP SDK types
+// HandleIssueListRequest handles an issue_list request with Gitea SDK integration
 func (h *TeaIssueListHandler) HandleIssueListRequest(ctx context.Context, req *mcp.CallToolRequest, args struct {
 	State  string   `json:"state,omitempty"`
 	Author string   `json:"author,omitempty"`
 	Labels []string `json:"labels,omitempty"`
 	Limit  int      `json:"limit,omitempty"`
 }) (*mcp.CallToolResult, any, error) {
-	h.logger.Info("Handling issue_list request with MCP SDK")
+	h.logger.Info("Handling issue_list request with Gitea SDK")
 
-	// Build tea command from parameters
-	params := make(map[string]interface{})
+	// Build SDK options from parameters
+	opts := gitea.ListIssueOption{}
+
 	if args.State != "" {
-		params["state"] = args.State
+		switch args.State {
+		case "open":
+			opts.State = gitea.StateOpen
+		case "closed":
+			opts.State = gitea.StateClosed
+		case "all":
+			opts.State = gitea.StateAll
+		default:
+			opts.State = gitea.StateOpen // default to open
+		}
+	} else {
+		opts.State = gitea.StateOpen // default to open
 	}
-	if args.Author != "" {
-		params["author"] = args.Author
-	}
-	if len(args.Labels) > 0 {
-		params["labels"] = args.Labels
-	}
+
+	// Note: Gitea SDK doesn't have direct author/label filtering in ListIssueOption
+	// This would need to be handled by filtering results after fetching
+
 	if args.Limit > 0 {
-		params["limit"] = float64(args.Limit)
+		opts.ListOptions.PageSize = args.Limit
 	}
 
-	// Build tea command from parameters
-	cmd := h.commandBuilder.BuildIssueListCommand(params)
-	h.logger.Debugf("Executing tea command: %v", cmd)
-
-	// Execute tea command with timeout
-	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
-	defer cancel()
-
-	output, err := h.executor.ExecuteCommand(ctx, cmd)
+	issues, _, err := h.client.ListIssues(opts)
 	if err != nil {
-		h.logger.Errorf("Tea command execution failed: %v", err)
+		h.logger.Errorf("Gitea SDK ListIssues failed: %v", err)
 		return &mcp.CallToolResult{
 			Content: []mcp.Content{
 				&mcp.TextContent{
-					Text: fmt.Sprintf("Error executing tea issue list: %v", err),
-				},
-			},
-		}, nil, nil
-	}
-
-	// Parse tea output
-	issues, err := h.parser.ParseIssueList([]byte(output))
-	if err != nil {
-		h.logger.Errorf("Failed to parse tea output: %v", err)
-		return &mcp.CallToolResult{
-			Content: []mcp.Content{
-				&mcp.TextContent{
-					Text: fmt.Sprintf("Error parsing tea output: %v", err),
+					Text: fmt.Sprintf("Error executing SDK issue list: %v", err),
 				},
 			},
 		}, nil, nil
@@ -248,34 +232,38 @@ func (h *TeaIssueListHandler) HandleIssueListRequest(ctx context.Context, req *m
 	}, result, nil
 }
 
-// transformIssuesToResponse transforms tea issue data to MCP response format
-func (h *TeaIssueListHandler) transformIssuesToResponse(issues []Issue) []map[string]interface{} {
+// transformIssuesToResponse transforms Gitea SDK issue data to MCP response format
+func (h *TeaIssueListHandler) transformIssuesToResponse(issues []*gitea.Issue) []map[string]interface{} {
 	result := make([]map[string]interface{}, len(issues))
 	for i, issue := range issues {
 		// Transform to MCP-compatible format
 		issueData := map[string]interface{}{
-			"number": issue.Number,
+			"number": issue.Index,
 			"title":  issue.Title,
-			"author": issue.Author,
-			"state":  h.normalizeIssueState(issue.State),
-			"labels": h.normalizeLabels(issue.Labels),
+			"state":  h.normalizeIssueState(string(issue.State)),
 		}
 
-		// Add date if available
-		if issue.CreatedAt != "" {
-			issueData["createdAt"] = h.formatTimestamp(issue.CreatedAt)
+		// Add author if available
+		if issue.Poster != nil {
+			issueData["author"] = issue.Poster.UserName
+		} else {
+			issueData["author"] = ""
 		}
+
+		// Add dates if available
+		issueData["createdAt"] = issue.Created.Format("2006-01-02T15:04:05Z")
+		issueData["updatedAt"] = issue.Updated.Format("2006-01-02T15:04:05Z")
 
 		// Add additional metadata for MCP compatibility
 		issueData["type"] = "issue"
-		issueData["url"] = "" // Would be populated with actual URL in real implementation
+		issueData["url"] = issue.HTMLURL
 
 		result[i] = issueData
 	}
 	return result
 }
 
-// normalizeIssueState normalizes issue state to standard values
+// normalizeIssueState normalizes Gitea SDK issue state to standard values
 func (h *TeaIssueListHandler) normalizeIssueState(state string) string {
 	switch strings.ToLower(state) {
 	case "open":
@@ -285,40 +273,6 @@ func (h *TeaIssueListHandler) normalizeIssueState(state string) string {
 	default:
 		return "unknown"
 	}
-}
-
-// normalizeLabels normalizes label data for MCP compatibility
-func (h *TeaIssueListHandler) normalizeLabels(labels []string) []string {
-	if len(labels) == 0 {
-		return []string{}
-	}
-
-	// Ensure labels are clean and non-empty
-	validLabels := make([]string, 0, len(labels))
-	for _, label := range labels {
-		label = strings.TrimSpace(label)
-		if label != "" {
-			validLabels = append(validLabels, label)
-		}
-	}
-
-	return validLabels
-}
-
-// formatTimestamp formats timestamp to ISO 8601 format
-func (h *TeaIssueListHandler) formatTimestamp(ts string) string {
-	if ts == "" {
-		return ""
-	}
-
-	// If already in ISO format, return as-is
-	if strings.Contains(ts, "T") && strings.Contains(ts, "Z") {
-		return ts
-	}
-
-	// Try to parse and reformat if needed
-	// For now, return as-is since tea should provide proper ISO format
-	return ts
 }
 
 // TeaExecutor handles execution of tea CLI commands

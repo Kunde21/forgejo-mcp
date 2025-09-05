@@ -13,9 +13,16 @@ import (
 
 // registerTools registers MCP tools with the server
 func registerTools(mcpServer *mcp.Server, cfg *config.Config, logger *logrus.Logger) error {
-	// Create handlers
-	prHandler := server.NewTeaPRListHandler(logger)
-	issueHandler := server.NewTeaIssueListHandler(logger)
+	// Create Gitea SDK client
+	giteaClient, err := cfg.CreateGiteaClient()
+	if err != nil {
+		logger.Errorf("Failed to create Gitea SDK client: %v", err)
+		return fmt.Errorf("failed to create Gitea client: %w", err)
+	}
+
+	// Create handlers with SDK client
+	prHandler := server.NewTeaPRListHandler(logger, giteaClient)
+	issueHandler := server.NewTeaIssueListHandler(logger, giteaClient)
 
 	// Register PR list tool
 	mcp.AddTool(mcpServer, &mcp.Tool{
