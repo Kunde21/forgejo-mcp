@@ -1,6 +1,6 @@
 # Product Roadmap
 
-> Last Updated: 2025-08-26
+> Last Updated: 2025-09-05
 > Version: 1.0.0
 > Status: Planning
 
@@ -14,7 +14,8 @@
 - [x] MCP server implementation
 - [x] Pull Request listing functionality
 - [x] Issue listing functionality
-- Basic authentication flow documentation
+- [x] Gitea SDK migration (replacing tea CLI with direct SDK integration)
+- [x] Basic authentication flow documentation
 
 ## Phase 2: Enhanced Operations (Q2 2026)
 
