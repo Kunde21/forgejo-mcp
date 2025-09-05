@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/modelcontextprotocol/go-sdk/mcp"
 	"github.com/sirupsen/logrus"
 )
 
@@ -30,9 +31,25 @@ func NewTeaPRListHandler(logger *logrus.Logger) *TeaPRListHandler {
 	}
 }
 
-// HandleRequest handles a pr_list request with tea CLI integration
-func (h *TeaPRListHandler) HandleRequest(ctx context.Context, method string, params map[string]interface{}) (interface{}, error) {
-	h.logger.Infof("Handling %s request with params: %v", method, params)
+// HandlePRListRequest handles a pr_list request with tea CLI integration using MCP SDK types
+func (h *TeaPRListHandler) HandlePRListRequest(ctx context.Context, req *mcp.CallToolRequest, args struct {
+	State  string `json:"state,omitempty"`
+	Author string `json:"author,omitempty"`
+	Limit  int    `json:"limit,omitempty"`
+}) (*mcp.CallToolResult, any, error) {
+	h.logger.Info("Handling pr_list request with MCP SDK")
+
+	// Build tea command from parameters
+	params := make(map[string]interface{})
+	if args.State != "" {
+		params["state"] = args.State
+	}
+	if args.Author != "" {
+		params["author"] = args.Author
+	}
+	if args.Limit > 0 {
+		params["limit"] = float64(args.Limit)
+	}
 
 	// Build tea command from parameters
 	cmd := h.commandBuilder.BuildPRListCommand(params)
@@ -45,14 +62,26 @@ func (h *TeaPRListHandler) HandleRequest(ctx context.Context, method string, par
 	output, err := h.executor.ExecuteCommand(ctx, cmd)
 	if err != nil {
 		h.logger.Errorf("Tea command execution failed: %v", err)
-		return nil, fmt.Errorf("failed to execute tea pr list: %w", err)
+		return &mcp.CallToolResult{
+			Content: []mcp.Content{
+				&mcp.TextContent{
+					Text: fmt.Sprintf("Error executing tea pr list: %v", err),
+				},
+			},
+		}, nil, nil
 	}
 
 	// Parse tea output
 	prs, err := h.parser.ParsePRList([]byte(output))
 	if err != nil {
 		h.logger.Errorf("Failed to parse tea output: %v", err)
-		return nil, fmt.Errorf("failed to parse tea pr list output: %w", err)
+		return &mcp.CallToolResult{
+			Content: []mcp.Content{
+				&mcp.TextContent{
+					Text: fmt.Sprintf("Error parsing tea output: %v", err),
+				},
+			},
+		}, nil, nil
 	}
 
 	// Transform to MCP response format
@@ -61,7 +90,13 @@ func (h *TeaPRListHandler) HandleRequest(ctx context.Context, method string, par
 		"total":        len(prs),
 	}
 
-	return result, nil
+	return &mcp.CallToolResult{
+		Content: []mcp.Content{
+			&mcp.TextContent{
+				Text: fmt.Sprintf("Found %d pull requests", len(prs)),
+			},
+		},
+	}, result, nil
 }
 
 // transformPRsToResponse transforms tea PR data to MCP response format
@@ -141,9 +176,29 @@ func NewTeaIssueListHandler(logger *logrus.Logger) *TeaIssueListHandler {
 	}
 }
 
-// HandleRequest handles an issue_list request with tea CLI integration
-func (h *TeaIssueListHandler) HandleRequest(ctx context.Context, method string, params map[string]interface{}) (interface{}, error) {
-	h.logger.Infof("Handling %s request with params: %v", method, params)
+// HandleIssueListRequest handles an issue_list request with tea CLI integration using MCP SDK types
+func (h *TeaIssueListHandler) HandleIssueListRequest(ctx context.Context, req *mcp.CallToolRequest, args struct {
+	State  string   `json:"state,omitempty"`
+	Author string   `json:"author,omitempty"`
+	Labels []string `json:"labels,omitempty"`
+	Limit  int      `json:"limit,omitempty"`
+}) (*mcp.CallToolResult, any, error) {
+	h.logger.Info("Handling issue_list request with MCP SDK")
+
+	// Build tea command from parameters
+	params := make(map[string]interface{})
+	if args.State != "" {
+		params["state"] = args.State
+	}
+	if args.Author != "" {
+		params["author"] = args.Author
+	}
+	if len(args.Labels) > 0 {
+		params["labels"] = args.Labels
+	}
+	if args.Limit > 0 {
+		params["limit"] = float64(args.Limit)
+	}
 
 	// Build tea command from parameters
 	cmd := h.commandBuilder.BuildIssueListCommand(params)
@@ -156,14 +211,26 @@ func (h *TeaIssueListHandler) HandleRequest(ctx context.Context, method string, 
 	output, err := h.executor.ExecuteCommand(ctx, cmd)
 	if err != nil {
 		h.logger.Errorf("Tea command execution failed: %v", err)
-		return nil, fmt.Errorf("failed to execute tea issue list: %w", err)
+		return &mcp.CallToolResult{
+			Content: []mcp.Content{
+				&mcp.TextContent{
+					Text: fmt.Sprintf("Error executing tea issue list: %v", err),
+				},
+			},
+		}, nil, nil
 	}
 
 	// Parse tea output
 	issues, err := h.parser.ParseIssueList([]byte(output))
 	if err != nil {
 		h.logger.Errorf("Failed to parse tea output: %v", err)
-		return nil, fmt.Errorf("failed to parse tea issue list output: %w", err)
+		return &mcp.CallToolResult{
+			Content: []mcp.Content{
+				&mcp.TextContent{
+					Text: fmt.Sprintf("Error parsing tea output: %v", err),
+				},
+			},
+		}, nil, nil
 	}
 
 	// Transform to MCP response format
@@ -172,7 +239,13 @@ func (h *TeaIssueListHandler) HandleRequest(ctx context.Context, method string, 
 		"total":  len(issues),
 	}
 
-	return result, nil
+	return &mcp.CallToolResult{
+		Content: []mcp.Content{
+			&mcp.TextContent{
+				Text: fmt.Sprintf("Found %d issues", len(issues)),
+			},
+		},
+	}, result, nil
 }
 
 // transformIssuesToResponse transforms tea issue data to MCP response format
