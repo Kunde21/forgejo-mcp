@@ -57,6 +57,7 @@ type GiteaClientInterface interface {
 
 	// Issue operations
 	ListIssues(opt gitea.ListIssueOption) ([]*gitea.Issue, *gitea.Response, error)
+	ListRepoIssues(owner, repo string, opt gitea.ListIssueOption) ([]*gitea.Issue, *gitea.Response, error)
 	GetIssue(owner, repo string, index int64) (*gitea.Issue, *gitea.Response, error)
 	CreateIssue(owner, repo string, opt gitea.CreateIssueOption) (*gitea.Issue, *gitea.Response, error)
 	EditIssue(owner, repo string, index int64, opt gitea.EditIssueOption) (*gitea.Issue, *gitea.Response, error)
@@ -74,8 +75,8 @@ type GiteaClientInterface interface {
 	ListRepoCommits(owner, repo string, opt gitea.ListCommitOptions) ([]*gitea.Commit, *gitea.Response, error)
 }
 
-// validateRepositoryFormat validates that a repository parameter follows the owner/repo format
-func validateRepositoryFormat(repoParam string) (bool, error) {
+// ValidateRepositoryFormat validates that a repository parameter follows the owner/repo format
+func ValidateRepositoryFormat(repoParam string) (bool, error) {
 	if repoParam == "" {
 		return false, fmt.Errorf("invalid repository format: expected 'owner/repo'")
 	}
@@ -104,7 +105,7 @@ func validateRepositoryFormat(repoParam string) (bool, error) {
 
 // validateRepositoryExistence checks if a repository exists via Gitea API
 func validateRepositoryExistence(client GiteaClientInterface, repoParam string) (bool, error) {
-	valid, err := validateRepositoryFormat(repoParam)
+	valid, err := ValidateRepositoryFormat(repoParam)
 	if !valid {
 		return false, err
 	}
@@ -117,7 +118,7 @@ func validateRepositoryExistence(client GiteaClientInterface, repoParam string) 
 
 // validateRepositoryAccess checks if the user has access to the repository
 func validateRepositoryAccess(client GiteaClientInterface, repoParam string) (bool, error) {
-	valid, err := validateRepositoryFormat(repoParam)
+	valid, err := ValidateRepositoryFormat(repoParam)
 	if !valid {
 		return false, err
 	}
@@ -161,7 +162,7 @@ func resolveCWDToRepository(cwd string) (string, error) {
 		}
 
 		repoParam := potentialOwner + "/" + potentialRepo
-		if valid, _ := validateRepositoryFormat(repoParam); valid {
+		if valid, _ := ValidateRepositoryFormat(repoParam); valid {
 			return repoParam, nil
 		}
 	}
@@ -171,7 +172,7 @@ func resolveCWDToRepository(cwd string) (string, error) {
 
 // extractRepositoryMetadata extracts and caches repository metadata
 func extractRepositoryMetadata(client GiteaClientInterface, repoParam string) (map[string]interface{}, error) {
-	valid, err := validateRepositoryFormat(repoParam)
+	valid, err := ValidateRepositoryFormat(repoParam)
 	if !valid {
 		return nil, err
 	}
@@ -262,7 +263,7 @@ func (h *SDKPRListHandler) HandlePRListRequest(ctx context.Context, req *mcp.Cal
 	}
 
 	// Validate repository format and access
-	if valid, err := validateRepositoryFormat(repoParam); !valid {
+	if valid, err := ValidateRepositoryFormat(repoParam); !valid {
 		return &mcp.CallToolResult{
 			Content: []mcp.Content{
 				&mcp.TextContent{
@@ -323,10 +324,18 @@ func (h *SDKPRListHandler) HandlePRListRequest(ctx context.Context, req *mcp.Cal
 		}, nil, nil
 	}
 
+	// Extract repository metadata
+	repoMetadata, err := extractRepositoryMetadata(h.client, repoParam)
+	if err != nil {
+		h.logger.Warnf("Failed to extract repository metadata: %v", err)
+		repoMetadata = map[string]interface{}{}
+	}
+
 	// Transform to MCP response format
 	result := map[string]interface{}{
 		"pullRequests": h.transformPRsToResponse(prs),
 		"total":        len(prs),
+		"repository":   repoMetadata,
 	}
 
 	return &mcp.CallToolResult{
@@ -529,7 +538,7 @@ func (h *SDKIssueListHandler) HandleIssueListRequest(ctx context.Context, req *m
 	}
 
 	// Validate repository format and access
-	if valid, err := validateRepositoryFormat(repoParam); !valid {
+	if valid, err := ValidateRepositoryFormat(repoParam); !valid {
 		return &mcp.CallToolResult{
 			Content: []mcp.Content{
 				&mcp.TextContent{
@@ -549,8 +558,8 @@ func (h *SDKIssueListHandler) HandleIssueListRequest(ctx context.Context, req *m
 		}, nil, err
 	}
 
-	// Parse repository identifier (for future use in repository-specific queries)
-	_, _, _ = strings.Cut(repoParam, "/")
+	// Parse repository identifier
+	owner, repo, _ := strings.Cut(repoParam, "/")
 
 	// Build SDK options from parameters
 	opts := gitea.ListIssueOption{}
@@ -572,7 +581,7 @@ func (h *SDKIssueListHandler) HandleIssueListRequest(ctx context.Context, req *m
 		opts.ListOptions.PageSize = args.Limit
 	}
 
-	issues, _, err := h.client.ListIssues(opts)
+	issues, _, err := h.client.ListRepoIssues(owner, repo, opts)
 	if err != nil {
 		sdkErr := NewSDKError("ListIssues", err, fmt.Sprintf("state=%s, limit=%d", args.State, args.Limit))
 		h.logger.Errorf("%v", sdkErr)
@@ -585,10 +594,18 @@ func (h *SDKIssueListHandler) HandleIssueListRequest(ctx context.Context, req *m
 		}, nil, nil
 	}
 
+	// Extract repository metadata
+	repoMetadata, err := extractRepositoryMetadata(h.client, repoParam)
+	if err != nil {
+		h.logger.Warnf("Failed to extract repository metadata: %v", err)
+		repoMetadata = map[string]interface{}{}
+	}
+
 	// Transform to MCP response format
 	result := map[string]interface{}{
-		"issues": h.transformIssuesToResponse(issues),
-		"total":  len(issues),
+		"issues":     h.transformIssuesToResponse(issues),
+		"total":      len(issues),
+		"repository": repoMetadata,
 	}
 
 	return &mcp.CallToolResult{

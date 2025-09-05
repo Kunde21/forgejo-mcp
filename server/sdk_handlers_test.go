@@ -127,6 +127,13 @@ func (m *MockGiteaClient) ListIssues(opt gitea.ListIssueOption) ([]*gitea.Issue,
 	return m.mockIssues, &gitea.Response{}, nil
 }
 
+func (m *MockGiteaClient) ListRepoIssues(owner, repo string, opt gitea.ListIssueOption) ([]*gitea.Issue, *gitea.Response, error) {
+	if m.mockError != nil {
+		return nil, nil, m.mockError
+	}
+	return m.mockIssues, &gitea.Response{}, nil
+}
+
 func (m *MockGiteaClient) GetIssue(owner, repo string, index int64) (*gitea.Issue, *gitea.Response, error) {
 	if m.mockError != nil {
 		return nil, nil, m.mockError
@@ -720,6 +727,13 @@ func (m *MockGiteaClientWithErrors) EditPullRequest(owner, repo string, index in
 
 // Issue operations
 func (m *MockGiteaClientWithErrors) ListIssues(opt gitea.ListIssueOption) ([]*gitea.Issue, *gitea.Response, error) {
+	if m.mockError != nil {
+		return nil, nil, m.mockError
+	}
+	return m.mockIssues, &gitea.Response{}, nil
+}
+
+func (m *MockGiteaClientWithErrors) ListRepoIssues(owner, repo string, opt gitea.ListIssueOption) ([]*gitea.Issue, *gitea.Response, error) {
 	if m.mockError != nil {
 		return nil, nil, m.mockError
 	}
@@ -2672,7 +2686,7 @@ func TestRepositoryParameterValidation_FormatValidation(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			valid, err := validateRepositoryFormat(tt.repoParam)
+			valid, err := ValidateRepositoryFormat(tt.repoParam)
 			if valid != tt.expectValid {
 				t.Errorf("validateRepositoryFormat(%q) = %v, want %v", tt.repoParam, valid, tt.expectValid)
 			}
@@ -2984,7 +2998,7 @@ func TestRepositoryParameterValidation_SpecialCharacters(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			valid, err := validateRepositoryFormat(tt.repoParam)
+			valid, err := ValidateRepositoryFormat(tt.repoParam)
 			if valid != tt.expectValid {
 				t.Errorf("validateRepositoryFormat(%q) = %v, want %v", tt.repoParam, valid, tt.expectValid)
 			}
@@ -3026,7 +3040,7 @@ func TestRepositoryParameterValidation_ErrorMessages(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			_, err := validateRepositoryFormat(tt.repoParam)
+			_, err := ValidateRepositoryFormat(tt.repoParam)
 			if err == nil {
 				t.Errorf("validateRepositoryFormat(%q) should return error", tt.repoParam)
 			} else if err.Error() != tt.expectedMessage {
@@ -3856,10 +3870,12 @@ func TestCleanupVerification_EndToEndMigration(t *testing.T) {
 	t.Run("issue_scenarios", func(t *testing.T) {
 		// Test open issues
 		issueArgs := struct {
-			State  string   `json:"state,omitempty"`
-			Author string   `json:"author,omitempty"`
-			Labels []string `json:"labels,omitempty"`
-			Limit  int      `json:"limit,omitempty"`
+			Repository string   `json:"repository,omitempty"`
+			CWD        string   `json:"cwd,omitempty"`
+			State      string   `json:"state,omitempty"`
+			Author     string   `json:"author,omitempty"`
+			Labels     []string `json:"labels,omitempty"`
+			Limit      int      `json:"limit,omitempty"`
 		}{Repository: "testuser/test-repo", State: "open"}
 
 		issueResult, issueData, issueErr := issueHandler.HandleIssueListRequest(ctx, req, issueArgs)

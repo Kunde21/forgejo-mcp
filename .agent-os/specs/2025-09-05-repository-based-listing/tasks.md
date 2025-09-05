@@ -64,18 +64,18 @@ These are the tasks to be completed for the spec detailed in @.agent-os/specs/20
 - [x] Update handler method signatures to accept new parameters
 
 ### Task 5: Update API Handlers for Repository-Based Queries
-**Status:** Pending
+**Status:** Completed
 **Priority:** High
 **Description:** Modify the PR and issue list handlers to use repository-based filtering
 
-- Update PR list handler to use repository parameter
-- Update issue list handler to use repository parameter
-- Modify query builders to filter by repository instead of user
-- Update database query logic for repository-specific data
-- Implement proper JOIN operations for repository data
-- Add repository context to response formatting
-- Update pagination logic to work with repository scope
-- Maintain existing filtering capabilities (state, author, labels)
+- [x] Update PR list handler to use repository parameter
+- [x] Update issue list handler to use repository parameter
+- [x] Modify query builders to filter by repository instead of user
+- [x] Update database query logic for repository-specific data
+- [x] Implement proper JOIN operations for repository data
+- [x] Add repository context to response formatting
+- [x] Update pagination logic to work with repository scope
+- [x] Maintain existing filtering capabilities (state, author, labels)
 
 ### Task 6: Update Response Models and Formatting
 **Status:** Pending
