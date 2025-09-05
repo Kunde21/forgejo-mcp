@@ -10,12 +10,12 @@ These are the tasks to be completed for the spec detailed in @.agent-os/specs/20
 ### Task 1: SDK Dependencies and Setup
 **Description:** Establish Gitea SDK foundation with proper dependency management and configuration
 
-1.1 Write tests for SDK dependency resolution and version compatibility
-1.2 Add Gitea SDK v0.22.0 to go.mod with proper import path verification
-1.3 Create SDK client configuration tests for authentication and connection settings
-1.4 Implement SDK client factory with token-based authentication
-1.5 Write integration tests for SDK client initialization
-1.6 Verify all dependency and setup tests pass
+- [x] 1.1 Write tests for SDK dependency resolution and version compatibility
+- [x] 1.2 Add Gitea SDK v0.22.0 to go.mod with proper import path verification
+- [x] 1.3 Create SDK client configuration tests for authentication and connection settings
+- [x] 1.4 Implement SDK client factory with token-based authentication
+- [x] 1.5 Write integration tests for SDK client initialization
+- [x] 1.6 Verify all dependency and setup tests pass
 
 ### Task 2: Core Handler Migration
 **Description:** Migrate existing tea CLI handlers to use Gitea SDK with comprehensive testing
