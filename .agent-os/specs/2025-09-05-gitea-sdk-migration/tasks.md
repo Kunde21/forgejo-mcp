@@ -32,13 +32,13 @@ These are the tasks to be completed for the spec detailed in @.agent-os/specs/20
 ### Task 3: Error Handling and Response Transformation
 **Description:** Implement robust error handling and response formatting for SDK operations
 
-3.1 Write tests for SDK error type handling and transformation
-3.2 Implement SDK error wrapper with proper context preservation
-3.3 Write tests for response format transformation (SDK to MCP)
-3.4 Create response transformers for PR, issue, and repository data
-3.5 Write tests for authentication error scenarios
-3.6 Implement authentication failure handling and recovery
-3.7 Verify all error handling and transformation tests pass
+- [x] 3.1 Write tests for SDK error type handling and transformation
+- [x] 3.2 Implement SDK error wrapper with proper context preservation
+- [x] 3.3 Write tests for response format transformation (SDK to MCP)
+- [x] 3.4 Create response transformers for PR, issue, and repository data
+- [x] 3.5 Write tests for authentication error scenarios
+- [x] 3.6 Implement authentication failure handling and recovery
+- [x] 3.7 Verify all error handling and transformation tests pass
 
 ### Task 4: Testing Infrastructure Migration
 **Description:** Update existing test suite to work with SDK instead of CLI mocks

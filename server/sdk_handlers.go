@@ -10,6 +10,37 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+// SDKError represents an error from the Gitea SDK with additional context
+type SDKError struct {
+	Operation string // The operation that failed (e.g., "ListRepoPullRequests")
+	Cause     error  // The original SDK error
+	Context   string // Additional context about the operation
+}
+
+func (e *SDKError) Error() string {
+	if e.Context != "" {
+		return fmt.Sprintf("Gitea SDK %s failed (%s): %v", e.Operation, e.Context, e.Cause)
+	}
+	return fmt.Sprintf("Gitea SDK %s failed: %v", e.Operation, e.Cause)
+}
+
+func (e *SDKError) Unwrap() error {
+	return e.Cause
+}
+
+// NewSDKError creates a new SDK error with context
+func NewSDKError(operation string, cause error, context ...string) *SDKError {
+	ctx := ""
+	if len(context) > 0 {
+		ctx = strings.Join(context, ", ")
+	}
+	return &SDKError{
+		Operation: operation,
+		Cause:     cause,
+		Context:   ctx,
+	}
+}
+
 // GiteaClientInterface defines the interface for Gitea client operations
 type GiteaClientInterface interface {
 	ListRepoPullRequests(owner, repo string, opt gitea.ListPullRequestsOptions) ([]*gitea.PullRequest, *gitea.Response, error)
@@ -71,11 +102,12 @@ func (h *SDKPRListHandler) HandlePRListRequest(ctx context.Context, req *mcp.Cal
 
 	prs, _, err := h.client.ListRepoPullRequests(owner, repo, opts)
 	if err != nil {
-		h.logger.Errorf("Gitea SDK ListRepoPullRequests failed: %v", err)
+		sdkErr := NewSDKError("ListRepoPullRequests", err, fmt.Sprintf("owner=%s, repo=%s", owner, repo))
+		h.logger.Errorf("%v", sdkErr)
 		return &mcp.CallToolResult{
 			Content: []mcp.Content{
 				&mcp.TextContent{
-					Text: fmt.Sprintf("Error executing SDK pr list: %v", err),
+					Text: fmt.Sprintf("Error executing SDK pr list: %v", sdkErr),
 				},
 			},
 		}, nil, nil
@@ -175,11 +207,12 @@ func (h *SDKRepositoryHandler) ListRepositories(ctx context.Context, req *mcp.Ca
 
 	repos, _, err := h.client.ListMyRepos(opts)
 	if err != nil {
-		h.logger.Errorf("Gitea SDK ListMyRepos failed: %v", err)
+		sdkErr := NewSDKError("ListMyRepos", err, fmt.Sprintf("limit=%d", args.Limit))
+		h.logger.Errorf("%v", sdkErr)
 		return &mcp.CallToolResult{
 			Content: []mcp.Content{
 				&mcp.TextContent{
-					Text: fmt.Sprintf("Error executing SDK repository list: %v", err),
+					Text: fmt.Sprintf("Error executing SDK repository list: %v", sdkErr),
 				},
 			},
 		}, nil, nil
@@ -283,11 +316,12 @@ func (h *SDKIssueListHandler) HandleIssueListRequest(ctx context.Context, req *m
 
 	issues, _, err := h.client.ListIssues(opts)
 	if err != nil {
-		h.logger.Errorf("Gitea SDK ListIssues failed: %v", err)
+		sdkErr := NewSDKError("ListIssues", err, fmt.Sprintf("state=%s, limit=%d", args.State, args.Limit))
+		h.logger.Errorf("%v", sdkErr)
 		return &mcp.CallToolResult{
 			Content: []mcp.Content{
 				&mcp.TextContent{
-					Text: fmt.Sprintf("Error executing SDK issue list: %v", err),
+					Text: fmt.Sprintf("Error executing SDK issue list: %v", sdkErr),
 				},
 			},
 		}, nil, nil
