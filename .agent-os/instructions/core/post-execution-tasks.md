@@ -245,6 +245,7 @@ Use the project-manager subagent to play a system sound to alert the user that t
 <instructions>
   ACTION: Play completion sound
   PURPOSE: Alert user that task is complete
+  REQUEST: Use sound file `/usr/share/sounds/Pop/stereo/notification/system-ready.oga`
 </instructions>
 
 </step>
