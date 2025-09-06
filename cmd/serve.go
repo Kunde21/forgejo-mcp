@@ -1,8 +1,8 @@
 package cmd
 
 import (
-	"context"
 	"fmt"
+	"os"
 
 	"github.com/Kunde21/forgejo-mcp/config"
 	"github.com/Kunde21/forgejo-mcp/server"
@@ -39,11 +39,11 @@ func registerTools(mcpServer *mcp.Server, cfg *config.Config, logger *logrus.Log
 				},
 				"cwd": {
 					Type:        "string",
-					Description: "Current working directory to resolve repository from",
+					Description: `Current working directory to resolve repository from. Required if "repository" is not provided`,
 				},
 				"state": {
 					Type:        "string",
-					Enum:        []interface{}{"open", "closed", "all"},
+					Enum:        []any{"open", "closed", "all"},
 					Description: "Filter by PR state",
 				},
 				"author": {
@@ -55,7 +55,6 @@ func registerTools(mcpServer *mcp.Server, cfg *config.Config, logger *logrus.Log
 					Description: "Maximum number of PRs to return",
 				},
 			},
-			Required: []string{"repository"},
 		},
 	}, prHandler.HandlePRListRequest)
 
@@ -72,11 +71,11 @@ func registerTools(mcpServer *mcp.Server, cfg *config.Config, logger *logrus.Log
 				},
 				"cwd": {
 					Type:        "string",
-					Description: "Current working directory to resolve repository from",
+					Description: `Current working directory to resolve repository from. Required if "repository" is not provided`,
 				},
 				"state": {
 					Type:        "string",
-					Enum:        []interface{}{"open", "closed", "all"},
+					Enum:        []any{"open", "closed", "all"},
 					Description: "Filter by issue state",
 				},
 				"author": {
@@ -93,7 +92,6 @@ func registerTools(mcpServer *mcp.Server, cfg *config.Config, logger *logrus.Log
 					Description: "Maximum number of issues to return",
 				},
 			},
-			Required: []string{"repository"},
 		},
 	}, issueHandler.HandleIssueListRequest)
 
@@ -141,6 +139,12 @@ Examples:
 		}
 		logger.SetLevel(level)
 		logger.SetFormatter(&logrus.JSONFormatter{})
+		f, err := os.CreateTemp("/tmp/tmp.pK4iWXcwYw", "fj-mcp-*.logs")
+		if err != nil {
+			return fmt.Errorf("log file: %w", err)
+		}
+		defer f.Close()
+		logger.SetOutput(f)
 
 		// Create MCP server using SDK
 		impl := &mcp.Implementation{
@@ -156,10 +160,8 @@ Examples:
 
 		// Start the server
 		logger.Info("Starting MCP server with stdio transport")
-
 		// Use stdio transport (MCP SDK default)
-		transport := mcp.NewStdioTransport()
-		if err := mcpServer.Run(context.Background(), transport); err != nil {
+		if err := mcpServer.Run(cmd.Context(), &mcp.StdioTransport{}); err != nil {
 			return fmt.Errorf("server error: %w", err)
 		}
 

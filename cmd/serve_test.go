@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"slices"
 	"testing"
 
 	"github.com/Kunde21/forgejo-mcp/config"
@@ -94,13 +95,7 @@ func TestServeCmd_Usage(t *testing.T) {
 // Test that the command integrates with root command
 func TestServeCmd_Integration(t *testing.T) {
 	// Verify serve command is added to root
-	found := false
-	for _, cmd := range rootCmd.Commands() {
-		if cmd == serveCmd {
-			found = true
-			break
-		}
-	}
+	found := slices.Contains(rootCmd.Commands(), serveCmd)
 	if !found {
 		t.Error("serve command should be added to root command")
 	}
@@ -110,7 +105,7 @@ func TestServeCmd_ServerInitialization(t *testing.T) {
 	// Create a minimal config for testing
 	cfg := &config.Config{
 		ForgejoURL: "https://test.forgejo.com",
-		AuthToken:  "test-token",
+		AuthToken:  "test-required-auth-token",
 		Host:       "localhost", // Required for config validation
 		Port:       3000,        // Required for config validation
 		LogLevel:   "info",

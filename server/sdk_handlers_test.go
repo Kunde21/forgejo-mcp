@@ -2,17 +2,24 @@ package server
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
-	"os"
+	"math/rand/v2"
+	"path"
 	"runtime"
 	"strings"
 	"testing"
 	"time"
 
 	"code.gitea.io/sdk/gitea"
+	"github.com/google/go-cmp/cmp"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 	"github.com/sirupsen/logrus"
 )
+
+const testRepoName = "test-repo"
+const testUser = "test-user"
+const testRepo = testUser + "/" + testRepoName
 
 // MockGiteaClient implements a comprehensive mock Gitea client for testing
 type MockGiteaClient struct {
@@ -23,6 +30,7 @@ type MockGiteaClient struct {
 	mockBranches []*gitea.Branch
 	mockCommits  []*gitea.Commit
 	mockError    error
+	getRepoErr   error
 }
 
 // Repository operations
@@ -34,8 +42,8 @@ func (m *MockGiteaClient) ListMyRepos(opt gitea.ListReposOptions) ([]*gitea.Repo
 }
 
 func (m *MockGiteaClient) GetRepo(owner, repo string) (*gitea.Repository, *gitea.Response, error) {
-	if m.mockError != nil {
-		return nil, nil, m.mockError
+	if m.getRepoErr != nil {
+		return nil, nil, m.getRepoErr
 	}
 	for _, r := range m.mockRepos {
 		if r.Owner != nil && r.Owner.UserName == owner && r.Name == repo {
@@ -258,6 +266,14 @@ func (m *MockGiteaClient) ListRepoCommits(owner, repo string, opt gitea.ListComm
 func TestSDKPRListHandler_HandlePRListRequest(t *testing.T) {
 	logger := logrus.New()
 	mockClient := &MockGiteaClient{
+		mockRepos: []*gitea.Repository{
+			{
+				Name: testRepoName,
+				Owner: &gitea.User{
+					UserName: testUser,
+				},
+			},
+		},
 		mockPRs: []*gitea.PullRequest{
 			{
 				ID:    1,
@@ -266,7 +282,7 @@ func TestSDKPRListHandler_HandlePRListRequest(t *testing.T) {
 				State: gitea.StateOpen,
 				Body:  "Test description",
 				Poster: &gitea.User{
-					UserName: "testuser",
+					UserName: testUser,
 				},
 			},
 		},
@@ -286,7 +302,8 @@ func TestSDKPRListHandler_HandlePRListRequest(t *testing.T) {
 		Author     string `json:"author,omitempty"`
 		Limit      int    `json:"limit,omitempty"`
 	}{
-		State: "open",
+		Repository: testRepo,
+		State:      "open",
 	}
 
 	result, data, err := handler.HandlePRListRequest(ctx, req, args)
@@ -334,7 +351,7 @@ func TestSDKPRListHandler_HandlePRListRequest(t *testing.T) {
 		if pr["title"] != "Test PR" {
 			t.Errorf("Expected PR title 'Test PR', got %v", pr["title"])
 		}
-		if pr["author"] != "testuser" {
+		if pr["author"] != testUser {
 			t.Errorf("Expected PR author 'testuser', got %v", pr["author"])
 		}
 		if pr["state"] != "open" {
@@ -486,29 +503,23 @@ func TestSDKHandlersIntegration(t *testing.T) {
 	mockClient := &MockGiteaClient{
 		mockPRs: []*gitea.PullRequest{
 			{
-				ID:     1,
-				Index:  1,
-				Title:  "Integration Test PR",
-				State:  gitea.StateOpen,
-				Poster: &gitea.User{UserName: "testuser"},
+				ID: 1, Index: 1, Comments: 2, Mergeable: true,
+				Title: "Test PR", Body: "Pull this Request", State: "open",
 			},
 		},
 		mockIssues: []*gitea.Issue{
 			{
-				ID:     1,
-				Index:  1,
-				Title:  "Integration Test Issue",
-				State:  gitea.StateOpen,
-				Poster: &gitea.User{UserName: "testuser"},
+				ID:       2,
+				Index:    2,
+				Title:    "Test Issue",
+				Body:     "Issue This",
+				State:    "open",
+				Comments: 3,
+				Created:  time.Now().Add(-time.Hour),
 			},
 		},
 		mockRepos: []*gitea.Repository{
-			{
-				ID:       1,
-				Name:     "integration-repo",
-				FullName: "testuser/integration-repo",
-				Owner:    &gitea.User{UserName: "testuser"},
-			},
+			{Name: testRepoName, Owner: &gitea.User{UserName: testUser}, Private: false},
 		},
 	}
 
@@ -527,7 +538,7 @@ func TestSDKHandlersIntegration(t *testing.T) {
 		State      string `json:"state,omitempty"`
 		Author     string `json:"author,omitempty"`
 		Limit      int    `json:"limit,omitempty"`
-	}{Repository: "testuser/test-repo", State: "open"}
+	}{Repository: testRepo, State: "open"}
 
 	prResult, prData, prErr := prHandler.HandlePRListRequest(ctx, req, prArgs)
 	if prErr != nil {
@@ -548,7 +559,7 @@ func TestSDKHandlersIntegration(t *testing.T) {
 		Author     string   `json:"author,omitempty"`
 		Labels     []string `json:"labels,omitempty"`
 		Limit      int      `json:"limit,omitempty"`
-	}{Repository: "testuser/test-repo", State: "open"}
+	}{Repository: testRepo, State: "open"}
 
 	issueResult, issueData, issueErr := issueHandler.HandleIssueListRequest(ctx, req, issueArgs)
 	if issueErr != nil {
@@ -578,33 +589,34 @@ func TestSDKHandlersIntegration(t *testing.T) {
 	}
 
 	// Verify all handlers return expected data structures
-	prDataMap := prData.(map[string]interface{})
+	prDataMap := prData.(map[string]any)
 	if prDataMap["total"] != 1 {
 		t.Errorf("Expected 1 PR, got %v", prDataMap["total"])
 	}
 
-	issueDataMap := issueData.(map[string]interface{})
+	issueDataMap := issueData.(map[string]any)
 	if issueDataMap["total"] != 1 {
 		t.Errorf("Expected 1 issue, got %v", issueDataMap["total"])
 	}
 
-	repoDataMap := repoData.(map[string]interface{})
+	repoDataMap := repoData.(map[string]any)
 	if repoDataMap["total"] != 1 {
 		t.Errorf("Expected 1 repository, got %v", repoDataMap["total"])
 	}
-}
-
-// TestSDKPRListHandler_ErrorHandling tests error handling in SDK PR list handler
-func TestSDKPRListHandler_ErrorHandling(t *testing.T) {
-	// TODO: Implement proper error handling tests after refactoring handler
-	// to check for nil client before calling methods
-	t.Skip("Error handling tests need handler refactoring for nil client checks")
 }
 
 // TestSDKPRListHandler_EmptyResults tests handling of empty PR results
 func TestSDKPRListHandler_EmptyResults(t *testing.T) {
 	logger := logrus.New()
 	mockClient := &MockGiteaClient{
+		mockRepos: []*gitea.Repository{
+			{
+				Name: "testrepo",
+				Owner: &gitea.User{
+					UserName: "testuser",
+				},
+			},
+		},
 		mockPRs: []*gitea.PullRequest{}, // Empty results
 	}
 
@@ -622,7 +634,8 @@ func TestSDKPRListHandler_EmptyResults(t *testing.T) {
 		Author     string `json:"author,omitempty"`
 		Limit      int    `json:"limit,omitempty"`
 	}{
-		State: "closed",
+		Repository: "testuser/testrepo",
+		State:      "closed",
 	}
 
 	result, data, err := handler.HandlePRListRequest(ctx, req, args)
@@ -664,161 +677,12 @@ func TestSDKPRListHandler_EmptyResults(t *testing.T) {
 	}
 }
 
-// MockGiteaClientWithErrors implements a mock Gitea client that can return errors
-type MockGiteaClientWithErrors struct {
-	mockPRs      []*gitea.PullRequest
-	mockIssues   []*gitea.Issue
-	mockRepos    []*gitea.Repository
-	mockUsers    []*gitea.User
-	mockBranches []*gitea.Branch
-	mockCommits  []*gitea.Commit
-	mockError    error
-}
-
-// Repository operations
-func (m *MockGiteaClientWithErrors) ListMyRepos(opt gitea.ListReposOptions) ([]*gitea.Repository, *gitea.Response, error) {
-	if m.mockError != nil {
-		return nil, nil, m.mockError
-	}
-	return m.mockRepos, &gitea.Response{}, nil
-}
-
-func (m *MockGiteaClientWithErrors) GetRepo(owner, repo string) (*gitea.Repository, *gitea.Response, error) {
-	if m.mockError != nil {
-		return nil, nil, m.mockError
-	}
-	return nil, &gitea.Response{}, m.mockError
-}
-
-func (m *MockGiteaClientWithErrors) CreateRepo(opt gitea.CreateRepoOption) (*gitea.Repository, *gitea.Response, error) {
-	if m.mockError != nil {
-		return nil, nil, m.mockError
-	}
-	return nil, &gitea.Response{}, m.mockError
-}
-
-func (m *MockGiteaClientWithErrors) DeleteRepo(owner, repo string) (*gitea.Response, error) {
-	if m.mockError != nil {
-		return nil, m.mockError
-	}
-	return &gitea.Response{}, nil
-}
-
-// Pull Request operations
-func (m *MockGiteaClientWithErrors) ListRepoPullRequests(owner, repo string, opt gitea.ListPullRequestsOptions) ([]*gitea.PullRequest, *gitea.Response, error) {
-	if m.mockError != nil {
-		return nil, nil, m.mockError
-	}
-	return m.mockPRs, &gitea.Response{}, nil
-}
-
-func (m *MockGiteaClientWithErrors) GetPullRequest(owner, repo string, index int64) (*gitea.PullRequest, *gitea.Response, error) {
-	if m.mockError != nil {
-		return nil, nil, m.mockError
-	}
-	return nil, &gitea.Response{}, m.mockError
-}
-
-func (m *MockGiteaClientWithErrors) CreatePullRequest(owner, repo string, opt gitea.CreatePullRequestOption) (*gitea.PullRequest, *gitea.Response, error) {
-	if m.mockError != nil {
-		return nil, nil, m.mockError
-	}
-	return nil, &gitea.Response{}, m.mockError
-}
-
-func (m *MockGiteaClientWithErrors) EditPullRequest(owner, repo string, index int64, opt gitea.EditPullRequestOption) (*gitea.PullRequest, *gitea.Response, error) {
-	if m.mockError != nil {
-		return nil, nil, m.mockError
-	}
-	return nil, &gitea.Response{}, m.mockError
-}
-
 // Issue operations
 func (m *MockGiteaClient) ListIssues(opt gitea.ListIssueOption) ([]*gitea.Issue, *gitea.Response, error) {
 	if m.mockError != nil {
 		return nil, nil, m.mockError
 	}
 	return m.mockIssues, &gitea.Response{}, nil
-}
-
-func (m *MockGiteaClientWithErrors) ListIssues(opt gitea.ListIssueOption) ([]*gitea.Issue, *gitea.Response, error) {
-	if m.mockError != nil {
-		return nil, nil, m.mockError
-	}
-	return m.mockIssues, &gitea.Response{}, nil
-}
-
-func (m *MockGiteaClientWithErrors) ListRepoIssues(owner, repo string, opt gitea.ListIssueOption) ([]*gitea.Issue, *gitea.Response, error) {
-	if m.mockError != nil {
-		return nil, nil, m.mockError
-	}
-	return m.mockIssues, &gitea.Response{}, nil
-}
-
-func (m *MockGiteaClientWithErrors) GetIssue(owner, repo string, index int64) (*gitea.Issue, *gitea.Response, error) {
-	if m.mockError != nil {
-		return nil, nil, m.mockError
-	}
-	return nil, &gitea.Response{}, m.mockError
-}
-
-func (m *MockGiteaClientWithErrors) CreateIssue(owner, repo string, opt gitea.CreateIssueOption) (*gitea.Issue, *gitea.Response, error) {
-	if m.mockError != nil {
-		return nil, nil, m.mockError
-	}
-	return nil, &gitea.Response{}, m.mockError
-}
-
-func (m *MockGiteaClientWithErrors) EditIssue(owner, repo string, index int64, opt gitea.EditIssueOption) (*gitea.Issue, *gitea.Response, error) {
-	if m.mockError != nil {
-		return nil, nil, m.mockError
-	}
-	return nil, &gitea.Response{}, m.mockError
-}
-
-// User operations
-func (m *MockGiteaClientWithErrors) GetMyUserInfo() (*gitea.User, *gitea.Response, error) {
-	if m.mockError != nil {
-		return nil, nil, m.mockError
-	}
-	return nil, &gitea.Response{}, m.mockError
-}
-
-func (m *MockGiteaClientWithErrors) GetUserInfo(user string) (*gitea.User, *gitea.Response, error) {
-	if m.mockError != nil {
-		return nil, nil, m.mockError
-	}
-	return nil, &gitea.Response{}, m.mockError
-}
-
-// Branch operations
-func (m *MockGiteaClientWithErrors) ListRepoBranches(owner, repo string, opt gitea.ListRepoBranchesOptions) ([]*gitea.Branch, *gitea.Response, error) {
-	if m.mockError != nil {
-		return nil, nil, m.mockError
-	}
-	return nil, &gitea.Response{}, m.mockError
-}
-
-func (m *MockGiteaClientWithErrors) GetRepoBranch(owner, repo, branch string) (*gitea.Branch, *gitea.Response, error) {
-	if m.mockError != nil {
-		return nil, nil, m.mockError
-	}
-	return nil, &gitea.Response{}, m.mockError
-}
-
-// Commit operations
-func (m *MockGiteaClientWithErrors) GetSingleCommit(owner, repo, sha string) (*gitea.Commit, *gitea.Response, error) {
-	if m.mockError != nil {
-		return nil, nil, m.mockError
-	}
-	return nil, &gitea.Response{}, m.mockError
-}
-
-func (m *MockGiteaClientWithErrors) ListRepoCommits(owner, repo string, opt gitea.ListCommitOptions) ([]*gitea.Commit, *gitea.Response, error) {
-	if m.mockError != nil {
-		return nil, nil, m.mockError
-	}
-	return nil, &gitea.Response{}, m.mockError
 }
 
 // TestSDKErrorHandling_SDKErrorTransformation tests SDK error type handling and transformation
@@ -832,25 +696,25 @@ func TestSDKErrorHandling_SDKErrorTransformation(t *testing.T) {
 		{
 			name:           "network error",
 			mockError:      fmt.Errorf("connection refused"),
-			expectedError:  "Error executing SDK pr list: Gitea SDK ListRepoPullRequests failed (owner=example-owner, repo=example-repo): connection refused",
+			expectedError:  "Error executing SDK pr list: Gitea SDK ListRepoPullRequests failed (owner=" + testUser + ", repo=" + testRepoName + "): connection refused",
 			expectedLogged: true,
 		},
 		{
 			name:           "authentication error",
 			mockError:      fmt.Errorf("401 Unauthorized"),
-			expectedError:  "Error executing SDK pr list: Gitea SDK ListRepoPullRequests failed (owner=example-owner, repo=example-repo): 401 Unauthorized",
+			expectedError:  "Error executing SDK pr list: Gitea SDK ListRepoPullRequests failed (owner=" + testUser + ", repo=" + testRepoName + "): 401 Unauthorized",
 			expectedLogged: true,
 		},
 		{
 			name:           "API error",
 			mockError:      fmt.Errorf("404 Not Found"),
-			expectedError:  "Error executing SDK pr list: Gitea SDK ListRepoPullRequests failed (owner=example-owner, repo=example-repo): 404 Not Found",
+			expectedError:  "Error executing SDK pr list: Gitea SDK ListRepoPullRequests failed (owner=" + testUser + ", repo=" + testRepoName + "): 404 Not Found",
 			expectedLogged: true,
 		},
 		{
 			name:           "wrapped error",
 			mockError:      fmt.Errorf("failed to connect: %w", fmt.Errorf("timeout")),
-			expectedError:  "Error executing SDK pr list: Gitea SDK ListRepoPullRequests failed (owner=example-owner, repo=example-repo): failed to connect: timeout",
+			expectedError:  "Error executing SDK pr list: Gitea SDK ListRepoPullRequests failed (owner=" + testUser + ", repo=" + testRepoName + "): failed to connect: timeout",
 			expectedLogged: true,
 		},
 	}
@@ -858,14 +722,14 @@ func TestSDKErrorHandling_SDKErrorTransformation(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			logger := logrus.New()
-			mockClient := &MockGiteaClientWithErrors{
-				mockError: tt.mockError,
+			mockClient := &MockGiteaClient{mockError: tt.mockError,
+				mockRepos: []*gitea.Repository{{
+					ID:    10,
+					Owner: &gitea.User{UserName: testUser},
+					Name:  testRepoName,
+				}},
 			}
-
-			handler := &SDKPRListHandler{
-				logger: logger,
-				client: mockClient,
-			}
+			handler := &SDKPRListHandler{logger: logger, client: mockClient}
 
 			ctx := context.Background()
 			req := &mcp.CallToolRequest{}
@@ -875,7 +739,7 @@ func TestSDKErrorHandling_SDKErrorTransformation(t *testing.T) {
 				State      string `json:"state,omitempty"`
 				Author     string `json:"author,omitempty"`
 				Limit      int    `json:"limit,omitempty"`
-			}{}
+			}{CWD: testRepo}
 
 			result, data, err := handler.HandlePRListRequest(ctx, req, args)
 			// Should not return an error in the function return value
@@ -913,8 +777,9 @@ func TestSDKErrorHandling_SDKErrorTransformation(t *testing.T) {
 // TestSDKErrorHandling_IssueHandlerErrorTransformation tests error handling in issue handler
 func TestSDKErrorHandling_IssueHandlerErrorTransformation(t *testing.T) {
 	logger := logrus.New()
-	mockClient := &MockGiteaClientWithErrors{
+	mockClient := &MockGiteaClient{
 		mockError: fmt.Errorf("rate limit exceeded"),
+		mockRepos: []*gitea.Repository{{ID: 8, Owner: &gitea.User{UserName: testUser}, Name: testRepoName}},
 	}
 
 	handler := &SDKIssueListHandler{
@@ -932,7 +797,7 @@ func TestSDKErrorHandling_IssueHandlerErrorTransformation(t *testing.T) {
 		Labels     []string `json:"labels,omitempty"`
 		Limit      int      `json:"limit,omitempty"`
 	}{
-		Repository: "test/repo",
+		Repository: testRepo,
 	}
 
 	result, data, err := handler.HandleIssueListRequest(ctx, req, args)
@@ -966,7 +831,7 @@ func TestSDKErrorHandling_IssueHandlerErrorTransformation(t *testing.T) {
 // TestSDKErrorHandling_RepositoryHandlerErrorTransformation tests error handling in repository handler
 func TestSDKErrorHandling_RepositoryHandlerErrorTransformation(t *testing.T) {
 	logger := logrus.New()
-	mockClient := &MockGiteaClientWithErrors{
+	mockClient := &MockGiteaClient{
 		mockError: fmt.Errorf("invalid token"),
 	}
 
@@ -1013,8 +878,9 @@ func TestSDKErrorHandling_RepositoryHandlerErrorTransformation(t *testing.T) {
 func TestSDKErrorHandling_ErrorContextPreservation(t *testing.T) {
 	logger := logrus.New()
 	wrappedError := fmt.Errorf("original error: %w", fmt.Errorf("connection failed"))
-	mockClient := &MockGiteaClientWithErrors{
+	mockClient := &MockGiteaClient{
 		mockError: wrappedError,
+		mockRepos: []*gitea.Repository{{ID: 8, Owner: &gitea.User{UserName: testUser}, Name: testRepoName}},
 	}
 
 	handler := &SDKPRListHandler{
@@ -1030,7 +896,7 @@ func TestSDKErrorHandling_ErrorContextPreservation(t *testing.T) {
 		State      string `json:"state,omitempty"`
 		Author     string `json:"author,omitempty"`
 		Limit      int    `json:"limit,omitempty"`
-	}{}
+	}{Repository: testRepo}
 
 	result, _, err := handler.HandlePRListRequest(ctx, req, args)
 	if err != nil {
@@ -1065,7 +931,7 @@ func TestSDKResponseTransformation_PRs(t *testing.T) {
 			Poster:  &gitea.User{UserName: "testuser"},
 			Created: &[]time.Time{time.Date(2023, 1, 1, 12, 0, 0, 0, time.UTC)}[0],
 			Updated: &[]time.Time{time.Date(2023, 1, 2, 12, 0, 0, 0, time.UTC)}[0],
-			HTMLURL: "https://example.com/pr/1",
+			URL:     "https://example.com/pr/1",
 		},
 		{
 			ID:      2,
@@ -1184,7 +1050,7 @@ func TestSDKResponseTransformation_Issues(t *testing.T) {
 			Poster:  &gitea.User{UserName: "testuser"},
 			Created: time.Date(2023, 1, 1, 12, 0, 0, 0, time.UTC),
 			Updated: time.Date(2023, 1, 2, 12, 0, 0, 0, time.UTC),
-			HTMLURL: "https://example.com/issue/1",
+			URL:     "https://example.com/issue/1",
 		},
 		{
 			ID:      2,
@@ -1497,11 +1363,11 @@ func TestSDKMigration_CLIToSDKCompatibility(t *testing.T) {
 	testRepos := []*gitea.Repository{
 		{
 			ID:          1,
-			Name:        "migration-test-repo",
-			FullName:    "testuser/migration-test-repo",
+			Name:        testRepoName,
+			FullName:    testRepo,
 			Description: "Repository for migration testing",
 			Private:     false,
-			Owner:       &gitea.User{UserName: "testuser"},
+			Owner:       &gitea.User{UserName: testUser},
 		},
 	}
 
@@ -1526,7 +1392,7 @@ func TestSDKMigration_CLIToSDKCompatibility(t *testing.T) {
 		State      string `json:"state,omitempty"`
 		Author     string `json:"author,omitempty"`
 		Limit      int    `json:"limit,omitempty"`
-	}{}
+	}{Repository: testRepo}
 
 	prResult, prData, prErr := prHandler.HandlePRListRequest(ctx, req, prArgs)
 	if prErr != nil {
@@ -1563,7 +1429,7 @@ func TestSDKMigration_CLIToSDKCompatibility(t *testing.T) {
 		Author     string   `json:"author,omitempty"`
 		Labels     []string `json:"labels,omitempty"`
 		Limit      int      `json:"limit,omitempty"`
-	}{Repository: "testuser/test-repo"}
+	}{Repository: testRepo}
 
 	issueResult, issueData, issueErr := issueHandler.HandleIssueListRequest(ctx, req, issueArgs)
 	if issueErr != nil {
@@ -1647,6 +1513,7 @@ func TestSDKMigration_CommandBuilderCompatibility(t *testing.T) {
 		mockIssues: []*gitea.Issue{
 			{ID: 1, Index: 1, Title: "CLI-compatible Issue", State: "open"},
 		},
+		mockRepos: []*gitea.Repository{{ID: 8, Owner: &gitea.User{UserName: testUser}, Name: testRepoName}},
 	}
 
 	prHandler := &SDKPRListHandler{logger: logger, client: mockClient}
@@ -1682,7 +1549,7 @@ func TestSDKMigration_CommandBuilderCompatibility(t *testing.T) {
 				State      string `json:"state,omitempty"`
 				Author     string `json:"author,omitempty"`
 				Limit      int    `json:"limit,omitempty"`
-			}{},
+			}{Repository: testRepo},
 			issueArgs: struct {
 				Repository string   `json:"repository,omitempty"`
 				CWD        string   `json:"cwd,omitempty"`
@@ -1690,7 +1557,7 @@ func TestSDKMigration_CommandBuilderCompatibility(t *testing.T) {
 				Author     string   `json:"author,omitempty"`
 				Labels     []string `json:"labels,omitempty"`
 				Limit      int      `json:"limit,omitempty"`
-			}{Repository: "testuser/test-repo"},
+			}{Repository: testRepo},
 		},
 		{
 			name: "closed state",
@@ -1700,7 +1567,7 @@ func TestSDKMigration_CommandBuilderCompatibility(t *testing.T) {
 				State      string `json:"state,omitempty"`
 				Author     string `json:"author,omitempty"`
 				Limit      int    `json:"limit,omitempty"`
-			}{},
+			}{Repository: testRepo},
 			issueArgs: struct {
 				Repository string   `json:"repository,omitempty"`
 				CWD        string   `json:"cwd,omitempty"`
@@ -1708,7 +1575,7 @@ func TestSDKMigration_CommandBuilderCompatibility(t *testing.T) {
 				Author     string   `json:"author,omitempty"`
 				Labels     []string `json:"labels,omitempty"`
 				Limit      int      `json:"limit,omitempty"`
-			}{Repository: "testuser/test-repo"},
+			}{Repository: testRepo},
 		},
 		{
 			name: "with limit",
@@ -1718,7 +1585,7 @@ func TestSDKMigration_CommandBuilderCompatibility(t *testing.T) {
 				State      string `json:"state,omitempty"`
 				Author     string `json:"author,omitempty"`
 				Limit      int    `json:"limit,omitempty"`
-			}{},
+			}{Repository: testRepo},
 			issueArgs: struct {
 				Repository string   `json:"repository,omitempty"`
 				CWD        string   `json:"cwd,omitempty"`
@@ -1726,7 +1593,7 @@ func TestSDKMigration_CommandBuilderCompatibility(t *testing.T) {
 				Author     string   `json:"author,omitempty"`
 				Labels     []string `json:"labels,omitempty"`
 				Limit      int      `json:"limit,omitempty"`
-			}{Repository: "testuser/test-repo"},
+			}{Repository: testRepo},
 		},
 	}
 
@@ -1741,7 +1608,11 @@ func TestSDKMigration_CommandBuilderCompatibility(t *testing.T) {
 				t.Fatal("PR handler returned nil result")
 			}
 			if prData == nil {
-				t.Fatal("PR handler returned nil data")
+				buf, err := json.Marshal(prResult)
+				if err != nil {
+					t.Fatal(err)
+				}
+				t.Fatal("PR handler returned nil data", string(buf))
 			}
 
 			// Test Issue handler compatibility
@@ -1887,7 +1758,7 @@ func TestSDKMockSetupTeardownIntegration(t *testing.T) {
 					Index:  1,
 					Title:  "Integration Test PR",
 					State:  gitea.StateOpen,
-					Poster: &gitea.User{UserName: "testuser"},
+					Poster: &gitea.User{UserName: testUser},
 				},
 			},
 			mockIssues: []*gitea.Issue{
@@ -1896,15 +1767,15 @@ func TestSDKMockSetupTeardownIntegration(t *testing.T) {
 					Index:  1,
 					Title:  "Integration Test Issue",
 					State:  "open",
-					Poster: &gitea.User{UserName: "testuser"},
+					Poster: &gitea.User{UserName: testUser},
 				},
 			},
 			mockRepos: []*gitea.Repository{
 				{
 					ID:       1,
-					Name:     "integration-repo",
-					FullName: "testuser/integration-repo",
-					Owner:    &gitea.User{UserName: "testuser"},
+					Name:     testRepoName,
+					FullName: testRepo,
+					Owner:    &gitea.User{UserName: testUser},
 				},
 			},
 		}
@@ -1934,7 +1805,7 @@ func TestSDKMockSetupTeardownIntegration(t *testing.T) {
 		State      string `json:"state,omitempty"`
 		Author     string `json:"author,omitempty"`
 		Limit      int    `json:"limit,omitempty"`
-	}{}
+	}{Repository: testRepo}
 
 	prResult, prData, prErr := prHandler.HandlePRListRequest(ctx, req, prArgs)
 	if prErr != nil {
@@ -1955,7 +1826,7 @@ func TestSDKMockSetupTeardownIntegration(t *testing.T) {
 		Author     string   `json:"author,omitempty"`
 		Labels     []string `json:"labels,omitempty"`
 		Limit      int      `json:"limit,omitempty"`
-	}{Repository: "testuser/test-repo"}
+	}{Repository: testRepo}
 
 	issueResult, issueData, issueErr := issueHandler.HandleIssueListRequest(ctx, req, issueArgs)
 	if issueErr != nil {
@@ -2018,8 +1889,9 @@ func TestSDKMockSetupTeardownIntegration(t *testing.T) {
 // TestSDKAuthenticationErrors_InvalidToken tests authentication error handling for invalid tokens
 func TestSDKAuthenticationErrors_InvalidToken(t *testing.T) {
 	logger := logrus.New()
-	mockClient := &MockGiteaClientWithErrors{
+	mockClient := &MockGiteaClient{
 		mockError: fmt.Errorf("401 Unauthorized: invalid token"),
+		mockRepos: []*gitea.Repository{{ID: 1, Name: testRepoName, FullName: testRepo, Owner: &gitea.User{UserName: testUser}}},
 	}
 
 	handler := &SDKPRListHandler{
@@ -2035,7 +1907,7 @@ func TestSDKAuthenticationErrors_InvalidToken(t *testing.T) {
 		State      string `json:"state,omitempty"`
 		Author     string `json:"author,omitempty"`
 		Limit      int    `json:"limit,omitempty"`
-	}{}
+	}{Repository: testRepo}
 
 	result, data, err := handler.HandlePRListRequest(ctx, req, args)
 	if err != nil {
@@ -2055,7 +1927,7 @@ func TestSDKAuthenticationErrors_InvalidToken(t *testing.T) {
 		t.Fatal("HandlePRListRequest should return TextContent")
 	}
 
-	expectedError := "Error executing SDK pr list: Gitea SDK ListRepoPullRequests failed (owner=example-owner, repo=example-repo): 401 Unauthorized: invalid token"
+	expectedError := "Error executing SDK pr list: Gitea SDK ListRepoPullRequests failed (owner=" + testUser + ", repo=" + testRepoName + "): 401 Unauthorized: invalid token"
 	if textContent.Text != expectedError {
 		t.Errorf("Expected auth error message '%s', got '%s'", expectedError, textContent.Text)
 	}
@@ -2068,7 +1940,7 @@ func TestSDKAuthenticationErrors_InvalidToken(t *testing.T) {
 // TestSDKAuthenticationErrors_ExpiredToken tests authentication error handling for expired tokens
 func TestSDKAuthenticationErrors_ExpiredToken(t *testing.T) {
 	logger := logrus.New()
-	mockClient := &MockGiteaClientWithErrors{
+	mockClient := &MockGiteaClient{
 		mockError: fmt.Errorf("401 Unauthorized: token expired"),
 	}
 
@@ -2110,8 +1982,9 @@ func TestSDKAuthenticationErrors_ExpiredToken(t *testing.T) {
 // TestSDKAuthenticationErrors_InsufficientPermissions tests authentication error handling for insufficient permissions
 func TestSDKAuthenticationErrors_InsufficientPermissions(t *testing.T) {
 	logger := logrus.New()
-	mockClient := &MockGiteaClientWithErrors{
+	mockClient := &MockGiteaClient{
 		mockError: fmt.Errorf("403 Forbidden: insufficient permissions"),
+		mockRepos: []*gitea.Repository{{ID: 1, Name: testRepoName, FullName: testRepo, Owner: &gitea.User{UserName: testUser}}},
 	}
 
 	handler := &SDKIssueListHandler{
@@ -2128,7 +2001,7 @@ func TestSDKAuthenticationErrors_InsufficientPermissions(t *testing.T) {
 		Author     string   `json:"author,omitempty"`
 		Labels     []string `json:"labels,omitempty"`
 		Limit      int      `json:"limit,omitempty"`
-	}{Repository: "testuser/test-repo"}
+	}{Repository: testRepo}
 
 	result, data, err := handler.HandleIssueListRequest(ctx, req, args)
 	if err != nil {
@@ -2157,8 +2030,9 @@ func TestSDKAuthenticationErrors_InsufficientPermissions(t *testing.T) {
 // TestSDKAuthenticationErrors_MissingToken tests authentication error handling for missing tokens
 func TestSDKAuthenticationErrors_MissingToken(t *testing.T) {
 	logger := logrus.New()
-	mockClient := &MockGiteaClientWithErrors{
+	mockClient := &MockGiteaClient{
 		mockError: fmt.Errorf("401 Unauthorized: missing authentication token"),
+		mockRepos: []*gitea.Repository{{ID: 1, Name: testRepoName, FullName: testRepo, Owner: &gitea.User{UserName: testUser}}},
 	}
 
 	handler := &SDKPRListHandler{
@@ -2174,7 +2048,7 @@ func TestSDKAuthenticationErrors_MissingToken(t *testing.T) {
 		State      string `json:"state,omitempty"`
 		Author     string `json:"author,omitempty"`
 		Limit      int    `json:"limit,omitempty"`
-	}{}
+	}{Repository: testRepo}
 
 	result, data, err := handler.HandlePRListRequest(ctx, req, args)
 	if err != nil {
@@ -2186,7 +2060,7 @@ func TestSDKAuthenticationErrors_MissingToken(t *testing.T) {
 		t.Fatal("HandlePRListRequest should return TextContent")
 	}
 
-	expectedError := "Error executing SDK pr list: Gitea SDK ListRepoPullRequests failed (owner=example-owner, repo=example-repo): 401 Unauthorized: missing authentication token"
+	expectedError := "Error executing SDK pr list: Gitea SDK ListRepoPullRequests failed (owner=" + testUser + ", repo=" + testRepoName + "): 401 Unauthorized: missing authentication token"
 	if textContent.Text != expectedError {
 		t.Errorf("Expected missing token error message '%s', got '%s'", expectedError, textContent.Text)
 	}
@@ -2199,7 +2073,7 @@ func TestSDKAuthenticationErrors_MissingToken(t *testing.T) {
 // TestSDKAuthenticationErrors_RateLimit tests authentication error handling for rate limiting
 func TestSDKAuthenticationErrors_RateLimit(t *testing.T) {
 	logger := logrus.New()
-	mockClient := &MockGiteaClientWithErrors{
+	mockClient := &MockGiteaClient{
 		mockError: fmt.Errorf("429 Too Many Requests: rate limit exceeded"),
 	}
 
@@ -2239,14 +2113,9 @@ func TestSDKResponseFormat_PRResponseIncludesRepositoryMetadata(t *testing.T) {
 	logger := logrus.New()
 	mockClient := &MockGiteaClient{
 		mockPRs: []*gitea.PullRequest{
-			{
-				ID:     1,
-				Index:  1,
-				Title:  "Test PR",
-				State:  gitea.StateOpen,
-				Poster: &gitea.User{UserName: "testuser"},
-			},
+			{ID: 1, Index: 1, Title: "Test PR", State: gitea.StateOpen, URL: "https://localhost/issues/1", Poster: &gitea.User{UserName: "testuser"}},
 		},
+		mockRepos: []*gitea.Repository{{ID: 1, Name: testRepoName, FullName: testRepo, Owner: &gitea.User{UserName: testUser}}},
 	}
 
 	handler := &SDKPRListHandler{
@@ -2263,7 +2132,8 @@ func TestSDKResponseFormat_PRResponseIncludesRepositoryMetadata(t *testing.T) {
 		Author     string `json:"author,omitempty"`
 		Limit      int    `json:"limit,omitempty"`
 	}{
-		State: "open",
+		Repository: testRepo,
+		State:      "open",
 	}
 
 	result, data, err := handler.HandlePRListRequest(ctx, req, args)
@@ -2302,11 +2172,37 @@ func TestSDKResponseFormat_PRResponseIncludesRepositoryMetadata(t *testing.T) {
 	// Verify PR includes repository metadata
 	if len(prsSlice) > 0 {
 		pr := prsSlice[0]
-		if pr["type"] != "pull_request" {
-			t.Errorf("Expected PR type 'pull_request', got %v", pr["type"])
+		want := map[string]any{
+			"type":   "pull_request",
+			"url":    "https://localhost/issues/1",
+			"author": "testuser",
+			"number": int64(1),
+			"repository": map[string]any{
+				"archived":    false,
+				"cloneUrl":    "",
+				"description": "",
+				"fork":        false,
+				"forks":       0,
+				"fullName":    testRepo,
+				"id":          int64(1),
+				"name":        testRepoName,
+				"owner": map[string]any{
+					"email":    "",
+					"fullName": "",
+					"id":       int64(0),
+					"username": testUser,
+				},
+				"private": false,
+				"size":    0,
+				"sshUrl":  "",
+				"stars":   0,
+				"url":     "",
+			},
+			"state": "open",
+			"title": "Test PR",
 		}
-		if pr["url"] == "" {
-			t.Error("Expected PR to include URL")
+		if !cmp.Equal(want, pr) {
+			t.Error(cmp.Diff(want, pr))
 		}
 	}
 }
@@ -2319,6 +2215,7 @@ func TestSDKResponseFormat_IssueResponseIncludesRepositoryMetadata(t *testing.T)
 			{
 				ID:      1,
 				Index:   1,
+				URL:     "https://localhost/issues/1",
 				Title:   "Test Issue",
 				State:   "open",
 				Poster:  &gitea.User{UserName: "testuser"},
@@ -2326,6 +2223,7 @@ func TestSDKResponseFormat_IssueResponseIncludesRepositoryMetadata(t *testing.T)
 				Updated: time.Date(2023, 1, 2, 12, 0, 0, 0, time.UTC),
 			},
 		},
+		mockRepos: []*gitea.Repository{{ID: 1, Name: testRepoName, FullName: testRepo, Owner: &gitea.User{UserName: testUser}}},
 	}
 
 	handler := &SDKIssueListHandler{
@@ -2343,7 +2241,8 @@ func TestSDKResponseFormat_IssueResponseIncludesRepositoryMetadata(t *testing.T)
 		Labels     []string `json:"labels,omitempty"`
 		Limit      int      `json:"limit,omitempty"`
 	}{
-		State: "open",
+		Repository: testRepo,
+		State:      "open",
 	}
 
 	result, data, err := handler.HandleIssueListRequest(ctx, req, args)
@@ -2407,7 +2306,7 @@ func TestSDKResponseFormat_BackwardCompatibility(t *testing.T) {
 				Index:  1,
 				Title:  "Test PR",
 				State:  gitea.StateOpen,
-				Poster: &gitea.User{UserName: "testuser"},
+				Poster: &gitea.User{UserName: testUser},
 			},
 		},
 		mockIssues: []*gitea.Issue{
@@ -2416,10 +2315,13 @@ func TestSDKResponseFormat_BackwardCompatibility(t *testing.T) {
 				Index:   1,
 				Title:   "Test Issue",
 				State:   "open",
-				Poster:  &gitea.User{UserName: "testuser"},
+				Poster:  &gitea.User{UserName: testUser},
 				Created: time.Date(2023, 1, 1, 12, 0, 0, 0, time.UTC),
 				Updated: time.Date(2023, 1, 2, 12, 0, 0, 0, time.UTC),
 			},
+		},
+		mockRepos: []*gitea.Repository{
+			{ID: 8, Owner: &gitea.User{UserName: testUser}, Name: testRepoName},
 		},
 	}
 
@@ -2437,7 +2339,8 @@ func TestSDKResponseFormat_BackwardCompatibility(t *testing.T) {
 		Author     string `json:"author,omitempty"`
 		Limit      int    `json:"limit,omitempty"`
 	}{
-		State: "open",
+		Repository: testRepo,
+		State:      "open",
 	}
 
 	prResult, prData, prErr := prHandler.HandlePRListRequest(ctx, req, prArgs)
@@ -2454,7 +2357,8 @@ func TestSDKResponseFormat_BackwardCompatibility(t *testing.T) {
 		Labels     []string `json:"labels,omitempty"`
 		Limit      int      `json:"limit,omitempty"`
 	}{
-		State: "open",
+		Repository: testRepo,
+		State:      "open",
 	}
 
 	issueResult, issueData, issueErr := issueHandler.HandleIssueListRequest(ctx, req, issueArgs)
@@ -2502,6 +2406,9 @@ func TestSDKResponseFormat_TotalCountAccuracy(t *testing.T) {
 			{ID: 1, Index: 1, Title: "Issue 1", State: "open"},
 			{ID: 2, Index: 2, Title: "Issue 2", State: "closed"},
 		},
+		mockRepos: []*gitea.Repository{
+			{ID: 8, Owner: &gitea.User{UserName: testUser}, Name: testRepoName},
+		},
 	}
 
 	prHandler := &SDKPRListHandler{logger: logger, client: mockClient}
@@ -2518,7 +2425,8 @@ func TestSDKResponseFormat_TotalCountAccuracy(t *testing.T) {
 		Author     string `json:"author,omitempty"`
 		Limit      int    `json:"limit,omitempty"`
 	}{
-		State: "open",
+		Repository: testRepo,
+		State:      "open",
 	}
 
 	_, prData, prErr := prHandler.HandlePRListRequest(ctx, req, prArgs)
@@ -2526,9 +2434,9 @@ func TestSDKResponseFormat_TotalCountAccuracy(t *testing.T) {
 		t.Fatalf("PR handler failed: %v", prErr)
 	}
 
-	prDataMap := prData.(map[string]interface{})
-	if prDataMap["total"] != 3 {
-		t.Errorf("Expected PR total 3, got %v", prDataMap["total"])
+	prDataMap, _ := prData.(map[string]any)
+	if prDataMap["total"] != 2 {
+		t.Errorf("Expected PR total 2, got %v", prDataMap["total"])
 	}
 
 	// Test issue count accuracy
@@ -2540,7 +2448,8 @@ func TestSDKResponseFormat_TotalCountAccuracy(t *testing.T) {
 		Labels     []string `json:"labels,omitempty"`
 		Limit      int      `json:"limit,omitempty"`
 	}{
-		State: "open",
+		Repository: testRepo,
+		State:      "open",
 	}
 
 	_, issueData, issueErr := issueHandler.HandleIssueListRequest(ctx, req, issueArgs)
@@ -2765,8 +2674,11 @@ func TestSDKResponseFormat_RepositoryMetadataConsistency(t *testing.T) {
 // TestSDKResponseFormat_ErrorResponseFormats tests error response formats
 func TestSDKResponseFormat_ErrorResponseFormats(t *testing.T) {
 	logger := logrus.New()
-	mockClient := &MockGiteaClientWithErrors{
+	mockClient := &MockGiteaClient{
 		mockError: fmt.Errorf("repository not found"),
+		mockRepos: []*gitea.Repository{
+			{ID: 8, Owner: &gitea.User{UserName: testUser}, Name: testRepoName},
+		},
 	}
 
 	handler := &SDKPRListHandler{
@@ -2782,7 +2694,7 @@ func TestSDKResponseFormat_ErrorResponseFormats(t *testing.T) {
 		State      string `json:"state,omitempty"`
 		Author     string `json:"author,omitempty"`
 		Limit      int    `json:"limit,omitempty"`
-	}{}
+	}{Repository: testRepo}
 
 	result, data, err := handler.HandlePRListRequest(ctx, req, args)
 	// Should not return an error in the function return value
@@ -2825,7 +2737,7 @@ func TestSDKResponseFormat_ResponseConsistencyBetweenEndpoints(t *testing.T) {
 				Index:  1,
 				Title:  "Test PR",
 				State:  gitea.StateOpen,
-				Poster: &gitea.User{UserName: "testuser"},
+				Poster: &gitea.User{UserName: testUser},
 			},
 		},
 		mockIssues: []*gitea.Issue{
@@ -2834,10 +2746,13 @@ func TestSDKResponseFormat_ResponseConsistencyBetweenEndpoints(t *testing.T) {
 				Index:   1,
 				Title:   "Test Issue",
 				State:   "open",
-				Poster:  &gitea.User{UserName: "testuser"},
+				Poster:  &gitea.User{UserName: testUser},
 				Created: time.Date(2023, 1, 1, 12, 0, 0, 0, time.UTC),
 				Updated: time.Date(2023, 1, 2, 12, 0, 0, 0, time.UTC),
 			},
+		},
+		mockRepos: []*gitea.Repository{
+			{ID: 8, Owner: &gitea.User{UserName: testUser}, Name: testRepoName},
 		},
 	}
 
@@ -2855,7 +2770,8 @@ func TestSDKResponseFormat_ResponseConsistencyBetweenEndpoints(t *testing.T) {
 		Author     string `json:"author,omitempty"`
 		Limit      int    `json:"limit,omitempty"`
 	}{
-		State: "open",
+		Repository: testRepo,
+		State:      "open",
 	}
 
 	prResult, prData, prErr := prHandler.HandlePRListRequest(ctx, req, prArgs)
@@ -2872,7 +2788,8 @@ func TestSDKResponseFormat_ResponseConsistencyBetweenEndpoints(t *testing.T) {
 		Labels     []string `json:"labels,omitempty"`
 		Limit      int      `json:"limit,omitempty"`
 	}{
-		State: "open",
+		Repository: testRepo,
+		State:      "open",
 	}
 
 	issueResult, issueData, issueErr := issueHandler.HandleIssueListRequest(ctx, req, issueArgs)
@@ -3014,11 +2931,11 @@ func TestRepositoryParameterValidation_ExistenceValidation(t *testing.T) {
 	}{
 		{
 			name:      "repository exists",
-			repoParam: "owner/repo",
+			repoParam: testRepo,
 			mockRepos: []*gitea.Repository{
 				{
-					Name:  "repo",
-					Owner: &gitea.User{UserName: "owner"},
+					Name:  testRepoName,
+					Owner: &gitea.User{UserName: testUser},
 				},
 			},
 			expectValid: true,
@@ -3032,11 +2949,11 @@ func TestRepositoryParameterValidation_ExistenceValidation(t *testing.T) {
 		},
 		{
 			name:      "different owner same repo name",
-			repoParam: "other/repo",
+			repoParam: testUser + "/repo",
 			mockRepos: []*gitea.Repository{
 				{
-					Name:  "repo",
-					Owner: &gitea.User{UserName: "owner"},
+					Name:  testRepoName,
+					Owner: &gitea.User{UserName: testUser},
 				},
 			},
 			expectValid: false,
@@ -3054,8 +2971,8 @@ func TestRepositoryParameterValidation_ExistenceValidation(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			mockClient := &MockGiteaClient{
-				mockRepos: tt.mockRepos,
-				mockError: tt.mockError,
+				mockRepos:  tt.mockRepos,
+				getRepoErr: tt.mockError,
 			}
 
 			valid, err := validateRepositoryExistence(mockClient, tt.repoParam)
@@ -3122,8 +3039,8 @@ func TestRepositoryParameterValidation_AccessValidation(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			mockClient := &MockGiteaClient{
-				mockRepos: tt.mockRepos,
-				mockError: tt.mockError,
+				mockRepos:  tt.mockRepos,
+				getRepoErr: tt.mockError,
 			}
 
 			valid, err := validateRepositoryAccess(mockClient, tt.repoParam)
@@ -3236,7 +3153,7 @@ func TestRepositoryParameterValidation_ErrorScenarios(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			mockClient := &MockGiteaClient{
-				mockError: tt.mockError,
+				getRepoErr: tt.mockError,
 			}
 
 			valid, err := validateRepositoryExistence(mockClient, tt.repoParam)
@@ -3449,87 +3366,92 @@ func (s *TestDataSeeder) SeedPRs(count int, options SeedOptions) []*gitea.PullRe
 	prs := make([]*gitea.PullRequest, count)
 	states := []gitea.StateType{gitea.StateOpen, gitea.StateClosed}
 
-	for i := 0; i < count; i++ {
-		user := s.userPool[i%len(s.userPool)]
-		state := states[i%len(states)]
-		createdTime := s.baseTime.Add(time.Duration(i) * time.Hour)
-
-		pr := &gitea.PullRequest{
-			ID:      int64(i + 1),
-			Index:   int64(i + 1),
-			Title:   fmt.Sprintf("%s PR %d", options.Prefix, i+1),
-			State:   state,
-			Body:    fmt.Sprintf("Description for %s PR %d", options.Prefix, i+1),
-			Poster:  user,
-			Created: &createdTime,
-			Updated: &createdTime,
-			HTMLURL: fmt.Sprintf("https://%s.com/pr/%d", options.Domain, i+1),
-		}
-
-		if options.IncludeLabels && i%3 == 0 {
-			pr.Labels = []*gitea.Label{
-				{Name: "enhancement", Color: "84cc16"},
-				{Name: "documentation", Color: "10b981"},
+	for _, user := range s.userPool {
+		for i := range count {
+			user := user
+			state := states[i%len(states)]
+			createdTime := s.baseTime.Add(time.Duration(i) * time.Hour)
+			pr := &gitea.PullRequest{
+				ID:      int64(i + 1),
+				Index:   int64(i + 1),
+				Title:   fmt.Sprintf("%s PR %d", options.Prefix, i+1),
+				State:   state,
+				Body:    fmt.Sprintf("Description for %s PR %d", options.Prefix, i+1),
+				Poster:  user,
+				Created: &createdTime,
+				Updated: &createdTime,
+				HTMLURL: fmt.Sprintf("https://%s.com/pr/%d", options.Domain, i+1),
 			}
+
+			if options.IncludeLabels && i%3 == 0 {
+				pr.Labels = []*gitea.Label{
+					{Name: "enhancement", Color: "84cc16"},
+					{Name: "documentation", Color: "10b981"},
+				}
+			}
+
+			prs[i] = pr
 		}
 
-		prs[i] = pr
 	}
 	return prs
 }
 
 // SeedIssues generates test issue data with realistic scenarios
 func (s *TestDataSeeder) SeedIssues(count int, options SeedOptions) []*gitea.Issue {
-	issues := make([]*gitea.Issue, count)
+	issues := make([]*gitea.Issue, 0, count)
 	states := []string{"open", "closed"}
 
-	for i := 0; i < count; i++ {
-		user := s.userPool[i%len(s.userPool)]
-		state := states[i%len(states)]
-		createdTime := s.baseTime.Add(time.Duration(i) * time.Hour)
+	for _, user := range s.userPool {
+		for i := range count {
+			user := user
+			state := states[i%len(states)]
+			createdTime := s.baseTime.Add(time.Duration(i) * time.Hour)
 
-		issue := &gitea.Issue{
-			ID:      int64(i + 1),
-			Index:   int64(i + 1),
-			Title:   fmt.Sprintf("%s Issue %d", options.Prefix, i+1),
-			State:   gitea.StateType(state),
-			Body:    fmt.Sprintf("Description for %s issue %d", options.Prefix, i+1),
-			Poster:  user,
-			Created: createdTime,
-			Updated: createdTime,
-			HTMLURL: fmt.Sprintf("https://%s.com/issue/%d", options.Domain, i+1),
-		}
-
-		if options.IncludeLabels && i%2 == 0 {
-			issue.Labels = []*gitea.Label{
-				{Name: "bug", Color: "ef4444"},
-				{Name: "help wanted", Color: "f59e0b"},
+			issue := &gitea.Issue{
+				ID:      int64(i + 1),
+				Index:   int64(i + 1),
+				Title:   fmt.Sprintf("%s Issue %d", options.Prefix, i+1),
+				State:   gitea.StateType(state),
+				Body:    fmt.Sprintf("Description for %s issue %d", options.Prefix, i+1),
+				Poster:  user,
+				Created: createdTime,
+				Updated: createdTime,
+				HTMLURL: fmt.Sprintf("https://%s.com/issue/%d", options.Domain, i+1),
 			}
-		}
 
-		issues[i] = issue
+			if options.IncludeLabels && i%2 == 0 {
+				issue.Labels = []*gitea.Label{
+					{Name: "bug", Color: "ef4444"},
+					{Name: "help wanted", Color: "f59e0b"},
+				}
+			}
+
+			issues = append(issues, issue)
+		}
 	}
 	return issues
 }
 
 // SeedRepos generates test repository data with realistic scenarios
 func (s *TestDataSeeder) SeedRepos(count int, options SeedOptions) []*gitea.Repository {
-	repos := make([]*gitea.Repository, count)
+	repos := make([]*gitea.Repository, 0, count)
 
-	for i := 0; i < count; i++ {
-		user := s.userPool[i%len(s.userPool)]
+	for _, user := range s.userPool {
+		for i := range count {
+			user := user
+			repo := &gitea.Repository{
+				ID:          int64(i + 1),
+				Name:        fmt.Sprintf("%s-repo-%d", options.Prefix, i+1),
+				FullName:    fmt.Sprintf("%s/%s-repo-%d", user.UserName, options.Prefix, i+1),
+				Description: fmt.Sprintf("Test repository %d for %s", i+1, options.Prefix),
+				Private:     i%5 == 0, // Every 5th repo is private
+				Owner:       user,
+				HTMLURL:     fmt.Sprintf("https://%s.com/%s/%s-repo-%d", options.Domain, user.UserName, options.Prefix, i+1),
+			}
 
-		repo := &gitea.Repository{
-			ID:          int64(i + 1),
-			Name:        fmt.Sprintf("%s-repo-%d", options.Prefix, i+1),
-			FullName:    fmt.Sprintf("%s/%s-repo-%d", user.UserName, options.Prefix, i+1),
-			Description: fmt.Sprintf("Test repository %d for %s", i+1, options.Prefix),
-			Private:     i%5 == 0, // Every 5th repo is private
-			Owner:       user,
-			HTMLURL:     fmt.Sprintf("https://%s.com/%s/%s-repo-%d", options.Domain, user.UserName, options.Prefix, i+1),
+			repos = append(repos, repo)
 		}
-
-		repos[i] = repo
 	}
 	return repos
 }
@@ -3608,7 +3530,7 @@ func TestSDKDataSeeding(t *testing.T) {
 
 	// Test Issue seeding
 	issues := seeder.SeedIssues(3, options)
-	if len(issues) != 3 {
+	if len(issues) != 3*len(seeder.userPool) {
 		t.Errorf("Expected 3 issues, got %d", len(issues))
 	}
 	if issues[0].Title != "test Issue 1" {
@@ -3617,7 +3539,7 @@ func TestSDKDataSeeding(t *testing.T) {
 
 	// Test Repository seeding
 	repos := seeder.SeedRepos(4, options)
-	if len(repos) != 4 {
+	if len(repos) != 4*len(seeder.userPool) {
 		t.Errorf("Expected 4 repos, got %d", len(repos))
 	}
 	if repos[0].Name != "test-repo-1" {
@@ -3659,7 +3581,7 @@ func TestSDKDataSeedingIntegration(t *testing.T) {
 	prs := seeder.SeedPRs(3, options)
 	issues := seeder.SeedIssues(3, options)
 	repos := seeder.SeedRepos(3, options)
-	branches := seeder.SeedBranches(2, "testuser", "test-repo")
+	branches := seeder.SeedBranches(2, testUser, testRepoName)
 	commits := seeder.SeedCommits(2, options)
 
 	// Create mock client with seeded data
@@ -3680,6 +3602,17 @@ func TestSDKDataSeedingIntegration(t *testing.T) {
 	ctx := context.Background()
 	req := &mcp.CallToolRequest{}
 
+	u := seeder.userPool[rand.IntN(len(seeder.userPool))]
+	rp := []string{}
+	for _, r := range repos {
+		if r.Owner.UserName == u.UserName {
+			rp = append(rp, r.Name)
+		}
+	}
+	if len(rp) == 0 {
+		t.Fatal("Setup failed", u, len(repos), len(seeder.userPool))
+	}
+	name := rp[rand.IntN(len(rp))]
 	// Test all handlers with seeded data
 	prArgs := struct {
 		Repository string `json:"repository,omitempty"`
@@ -3687,14 +3620,18 @@ func TestSDKDataSeedingIntegration(t *testing.T) {
 		State      string `json:"state,omitempty"`
 		Author     string `json:"author,omitempty"`
 		Limit      int    `json:"limit,omitempty"`
-	}{}
+	}{Repository: path.Join(u.UserName, name)}
 
 	prResult, prData, prErr := prHandler.HandlePRListRequest(ctx, req, prArgs)
 	if prErr != nil {
 		t.Fatalf("PR handler failed: %v", prErr)
 	}
 	if prResult == nil || prData == nil {
-		t.Fatal("PR handler returned nil results")
+		buf, err := json.Marshal(prResult)
+		if err != nil {
+			t.Fatal(err)
+		}
+		t.Fatal("PR handler returned nil results", string(buf))
 	}
 
 	issueArgs := struct {
@@ -3704,7 +3641,7 @@ func TestSDKDataSeedingIntegration(t *testing.T) {
 		Author     string   `json:"author,omitempty"`
 		Labels     []string `json:"labels,omitempty"`
 		Limit      int      `json:"limit,omitempty"`
-	}{}
+	}{Repository: path.Join(u.UserName, name)}
 
 	issueResult, issueData, issueErr := issueHandler.HandleIssueListRequest(ctx, req, issueArgs)
 	if issueErr != nil {
@@ -3727,18 +3664,18 @@ func TestSDKDataSeedingIntegration(t *testing.T) {
 	}
 
 	// Verify seeded data integrity
-	prDataMap := prData.(map[string]interface{})
-	if prDataMap["total"] != 3 {
-		t.Errorf("Expected 3 seeded PRs, got %v", prDataMap["total"])
+	prDataMap := prData.(map[string]any)
+	if prDataMap["total"] != 2 {
+		t.Errorf("Expected 2 seeded PRs, got %v", prDataMap["total"])
 	}
 
-	issueDataMap := issueData.(map[string]interface{})
-	if issueDataMap["total"] != 3 {
+	issueDataMap := issueData.(map[string]any)
+	if issueDataMap["total"] != 3*len(seeder.userPool) {
 		t.Errorf("Expected 3 seeded issues, got %v", issueDataMap["total"])
 	}
 
-	repoDataMap := repoData.(map[string]interface{})
-	if repoDataMap["total"] != 3 {
+	repoDataMap := repoData.(map[string]any)
+	if repoDataMap["total"] != 3*len(seeder.userPool) {
 		t.Errorf("Expected 3 seeded repos, got %v", repoDataMap["total"])
 	}
 }
@@ -3863,432 +3800,4 @@ func TestSDKPerformanceComparison(t *testing.T) {
 			}
 		})
 	}
-}
-
-// TestCleanupVerification_TeaCLIDependencyRemoval tests that tea CLI dependencies have been properly removed
-func TestCleanupVerification_TeaCLIDependencyRemoval(t *testing.T) {
-	// Test that no tea CLI imports exist in Go source files
-	testCases := []struct {
-		name        string
-		importPath  string
-		description string
-	}{
-		{
-			name:        "tea_cli_import",
-			importPath:  "github.com/go-tea/tea",
-			description: "Direct tea CLI import should not exist",
-		},
-		{
-			name:        "tea_binary_import",
-			importPath:  "github.com/go-tea/tea/cmd",
-			description: "Tea CLI command import should not exist",
-		},
-		{
-			name:        "tea_exec_import",
-			importPath:  "os/exec",
-			description: "Should not be used for tea CLI execution",
-		},
-	}
-
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			// This test verifies that tea CLI dependencies have been removed
-			// In a real cleanup scenario, these imports would be checked programmatically
-			// For now, this test serves as documentation of the cleanup requirement
-
-			t.Logf("Verifying removal of: %s - %s", tc.importPath, tc.description)
-
-			// In the actual implementation, this would scan all Go files
-			// and fail if any tea CLI imports are found
-			// For this test, we just log the verification step
-		})
-	}
-}
-
-// TestCleanupVerification_CodebaseTeaReferences tests that no tea CLI references remain in codebase
-func TestCleanupVerification_CodebaseTeaReferences(t *testing.T) {
-	// Test that no tea CLI function calls or references exist
-	testCases := []struct {
-		name        string
-		reference   string
-		description string
-	}{
-		{
-			name:        "tea_command_execution",
-			reference:   "exec.Command(\"tea\"",
-			description: "Direct tea command execution should not exist",
-		},
-		{
-			name:        "tea_handler_instantiation",
-			reference:   "NewTeaPRListHandler",
-			description: "Tea CLI handler instantiation should not exist",
-		},
-		{
-			name:        "tea_command_builder",
-			reference:   "NewTeaCommandBuilder",
-			description: "Tea CLI command builder should not exist",
-		},
-		{
-			name:        "tea_output_parser",
-			reference:   "NewTeaOutputParser",
-			description: "Tea CLI output parser should not exist",
-		},
-	}
-
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			t.Logf("Verifying removal of: %s - %s", tc.reference, tc.description)
-
-			// In the actual implementation, this would scan all Go files
-			// and fail if any tea CLI references are found
-			// For this test, we just log the verification step
-		})
-	}
-}
-
-// TestCleanupVerification_GoModValidation tests that go.mod has been properly cleaned up
-func TestCleanupVerification_GoModValidation(t *testing.T) {
-	// Read go.mod file
-	goModContent, err := os.ReadFile("../go.mod")
-	if err != nil {
-		t.Fatalf("Failed to read go.mod file: %v", err)
-	}
-
-	goModStr := string(goModContent)
-
-	// Test that go.mod contains expected dependencies
-	expectedDeps := []string{
-		"code.gitea.io/sdk/gitea", // Gitea SDK - should remain
-		"github.com/go-ozzo/ozzo-validation/v4",
-		"github.com/google/go-cmp",
-		"github.com/modelcontextprotocol/go-sdk",
-		"github.com/sirupsen/logrus",
-		"github.com/spf13/cobra",
-		"github.com/spf13/viper",
-	}
-
-	t.Run("expected_dependencies_present", func(t *testing.T) {
-		for _, dep := range expectedDeps {
-			if !strings.Contains(goModStr, dep) {
-				t.Errorf("Expected dependency %s not found in go.mod", dep)
-			} else {
-				t.Logf("✓ Verified expected dependency: %s", dep)
-			}
-		}
-	})
-
-	// Test that unexpected dependencies are absent
-	unexpectedDeps := []string{
-		"github.com/go-tea/tea", // Should NOT be present
-		"github.com/go-tea",     // Any tea CLI related packages
-	}
-
-	t.Run("unexpected_dependencies_absent", func(t *testing.T) {
-		for _, dep := range unexpectedDeps {
-			if strings.Contains(goModStr, dep) {
-				t.Errorf("Unexpected dependency %s found in go.mod - should have been removed", dep)
-			} else {
-				t.Logf("✓ Verified removal of unexpected dependency: %s", dep)
-			}
-		}
-	})
-
-	// Test that go.mod is properly formatted
-	t.Run("go_mod_formatting", func(t *testing.T) {
-		// Check for proper module declaration
-		if !strings.Contains(goModStr, "module github.com/Kunde21/forgejo-mcp") {
-			t.Error("go.mod missing proper module declaration")
-		}
-
-		// Check for Go version
-		if !strings.Contains(goModStr, "go 1.24") {
-			t.Error("go.mod missing Go version declaration")
-		}
-
-		t.Log("✓ Verified go.mod formatting and structure")
-	})
-
-	// Test go mod tidy validation
-	t.Run("go_mod_tidy_validation", func(t *testing.T) {
-		// This test verifies that go mod tidy has been run
-		// In a real implementation, this would check that all dependencies are properly resolved
-		t.Log("✓ Verified go mod tidy has been executed")
-	})
-}
-
-// TestCleanupVerification_FileStructureValidation tests that file structure is clean
-func TestCleanupVerification_FileStructureValidation(t *testing.T) {
-	// Test that tea-related files have been removed
-	filesToRemove := []string{
-		"server/tea_handlers.go",
-		"server/tea_handlers_test.go",
-	}
-
-	t.Run("tea_files_removed", func(t *testing.T) {
-		for _, file := range filesToRemove {
-			t.Logf("Verifying removal of file: %s", file)
-			// In actual implementation, this would check if file exists and fail if it does
-		}
-	})
-}
-
-// TestCleanupVerification_EndToEndMigration tests complete migration from CLI to SDK
-func TestCleanupVerification_EndToEndMigration(t *testing.T) {
-	logger := logrus.New()
-
-	// Setup comprehensive test data that simulates real-world usage
-	mockClient := &MockGiteaClient{
-		mockPRs: []*gitea.PullRequest{
-			{
-				ID:      1,
-				Index:   1,
-				Title:   "Migration Test PR",
-				State:   gitea.StateOpen,
-				Body:    "This PR tests the migration from tea CLI to Gitea SDK",
-				Poster:  &gitea.User{UserName: "testuser", Email: "test@example.com"},
-				Created: &[]time.Time{time.Date(2023, 1, 1, 12, 0, 0, 0, time.UTC)}[0],
-				Updated: &[]time.Time{time.Date(2023, 1, 2, 12, 0, 0, 0, time.UTC)}[0],
-				HTMLURL: "https://example.com/pr/1",
-			},
-			{
-				ID:      2,
-				Index:   2,
-				Title:   "Another Test PR",
-				State:   gitea.StateClosed,
-				Body:    "This is a closed PR for testing",
-				Poster:  &gitea.User{UserName: "developer", Email: "dev@example.com"},
-				Created: &[]time.Time{time.Date(2023, 1, 3, 12, 0, 0, 0, time.UTC)}[0],
-				Updated: &[]time.Time{time.Date(2023, 1, 4, 12, 0, 0, 0, time.UTC)}[0],
-				HTMLURL: "https://example.com/pr/2",
-			},
-		},
-		mockIssues: []*gitea.Issue{
-			{
-				ID:      1,
-				Index:   1,
-				Title:   "Migration Test Issue",
-				State:   "open",
-				Body:    "This issue tests the migration from tea CLI to Gitea SDK",
-				Poster:  &gitea.User{UserName: "testuser", Email: "test@example.com"},
-				Created: time.Date(2023, 1, 1, 12, 0, 0, 0, time.UTC),
-				Updated: time.Date(2023, 1, 2, 12, 0, 0, 0, time.UTC),
-				HTMLURL: "https://example.com/issue/1",
-			},
-			{
-				ID:      2,
-				Index:   2,
-				Title:   "Bug Report",
-				State:   "closed",
-				Body:    "This is a closed issue for testing",
-				Poster:  &gitea.User{UserName: "developer", Email: "dev@example.com"},
-				Created: time.Date(2023, 1, 3, 12, 0, 0, 0, time.UTC),
-				Updated: time.Date(2023, 1, 4, 12, 0, 0, 0, time.UTC),
-				HTMLURL: "https://example.com/issue/2",
-			},
-		},
-		mockRepos: []*gitea.Repository{
-			{
-				ID:          1,
-				Name:        "migration-test-repo",
-				FullName:    "testuser/migration-test-repo",
-				Description: "Repository for testing Gitea SDK migration",
-				Private:     false,
-				Owner:       &gitea.User{UserName: "testuser"},
-				HTMLURL:     "https://example.com/testuser/migration-test-repo",
-			},
-			{
-				ID:          2,
-				Name:        "private-repo",
-				FullName:    "testuser/private-repo",
-				Description: "Private repository for testing",
-				Private:     true,
-				Owner:       &gitea.User{UserName: "testuser"},
-				HTMLURL:     "https://example.com/testuser/private-repo",
-			},
-		},
-	}
-
-	// Test that SDK handlers work correctly after migration
-	prHandler := &SDKPRListHandler{logger: logger, client: mockClient}
-	issueHandler := &SDKIssueListHandler{logger: logger, client: mockClient}
-	repoHandler := &SDKRepositoryHandler{logger: logger, client: mockClient}
-
-	ctx := context.Background()
-	req := &mcp.CallToolRequest{}
-
-	// Test comprehensive PR scenarios
-	t.Run("pr_scenarios", func(t *testing.T) {
-		// Test open PRs
-		prArgs := struct {
-			Repository string `json:"repository,omitempty"`
-			CWD        string `json:"cwd,omitempty"`
-			State      string `json:"state,omitempty"`
-			Author     string `json:"author,omitempty"`
-			Limit      int    `json:"limit,omitempty"`
-		}{Repository: "testuser/test-repo", State: "open"}
-
-		prResult, prData, prErr := prHandler.HandlePRListRequest(ctx, req, prArgs)
-		if prErr != nil {
-			t.Fatalf("SDK PR handler should work after migration: %v", prErr)
-		}
-		if prResult == nil || prData == nil {
-			t.Fatal("SDK PR handler should return valid results after migration")
-		}
-
-		// Test closed PRs
-		prArgs.State = "closed"
-		prResult, prData, prErr = prHandler.HandlePRListRequest(ctx, req, prArgs)
-		if prErr != nil {
-			t.Fatalf("SDK PR handler should work for closed PRs: %v", prErr)
-		}
-
-		// Test all PRs
-		prArgs.State = ""
-		prResult, prData, prErr = prHandler.HandlePRListRequest(ctx, req, prArgs)
-		if prErr != nil {
-			t.Fatalf("SDK PR handler should work for all PRs: %v", prErr)
-		}
-
-		prDataMap := prData.(map[string]interface{})
-		if prDataMap["total"] != 2 {
-			t.Errorf("Expected 2 PRs total, got %v", prDataMap["total"])
-		}
-	})
-
-	// Test comprehensive issue scenarios
-	t.Run("issue_scenarios", func(t *testing.T) {
-		// Test open issues
-		issueArgs := struct {
-			Repository string   `json:"repository,omitempty"`
-			CWD        string   `json:"cwd,omitempty"`
-			State      string   `json:"state,omitempty"`
-			Author     string   `json:"author,omitempty"`
-			Labels     []string `json:"labels,omitempty"`
-			Limit      int      `json:"limit,omitempty"`
-		}{}
-
-		issueResult, issueData, issueErr := issueHandler.HandleIssueListRequest(ctx, req, issueArgs)
-		if issueErr != nil {
-			t.Fatalf("SDK Issue handler should work after migration: %v", issueErr)
-		}
-		if issueResult == nil || issueData == nil {
-			t.Fatal("SDK Issue handler should return valid results after migration")
-		}
-
-		// Test closed issues
-		issueArgs.State = "closed"
-		issueResult, issueData, issueErr = issueHandler.HandleIssueListRequest(ctx, req, issueArgs)
-		if issueErr != nil {
-			t.Fatalf("SDK Issue handler should work for closed issues: %v", issueErr)
-		}
-
-		// Test all issues
-		issueArgs.State = ""
-		issueResult, issueData, issueErr = issueHandler.HandleIssueListRequest(ctx, req, issueArgs)
-		if issueErr != nil {
-			t.Fatalf("SDK Issue handler should work for all issues: %v", issueErr)
-		}
-
-		issueDataMap := issueData.(map[string]interface{})
-		if issueDataMap["total"] != 2 {
-			t.Errorf("Expected 2 issues total, got %v", issueDataMap["total"])
-		}
-	})
-
-	// Test repository scenarios
-	t.Run("repository_scenarios", func(t *testing.T) {
-		repoArgs := struct {
-			Limit int `json:"limit,omitempty"`
-		}{}
-
-		repoResult, repoData, repoErr := repoHandler.ListRepositories(ctx, req, repoArgs)
-		if repoErr != nil {
-			t.Fatalf("SDK Repository handler should work after migration: %v", repoErr)
-		}
-		if repoResult == nil || repoData == nil {
-			t.Fatal("SDK Repository handler should return valid results after migration")
-		}
-
-		repoDataMap := repoData.(map[string]interface{})
-		if repoDataMap["total"] != 2 {
-			t.Errorf("Expected 2 repositories, got %v", repoDataMap["total"])
-		}
-	})
-
-	// Test error handling scenarios
-	t.Run("error_handling", func(t *testing.T) {
-		errorClient := &MockGiteaClientWithErrors{
-			mockError: fmt.Errorf("simulated network error"),
-		}
-
-		errorPrHandler := &SDKPRListHandler{logger: logger, client: errorClient}
-		prArgs := struct {
-			Repository string `json:"repository,omitempty"`
-			CWD        string `json:"cwd,omitempty"`
-			State      string `json:"state,omitempty"`
-			Author     string `json:"author,omitempty"`
-			Limit      int    `json:"limit,omitempty"`
-		}{}
-
-		result, data, err := errorPrHandler.HandlePRListRequest(ctx, req, prArgs)
-		if err != nil {
-			t.Fatalf("Error handler should not return error: %v", err)
-		}
-		if result == nil {
-			t.Fatal("Error handler should return result even on error")
-		}
-		if data != nil {
-			t.Error("Error handler should return nil data on error")
-		}
-
-		// Verify error message is in result
-		if len(result.Content) == 0 {
-			t.Fatal("Error handler should return error content")
-		}
-	})
-
-	// Test data consistency across handlers
-	t.Run("data_consistency", func(t *testing.T) {
-		// Get data from all handlers
-		prArgs := struct {
-			Repository string `json:"repository,omitempty"`
-			CWD        string `json:"cwd,omitempty"`
-			State      string `json:"state,omitempty"`
-			Author     string `json:"author,omitempty"`
-			Limit      int    `json:"limit,omitempty"`
-		}{}
-		_, prData, _ := prHandler.HandlePRListRequest(ctx, req, prArgs)
-
-		issueArgs := struct {
-			Repository string   `json:"repository,omitempty"`
-			CWD        string   `json:"cwd,omitempty"`
-			State      string   `json:"state,omitempty"`
-			Author     string   `json:"author,omitempty"`
-			Labels     []string `json:"labels,omitempty"`
-			Limit      int      `json:"limit,omitempty"`
-		}{Repository: "testuser/test-repo"}
-		_, issueData, _ := issueHandler.HandleIssueListRequest(ctx, req, issueArgs)
-
-		repoArgs := struct {
-			Limit int `json:"limit,omitempty"`
-		}{}
-		_, repoData, _ := repoHandler.ListRepositories(ctx, req, repoArgs)
-
-		// Verify all handlers return expected totals
-		prDataMap := prData.(map[string]interface{})
-		issueDataMap := issueData.(map[string]interface{})
-		repoDataMap := repoData.(map[string]interface{})
-
-		if prDataMap["total"] != 2 {
-			t.Errorf("PR handler: expected 2 items, got %v", prDataMap["total"])
-		}
-		if issueDataMap["total"] != 2 {
-			t.Errorf("Issue handler: expected 2 items, got %v", issueDataMap["total"])
-		}
-		if repoDataMap["total"] != 2 {
-			t.Errorf("Repository handler: expected 2 items, got %v", repoDataMap["total"])
-		}
-	})
-
-	t.Log("✓ End-to-end migration test passed: All SDK handlers working correctly with comprehensive test scenarios")
 }

@@ -171,7 +171,7 @@ func resolveCWDToRepository(cwd string) (string, error) {
 }
 
 // extractRepositoryMetadata extracts and caches repository metadata
-func extractRepositoryMetadata(client GiteaClientInterface, repoParam string) (map[string]interface{}, error) {
+func extractRepositoryMetadata(client GiteaClientInterface, repoParam string) (map[string]any, error) {
 	valid, err := ValidateRepositoryFormat(repoParam)
 	if !valid {
 		return nil, err
@@ -183,7 +183,7 @@ func extractRepositoryMetadata(client GiteaClientInterface, repoParam string) (m
 		return nil, fmt.Errorf("failed to extract repository metadata: %w", err)
 	}
 
-	metadata := map[string]interface{}{
+	metadata := map[string]any{
 		"id":          giteaRepo.ID,
 		"name":        giteaRepo.Name,
 		"fullName":    giteaRepo.FullName,
@@ -200,7 +200,7 @@ func extractRepositoryMetadata(client GiteaClientInterface, repoParam string) (m
 	}
 
 	if giteaRepo.Owner != nil {
-		metadata["owner"] = map[string]interface{}{
+		metadata["owner"] = map[string]any{
 			"id":       giteaRepo.Owner.ID,
 			"username": giteaRepo.Owner.UserName,
 			"fullName": giteaRepo.Owner.FullName,
@@ -250,7 +250,7 @@ func (h *SDKPRListHandler) HandlePRListRequest(ctx context.Context, req *mcp.Cal
 						Text: fmt.Sprintf("Error resolving repository from CWD: %v", err),
 					},
 				},
-			}, nil, err
+			}, nil, nil
 		}
 	} else {
 		return &mcp.CallToolResult{
@@ -259,7 +259,7 @@ func (h *SDKPRListHandler) HandlePRListRequest(ctx context.Context, req *mcp.Cal
 					Text: "Error: repository parameter or cwd parameter is required",
 				},
 			},
-		}, nil, fmt.Errorf("repository parameter or cwd parameter is required")
+		}, nil, nil
 	}
 
 	// Validate repository format and access
@@ -328,11 +328,11 @@ func (h *SDKPRListHandler) HandlePRListRequest(ctx context.Context, req *mcp.Cal
 	repoMetadata, err := extractRepositoryMetadata(h.client, repoParam)
 	if err != nil {
 		h.logger.Warnf("Failed to extract repository metadata: %v", err)
-		repoMetadata = map[string]interface{}{}
+		repoMetadata = map[string]any{}
 	}
 
 	// Transform to MCP response format
-	result := map[string]interface{}{
+	result := map[string]any{
 		"pullRequests": h.transformPRsToResponse(prs, repoMetadata),
 		"total":        len(prs),
 		"repository":   repoMetadata,
@@ -348,11 +348,11 @@ func (h *SDKPRListHandler) HandlePRListRequest(ctx context.Context, req *mcp.Cal
 }
 
 // transformPRsToResponse transforms Gitea SDK PR data to MCP response format
-func (h *SDKPRListHandler) transformPRsToResponse(prs []*gitea.PullRequest, repoMetadata map[string]interface{}) []map[string]interface{} {
-	result := make([]map[string]interface{}, len(prs))
+func (h *SDKPRListHandler) transformPRsToResponse(prs []*gitea.PullRequest, repoMetadata map[string]any) []map[string]any {
+	result := make([]map[string]any, len(prs))
 	for i, pr := range prs {
 		// Transform to MCP-compatible format
-		prData := map[string]interface{}{
+		prData := map[string]any{
 			"number": pr.Index,
 			"title":  pr.Title,
 			"state":  h.normalizePRState(pr.State),
@@ -375,7 +375,7 @@ func (h *SDKPRListHandler) transformPRsToResponse(prs []*gitea.PullRequest, repo
 
 		// Add additional metadata for MCP compatibility
 		prData["type"] = "pull_request"
-		prData["url"] = pr.HTMLURL
+		prData["url"] = pr.URL
 
 		// Add repository metadata to individual PR object
 		prData["repository"] = repoMetadata
@@ -441,7 +441,7 @@ func (h *SDKRepositoryHandler) ListRepositories(ctx context.Context, req *mcp.Ca
 	}
 
 	// Transform to MCP response format
-	result := map[string]interface{}{
+	result := map[string]any{
 		"repositories": h.transformReposToResponse(repos),
 		"total":        len(repos),
 	}
@@ -456,11 +456,11 @@ func (h *SDKRepositoryHandler) ListRepositories(ctx context.Context, req *mcp.Ca
 }
 
 // transformReposToResponse transforms Gitea SDK repository data to MCP response format
-func (h *SDKRepositoryHandler) transformReposToResponse(repos []*gitea.Repository) []map[string]interface{} {
-	result := make([]map[string]interface{}, len(repos))
+func (h *SDKRepositoryHandler) transformReposToResponse(repos []*gitea.Repository) []map[string]any {
+	result := make([]map[string]any, len(repos))
 	for i, repo := range repos {
 		// Transform to MCP-compatible format
-		repoData := map[string]interface{}{
+		repoData := map[string]any{
 			"id":       repo.ID,
 			"name":     repo.Name,
 			"fullName": repo.FullName,
@@ -601,11 +601,11 @@ func (h *SDKIssueListHandler) HandleIssueListRequest(ctx context.Context, req *m
 	repoMetadata, err := extractRepositoryMetadata(h.client, repoParam)
 	if err != nil {
 		h.logger.Warnf("Failed to extract repository metadata: %v", err)
-		repoMetadata = map[string]interface{}{}
+		repoMetadata = map[string]any{}
 	}
 
 	// Transform to MCP response format
-	result := map[string]interface{}{
+	result := map[string]any{
 		"issues":     h.transformIssuesToResponse(issues, repoMetadata),
 		"total":      len(issues),
 		"repository": repoMetadata,
@@ -621,11 +621,11 @@ func (h *SDKIssueListHandler) HandleIssueListRequest(ctx context.Context, req *m
 }
 
 // transformIssuesToResponse transforms Gitea SDK issue data to MCP response format
-func (h *SDKIssueListHandler) transformIssuesToResponse(issues []*gitea.Issue, repoMetadata map[string]interface{}) []map[string]interface{} {
-	result := make([]map[string]interface{}, len(issues))
+func (h *SDKIssueListHandler) transformIssuesToResponse(issues []*gitea.Issue, repoMetadata map[string]any) []map[string]any {
+	result := make([]map[string]any, len(issues))
 	for i, issue := range issues {
 		// Transform to MCP-compatible format
-		issueData := map[string]interface{}{
+		issueData := map[string]any{
 			"number": issue.Index,
 			"title":  issue.Title,
 			"state":  h.normalizeIssueState(string(issue.State)),
@@ -644,7 +644,7 @@ func (h *SDKIssueListHandler) transformIssuesToResponse(issues []*gitea.Issue, r
 
 		// Add additional metadata for MCP compatibility
 		issueData["type"] = "issue"
-		issueData["url"] = issue.HTMLURL
+		issueData["url"] = issue.URL
 
 		// Add repository metadata to individual issue object
 		issueData["repository"] = repoMetadata

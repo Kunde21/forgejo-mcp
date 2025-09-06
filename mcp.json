@@ -4,7 +4,7 @@
       "command": "./forgejo-mcp",
       "args": ["serve"],
       "env": {
-	"FORGEJO_MCP_AUTH_TOKEN": "2a75296bb81c30c175177f3a1241c08544182df6",
+	"FORGEJO_MCP_AUTH_TOKEN": "7e74649ca15b7f36d05fd734943634bea44a881c",
 	"FORGEJO_MCP_DEBUG": "true",
 	"FORGEJO_MCP_LOG_LEVEL": "trace",
 	"FORGEJO_MCP_FORGEJO_URL": "https://gitea.kc"

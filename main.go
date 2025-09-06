@@ -52,7 +52,7 @@ func main() {
 
 func run(ctx context.Context) error {
 	// Execute the Cobra command
-	if err := cmd.Execute(); err != nil {
+	if err := cmd.Execute(ctx); err != nil {
 		return fmt.Errorf("command execution failed: %w", err)
 	}
 	return nil

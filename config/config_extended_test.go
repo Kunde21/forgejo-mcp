@@ -23,7 +23,6 @@ func TestConfigLoad(t *testing.T) {
 				envVars := map[string]string{
 					"FORGEJO_MCP_FORGEJO_URL": "https://test.forgejo.com",
 					"FORGEJO_MCP_AUTH_TOKEN":  "test-token",
-					"FORGEJO_MCP_TEA_PATH":    "/custom/tea/path",
 					"FORGEJO_MCP_DEBUG":       "true",
 					"FORGEJO_MCP_LOG_LEVEL":   "debug",
 				}
@@ -39,7 +38,6 @@ func TestConfigLoad(t *testing.T) {
 			want: &Config{
 				ForgejoURL:   "https://test.forgejo.com",
 				AuthToken:    "test-token",
-				TeaPath:      "/custom/tea/path",
 				Host:         "localhost",
 				Port:         8080,
 				ReadTimeout:  30,
@@ -78,7 +76,6 @@ log_level: "debug"`
 			want: &Config{
 				ForgejoURL:   "https://file-test.forgejo.com",
 				AuthToken:    "file-test-token",
-				TeaPath:      "/file/test/tea",
 				Host:         "localhost",
 				Port:         8080,
 				ReadTimeout:  30,
@@ -114,8 +111,7 @@ func TestConfigValidation(t *testing.T) {
 			name: "valid config",
 			config: &Config{
 				ForgejoURL:   "https://forgejo.com",
-				AuthToken:    "token123",
-				TeaPath:      "tea",
+				AuthToken:    "testing-repo-auth-token-123",
 				Host:         "localhost",
 				Port:         8080,
 				ReadTimeout:  30,
@@ -129,17 +125,13 @@ func TestConfigValidation(t *testing.T) {
 			name: "missing forgejo URL",
 			config: &Config{
 				ForgejoURL:   "",
-				AuthToken:    "token123",
-				TeaPath:      "tea",
+				AuthToken:    "testing-repo-auth-token-123",
 				Host:         "localhost",
 				Port:         8080,
 				ReadTimeout:  30,
 				WriteTimeout: 30,
 				Debug:        false,
 				LogLevel:     "info",
-			},
-			wantErr: validation.Errors{
-				"ForgejoURL": validation.NewError("validation_required", "cannot be blank"),
 			},
 		},
 		{
@@ -147,7 +139,6 @@ func TestConfigValidation(t *testing.T) {
 			config: &Config{
 				ForgejoURL:   "https://forgejo.com",
 				AuthToken:    "",
-				TeaPath:      "tea",
 				Host:         "localhost",
 				Port:         8080,
 				ReadTimeout:  30,
@@ -155,16 +146,12 @@ func TestConfigValidation(t *testing.T) {
 				Debug:        false,
 				LogLevel:     "info",
 			},
-			wantErr: validation.Errors{
-				"AuthToken": validation.NewError("validation_required", "cannot be blank"),
-			},
 		},
 		{
 			name: "invalid port",
 			config: &Config{
 				ForgejoURL:   "https://forgejo.com",
-				AuthToken:    "token123",
-				TeaPath:      "tea",
+				AuthToken:    "testing-repo-auth-token-123",
 				Host:         "localhost",
 				Port:         0,
 				ReadTimeout:  30,
@@ -180,8 +167,7 @@ func TestConfigValidation(t *testing.T) {
 			name: "invalid log level",
 			config: &Config{
 				ForgejoURL:   "https://forgejo.com",
-				AuthToken:    "token123",
-				TeaPath:      "tea",
+				AuthToken:    "testing-repo-auth-token-123",
 				Host:         "localhost",
 				Port:         8080,
 				ReadTimeout:  30,
