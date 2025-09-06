@@ -1,0 +1,3 @@
+# Spec Summary (Lite)
+
+Implement a comprehensive test harness for the Forgejo MCP server to enable integration testing of the server's external interface through stdio transport. The harness will use Go's testing package and exec.CommandContext to manage server subprocess lifecycle, handle JSON-RPC 2.0 communication, and validate complete MCP protocol flows including initialization, tool discovery, execution, and error handling scenarios.
