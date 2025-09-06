@@ -6,6 +6,7 @@ import (
 
 	"github.com/Kunde21/forgejo-mcp/config"
 	"github.com/Kunde21/forgejo-mcp/server"
+	"github.com/google/jsonschema-go/jsonschema"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -28,13 +29,72 @@ func registerTools(mcpServer *mcp.Server, cfg *config.Config, logger *logrus.Log
 	// Register PR list tool
 	mcp.AddTool(mcpServer, &mcp.Tool{
 		Name:        "pr_list",
-		Description: "List pull requests from the Forgejo repository",
+		Description: "List pull requests from a specific Forgejo repository",
+		InputSchema: &jsonschema.Schema{
+			Type: "object",
+			Properties: map[string]*jsonschema.Schema{
+				"repository": {
+					Type:        "string",
+					Description: "Repository identifier in 'owner/repo' format",
+				},
+				"cwd": {
+					Type:        "string",
+					Description: "Current working directory to resolve repository from",
+				},
+				"state": {
+					Type:        "string",
+					Enum:        []interface{}{"open", "closed", "all"},
+					Description: "Filter by PR state",
+				},
+				"author": {
+					Type:        "string",
+					Description: "Filter by PR author username",
+				},
+				"limit": {
+					Type:        "integer",
+					Description: "Maximum number of PRs to return",
+				},
+			},
+			Required: []string{"repository"},
+		},
 	}, prHandler.HandlePRListRequest)
 
 	// Register issue list tool
 	mcp.AddTool(mcpServer, &mcp.Tool{
 		Name:        "issue_list",
-		Description: "List issues from the Forgejo repository",
+		Description: "List issues from a specific Forgejo repository",
+		InputSchema: &jsonschema.Schema{
+			Type: "object",
+			Properties: map[string]*jsonschema.Schema{
+				"repository": {
+					Type:        "string",
+					Description: "Repository identifier in 'owner/repo' format",
+				},
+				"cwd": {
+					Type:        "string",
+					Description: "Current working directory to resolve repository from",
+				},
+				"state": {
+					Type:        "string",
+					Enum:        []interface{}{"open", "closed", "all"},
+					Description: "Filter by issue state",
+				},
+				"author": {
+					Type:        "string",
+					Description: "Filter by issue author username",
+				},
+				"labels": {
+					Type:        "array",
+					Items:       &jsonschema.Schema{Type: "string"},
+					Description: "Filter by issue labels",
+				},
+				"limit": {
+					Type:        "integer",
+					Description: "Maximum number of issues to return",
+				},
+			},
+			Required: []string{"repository"},
+		},
 	}, issueHandler.HandleIssueListRequest)
 
 	// Register repository list tool

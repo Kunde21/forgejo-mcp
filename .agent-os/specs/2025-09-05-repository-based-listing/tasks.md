@@ -92,18 +92,18 @@ These are the tasks to be completed for the spec detailed in @.agent-os/specs/20
 - Test response size and performance impact
 
 ### Task 7: Update SDK Client Methods
-**Status:** Pending
+**Status:** Completed
 **Priority:** Medium
 **Description:** Update MCP SDK client to support repository parameters
 
-- Modify SDK client PR list method to accept repository parameter
-- Modify SDK client issue list method to accept repository parameter
-- Update method signatures and parameter validation
-- Add CWD parameter support to SDK methods
-- Update SDK documentation and examples
-- Ensure backward compatibility where possible
-- Test SDK integration with updated server endpoints
-- Update SDK version and release notes
+- [x] Modify SDK client PR list method to accept repository parameter
+- [x] Modify SDK client issue list method to accept repository parameter
+- [x] Update method signatures and parameter validation
+- [x] Add CWD parameter support to SDK methods
+- [x] Update SDK documentation and examples
+- [x] Ensure backward compatibility where possible
+- [x] Test SDK integration with updated server endpoints
+- [x] Update SDK version and release notes
 
 ### Task 8: Integration and End-to-End Testing
 **Status:** Pending
