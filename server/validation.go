@@ -2,6 +2,7 @@ package server
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 
 	giteasdk "github.com/Kunde21/forgejo-mcp/remote/gitea"
@@ -77,14 +78,7 @@ func ValidatePRListArgs(args PRListArgs) error {
 	// Validate state parameter
 	if args.State != "" {
 		validStates := []string{"open", "closed", "all"}
-		found := false
-		for _, state := range validStates {
-			if args.State == state {
-				found = true
-				break
-			}
-		}
-		if !found {
+		if !slices.Contains(validStates, args.State) {
 			return fmt.Errorf("invalid state parameter: must be one of %v", validStates)
 		}
 	}
@@ -123,7 +117,7 @@ func ValidateIssueListArgs(args IssueListArgs) error {
 }
 
 // ValidateRepositoryListArgs validates arguments for repository list requests
-func ValidateRepositoryListArgs(args RepositoryListArgs) error {
+func ValidateRepositoryListArgs(args RepoListArgs) error {
 	// Repository list args are simple, just validate limit if provided
 	if args.Limit < 0 {
 		return fmt.Errorf("limit parameter must be non-negative")

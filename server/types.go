@@ -21,8 +21,8 @@ type PRListArgs struct {
 	Limit      int    `json:"limit,omitempty"`
 }
 
-// RepositoryListArgs represents arguments for repository list requests
-type RepositoryListArgs struct {
+// RepoListArgs represents arguments for repository list requests
+type RepoListArgs struct {
 	Limit int `json:"limit,omitempty"`
 }
 
