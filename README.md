@@ -50,7 +50,7 @@ log_level: "info"
 
 ## Usage
 
-All calls are expected to come from a git repository with a forgejo server remote.
+The MCP server now supports repository-specific queries for improved performance and targeted results.
 
 Start the MCP server:
 
@@ -63,6 +63,22 @@ For more options:
 ```bash
 forgejo-mcp --help
 forgejo-mcp serve --help
+```
+
+### Repository-Based Queries
+
+All tools now require a repository parameter to specify which repository to query:
+
+```javascript
+// List PRs for a specific repository
+const prs = await mcp.callTool('pr_list', {
+  repository: 'my-org/my-project'
+});
+
+// Alternative: Use current working directory
+const prs = await mcp.callTool('pr_list', {
+  cwd: '/path/to/repository'
+});
 ```
 
 ### CLI Commands
@@ -95,19 +111,19 @@ Authentication is handled through API tokens configured at startup. All operatio
 
 ### PR interactions
 
-Manage Pull Requests opened on your forgejo repository
+Manage Pull Requests for specific repositories
 
 Tools List:
-- PR list: show all open PRs on the current repository
+- PR list: show all open PRs for a specified repository
 - PR Comment: Add a comment to a given PR
 - Review PR: approve or request changes
 
 ### Issue interactions
 
-Manage issues in your forgejo repository
+Manage issues in specific repositories
 
 Tools List:
-- List Issues: show all open issues on the current repository
+- List Issues: show all open issues for a specified repository
 - Open Issue: create a new issue with details about a feature request or a bug
 - Close Issue: close an issue that has been answered or completed
 - Issue Comment: Add a comment to a given issue
