@@ -149,7 +149,7 @@ Examples:
 		// Create MCP server using SDK
 		impl := &mcp.Implementation{
 			Name:    "forgejo-mcp",
-			Version: "1.0.0",
+			Version: "1.1.0",
 		}
 		mcpServer := mcp.NewServer(impl, nil)
 

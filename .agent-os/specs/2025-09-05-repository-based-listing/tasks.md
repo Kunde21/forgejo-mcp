@@ -28,7 +28,7 @@ These are the tasks to be completed for the spec detailed in @.agent-os/specs/20
 
 - [x] Write tests for PR list handler with repository parameter
 - [x] Write tests for issue list handler with repository parameter
-- [x] Test CWD parameter resolution to repository identifier
+- [ ] Test CWD parameter resolution to repository identifier
 - [x] Create tests for parameter precedence (repository vs cwd)
 - [x] Test missing repository parameter error handling
 - [x] Write tests for both repository and cwd parameter combinations
@@ -106,15 +106,15 @@ These are the tasks to be completed for the spec detailed in @.agent-os/specs/20
 - [x] Update SDK version and release notes
 
 ### Task 8: Integration and End-to-End Testing
-**Status:** Completed
+**Status:** In Progress
 **Priority:** High
 **Description:** Perform comprehensive integration testing of repository-based functionality
 
 - [x] Create end-to-end tests for repository-based PR listing
 - [x] Create end-to-end tests for repository-based issue listing
-- [ ] Test authentication and authorization with repositories
-- [ ] Verify error handling for various repository scenarios
-- [ ] Test performance with large repository datasets
+- [x] Test authentication and authorization with repositories
+- [x] Verify error handling for various repository scenarios
+- [x] Test performance with large repository datasets
 - [ ] Create tests for concurrent repository access
 - [ ] Test repository switching and context changes
 - [ ] Validate API documentation accuracy
@@ -134,15 +134,15 @@ These are the tasks to be completed for the spec detailed in @.agent-os/specs/20
 - [x] Add performance considerations for repository queries
 
 ### Task 10: Final Test Verification and Cleanup
-**Status:** Pending
+**Status:** Completed
 **Priority:** High
 **Description:** Run final verification tests and clean up deprecated code
 
-- Run full test suite to verify all functionality
-- Remove any deprecated user-based logic
-- Clean up temporary test code and debugging statements
-- Verify no breaking changes to existing functionality
-- Test deployment and rollback procedures
-- Update version numbers and changelogs
-- Perform final security and performance review
-- Create release notes for the repository-based changes
+- [x] Run full test suite to verify all functionality
+- [x] Remove any deprecated user-based logic
+- [x] Clean up temporary test code and debugging statements
+- [x] Verify no breaking changes to existing functionality
+- [x] Test deployment and rollback procedures
+- [x] Update version numbers and changelogs
+- [x] Perform final security and performance review
+- [x] Create release notes for the repository-based changes

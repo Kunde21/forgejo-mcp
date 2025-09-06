@@ -13,7 +13,7 @@ func TestRegisterTools(t *testing.T) {
 	// Create MCP server
 	impl := &mcp.Implementation{
 		Name:    "forgejo-mcp-test",
-		Version: "1.0.0",
+		Version: "1.1.0",
 	}
 	mcpServer := mcp.NewServer(impl, nil)
 
@@ -124,7 +124,7 @@ func TestServeCmd_ServerInitialization(t *testing.T) {
 	// Create MCP server using SDK
 	impl := &mcp.Implementation{
 		Name:    "forgejo-mcp-test",
-		Version: "1.0.0",
+		Version: "1.1.0",
 	}
 	mcpServer := mcp.NewServer(impl, nil)
 	if mcpServer == nil {
