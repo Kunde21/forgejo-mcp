@@ -49,26 +49,11 @@ func (h *SDKPRListHandler) HandlePRListRequest(ctx context.Context, req *mcp.Cal
 	}
 
 	// Validate repository access
-	if valid, err := ValidateRepositoryAccess(h.client, repoParam); !valid {
-		return TextError(err), nil, err
+	if h.client != nil {
+		if valid, err := ValidateRepositoryAccess(h.client, repoParam); !valid {
+			return TextError(err), nil, err
+		}
 	}
-	}
-
-	// Validate repository access
-	if valid, err := ValidateRepositoryAccess(h.client, repoParam); !valid {
-<<<<<<< HEAD
-		return &mcp.CallToolResult{
-			Content: []mcp.Content{
-				&mcp.TextContent{
-					Text: fmt.Sprintf("Error: %v", err),
-				},
-			},
-		}, nil, err
-=======
-		return TextError(err), nil, err
->>>>>>> 3c2d0a1 (Refactor MCP handlers with dependency injection, split handlers into focused files, and update implementations to use remote/gitea package)
-	}
-
 	// Parse repository identifier
 	owner, repo, _ := strings.Cut(repoParam, "/")
 
@@ -94,21 +79,15 @@ func (h *SDKPRListHandler) HandlePRListRequest(ctx context.Context, req *mcp.Cal
 		opts.ListOptions.PageSize = args.Limit
 	}
 
+	if h.client == nil {
+		return TextResult("Error: Gitea client not configured"), nil, nil
+	}
+
 	prs, _, err := h.client.ListRepoPullRequests(owner, repo, opts)
 	if err != nil {
 		sdkErr := giteasdk.NewSDKError("ListRepoPullRequests", err, fmt.Sprintf("owner=%s, repo=%s", owner, repo))
 		h.logger.Errorf("%v", sdkErr)
-<<<<<<< HEAD
-		return &mcp.CallToolResult{
-			Content: []mcp.Content{
-				&mcp.TextContent{
-					Text: fmt.Sprintf("Error executing SDK pr list: %v", sdkErr),
-				},
-			},
-		}, nil, nil
-=======
 		return TextError(fmt.Errorf("executing SDK pr list: %w", sdkErr)), nil, nil
->>>>>>> 3c2d0a1 (Refactor MCP handlers with dependency injection, split handlers into focused files, and update implementations to use remote/gitea package)
 	}
 
 	// Extract repository metadata
@@ -125,17 +104,7 @@ func (h *SDKPRListHandler) HandlePRListRequest(ctx context.Context, req *mcp.Cal
 		"repository":   repoMetadata,
 	}
 
-<<<<<<< HEAD
-	return &mcp.CallToolResult{
-		Content: []mcp.Content{
-			&mcp.TextContent{
-				Text: fmt.Sprintf("Found %d pull requests", len(prs)),
-			},
-		},
-	}, result, nil
-=======
 	return TextResult(fmt.Sprintf("Found %d pull requests", len(prs))), result, nil
->>>>>>> 3c2d0a1 (Refactor MCP handlers with dependency injection, split handlers into focused files, and update implementations to use remote/gitea package)
 }
 
 // transformPRsToResponse transforms Gitea SDK PR data to MCP response format
@@ -211,17 +180,7 @@ func (h *SDKRepositoryHandler) ListRepositories(ctx context.Context, req *mcp.Ca
 
 	// Validate arguments
 	if err := ValidateRepositoryListArgs(args); err != nil {
-<<<<<<< HEAD
-		return &mcp.CallToolResult{
-			Content: []mcp.Content{
-				&mcp.TextContent{
-					Text: fmt.Sprintf("Error: %v", err),
-				},
-			},
-		}, nil, err
-=======
 		return TextError(err), nil, err
->>>>>>> 3c2d0a1 (Refactor MCP handlers with dependency injection, split handlers into focused files, and update implementations to use remote/gitea package)
 	}
 
 	// Build SDK options from parameters
@@ -235,17 +194,7 @@ func (h *SDKRepositoryHandler) ListRepositories(ctx context.Context, req *mcp.Ca
 	if err != nil {
 		sdkErr := giteasdk.NewSDKError("ListMyRepos", err, fmt.Sprintf("limit=%d", args.Limit))
 		h.logger.Errorf("%v", sdkErr)
-<<<<<<< HEAD
-		return &mcp.CallToolResult{
-			Content: []mcp.Content{
-				&mcp.TextContent{
-					Text: fmt.Sprintf("Error executing SDK repository list: %v", sdkErr),
-				},
-			},
-		}, nil, nil
-=======
 		return TextError(fmt.Errorf("executing SDK repository list: %w", sdkErr)), nil, nil
->>>>>>> 3c2d0a1 (Refactor MCP handlers with dependency injection, split handlers into focused files, and update implementations to use remote/gitea package)
 	}
 
 	// Transform to MCP response format
@@ -254,17 +203,7 @@ func (h *SDKRepositoryHandler) ListRepositories(ctx context.Context, req *mcp.Ca
 		"total":        len(repos),
 	}
 
-<<<<<<< HEAD
-	return &mcp.CallToolResult{
-		Content: []mcp.Content{
-			&mcp.TextContent{
-				Text: fmt.Sprintf("Found %d repositories", len(repos)),
-			},
-		},
-	}, result, nil
-=======
 	return TextResult(fmt.Sprintf("Found %d repositories", len(repos))), result, nil
->>>>>>> 3c2d0a1 (Refactor MCP handlers with dependency injection, split handlers into focused files, and update implementations to use remote/gitea package)
 }
 
 // transformReposToResponse transforms Gitea SDK repository data to MCP response format
@@ -320,17 +259,7 @@ func (h *SDKIssueListHandler) HandleIssueListRequest(ctx context.Context, req *m
 
 	// Validate arguments
 	if err := ValidateIssueListArgs(args); err != nil {
-<<<<<<< HEAD
-		return &mcp.CallToolResult{
-			Content: []mcp.Content{
-				&mcp.TextContent{
-					Text: fmt.Sprintf("Error: %v", err),
-				},
-			},
-		}, nil, err
-=======
 		return TextError(err), nil, err
->>>>>>> 3c2d0a1 (Refactor MCP handlers with dependency injection, split handlers into focused files, and update implementations to use remote/gitea package)
 	}
 
 	// Validate repository parameter
@@ -342,33 +271,13 @@ func (h *SDKIssueListHandler) HandleIssueListRequest(ctx context.Context, req *m
 		var err error
 		repoParam, err = giteasdk.ResolveCWDToRepository(args.CWD)
 		if err != nil {
-<<<<<<< HEAD
-			return &mcp.CallToolResult{
-				Content: []mcp.Content{
-					&mcp.TextContent{
-						Text: fmt.Sprintf("Error resolving repository from CWD: %v", err),
-					},
-				},
-			}, nil, err
-=======
 			return TextError(fmt.Errorf("resolving repository from CWD: %w", err)), nil, err
->>>>>>> 3c2d0a1 (Refactor MCP handlers with dependency injection, split handlers into focused files, and update implementations to use remote/gitea package)
 		}
 	}
 
 	// Validate repository access
 	if valid, err := ValidateRepositoryAccess(h.client, repoParam); !valid {
-<<<<<<< HEAD
-		return &mcp.CallToolResult{
-			Content: []mcp.Content{
-				&mcp.TextContent{
-					Text: fmt.Sprintf("Error: %v", err),
-				},
-			},
-		}, nil, err
-=======
 		return TextError(err), nil, err
->>>>>>> 3c2d0a1 (Refactor MCP handlers with dependency injection, split handlers into focused files, and update implementations to use remote/gitea package)
 	}
 
 	// Parse repository identifier
@@ -395,17 +304,7 @@ func (h *SDKIssueListHandler) HandleIssueListRequest(ctx context.Context, req *m
 	if err != nil {
 		sdkErr := giteasdk.NewSDKError("ListIssues", err, fmt.Sprintf("state=%s, limit=%d", args.State, args.Limit))
 		h.logger.Errorf("%v", sdkErr)
-<<<<<<< HEAD
-		return &mcp.CallToolResult{
-			Content: []mcp.Content{
-				&mcp.TextContent{
-					Text: fmt.Sprintf("Error executing SDK issue list: %v", sdkErr),
-				},
-			},
-		}, nil, nil
-=======
 		return TextError(fmt.Errorf("executing SDK issue list: %w", sdkErr)), nil, nil
->>>>>>> 3c2d0a1 (Refactor MCP handlers with dependency injection, split handlers into focused files, and update implementations to use remote/gitea package)
 	}
 
 	// Extract repository metadata
@@ -422,17 +321,7 @@ func (h *SDKIssueListHandler) HandleIssueListRequest(ctx context.Context, req *m
 		"repository": repoMetadata,
 	}
 
-<<<<<<< HEAD
-	return &mcp.CallToolResult{
-		Content: []mcp.Content{
-			&mcp.TextContent{
-				Text: fmt.Sprintf("Found %d issues", len(issues)),
-			},
-		},
-	}, result, nil
-=======
 	return TextResult(fmt.Sprintf("Found %d issues", len(issues))), result, nil
->>>>>>> 3c2d0a1 (Refactor MCP handlers with dependency injection, split handlers into focused files, and update implementations to use remote/gitea package)
 }
 
 // transformIssuesToResponse transforms Gitea SDK issue data to MCP response format

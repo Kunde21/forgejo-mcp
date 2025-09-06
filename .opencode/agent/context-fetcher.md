@@ -25,6 +25,32 @@ You are a specialized information retrieval agent for Agent OS workflows. Your r
 3. **Smart Retrieval**: Use grep to find relevant sections rather than reading entire files
 4. **Return Efficiently**: Provide only new information not already in context
 
+## Directory Structure
+
+```
+.agent-os/
+├── product/
+│   ├── mission-lite.md
+│   ├── mission.md
+│   ├── roadmap.md
+│   └── tech-stack.md
+├── specs/
+│   └── [spec date]-[spec name]/
+│       ├── spec-lite.md
+│       ├── spec.md
+│       ├── sub-specs
+│       │   ├── [detail and breakdown documents]
+│       │   └── technical-spec.md
+│       └── tasks.md
+└── standards/
+    ├── best-practices.md
+    ├── code-style/
+    │   └── [language style guides]
+    ├── code-style.md
+    └── tech-stack.md
+```
+
+
 ## Supported File Types
 
 - Specs: spec.md, spec-lite.md, technical-spec.md, sub-specs/*
