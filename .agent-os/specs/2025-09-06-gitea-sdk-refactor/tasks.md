@@ -51,29 +51,29 @@ These are the tasks to be completed for the spec detailed in @.agent-os/specs/20
     - Move `extractRepositoryMetadata` to `remote/gitea/repository.go`
     - Run integration tests to verify functionality preservation
 
-### Task 3: Refactor MCP Handlers with Dependency Injection
+### Task 3: Refactor MCP Handlers with Dependency Injection ✅
 **Goal:** Restructure server handlers to use dependency injection and call remote/gitea package methods
 
 #### Subtasks:
-1. **Refactor handler interfaces and dependencies (Tests First)**
-   - Write tests for new handler structure with dependency injection
-   - Define clear interfaces between server and remote/gitea packages
-   - Test handler creation and initialization
-   - Verify dependency injection patterns work correctly
+1. **Refactor handler interfaces and dependencies (Tests First)** ✅
+    - Write tests for new handler structure with dependency injection
+    - Define clear interfaces between server and remote/gitea packages
+    - Test handler creation and initialization
+    - Verify dependency injection patterns work correctly
 
-2. **Split server/sdk_handlers.go into focused files (Implementation)**
-   - Create `server/handlers.go` for MCP handler orchestration
-   - Create `server/validation.go` for input validation (keeping MCP-specific validation)
-   - Create `server/types.go` for shared types and structures
-   - Update existing handler structs to use remote/gitea dependencies
+2. **Split server/sdk_handlers.go into focused files (Implementation)** ✅
+    - Create `server/handlers.go` for MCP handler orchestration
+    - Create `server/validation.go` for input validation (keeping MCP-specific validation)
+    - Create `server/types.go` for shared types and structures
+    - Update existing handler structs to use remote/gitea dependencies
 
-3. **Update handler implementations (Verification)**
-   - Modify `SDKPRListHandler`, `SDKRepositoryHandler`, and `SDKIssueListHandler` to use remote/gitea functions
-   - Update all function calls to use new package structure
-   - Test each handler individually for functionality preservation
-   - Run full test suite to ensure no regressions
+3. **Update handler implementations (Verification)** ✅
+    - Modify `SDKPRListHandler`, `SDKRepositoryHandler`, and `SDKIssueListHandler` to use remote/gitea functions
+    - Update all function calls to use new package structure
+    - Test each handler individually for functionality preservation
+    - Run full test suite to ensure no regressions
 
-### Task 4: Update Tests and Ensure Compatibility ✅
+### Task 4: Update Tests and Ensure Compatibility 🔄
 **Goal:** Move and update test files to match new package structure while maintaining test coverage
 
 #### Subtasks:
@@ -96,7 +96,7 @@ These are the tasks to be completed for the spec detailed in @.agent-os/specs/20
    - Test MCP functionality end-to-end to ensure no user-facing changes
    - Document any necessary API changes or migration steps
 
-### Task 5: Final Cleanup and Documentation
+### Task 5: Final Cleanup and Documentation 🔄
 **Goal:** Clean up the codebase, remove deprecated code, and ensure the refactor is complete
 
 #### Subtasks:
