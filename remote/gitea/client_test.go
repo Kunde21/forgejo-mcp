@@ -166,6 +166,9 @@ func TestGiteaClientInterface(t *testing.T) {
 	// Test that mockGiteaClient implements GiteaClientInterface
 	var _ GiteaClientInterface = &mockGiteaClient{}
 
+	// Test that MockGiteaClient implements GiteaClientInterface
+	var _ GiteaClientInterface = &MockGiteaClient{}
+
 	// Test that interface methods can be called
 	mock := &mockGiteaClient{
 		listMyReposFunc: func(opt gitea.ListReposOptions) ([]*gitea.Repository, *gitea.Response, error) {
