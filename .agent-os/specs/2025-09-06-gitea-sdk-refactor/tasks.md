@@ -29,27 +29,27 @@ These are the tasks to be completed for the spec detailed in @.agent-os/specs/20
    - Add configuration validation
    - Run existing tests to ensure no regressions
 
-### Task 2: Move Git Utilities and Repository Resolution
+### Task 2: Move Git Utilities and Repository Resolution ✅
 **Goal:** Extract Git-related functionality from server package to dedicated remote/gitea utilities
 
 #### Subtasks:
-1. **Extract Git resolution functions (Tests First)**
-   - Write comprehensive tests for `resolveCWDToRepository`, `parseGitRemoteOutput`, and `resolveCWDFromPath`
-   - Create test fixtures with various Git remote URL formats
-   - Test edge cases like missing remotes, malformed URLs, and fallback scenarios
-   - Verify error handling and validation logic
+1. **Extract Git resolution functions (Tests First)** ✅
+    - Write comprehensive tests for `resolveCWDToRepository`, `parseGitRemoteOutput`, and `resolveCWDFromPath`
+    - Create test fixtures with various Git remote URL formats
+    - Test edge cases like missing remotes, malformed URLs, and fallback scenarios
+    - Verify error handling and validation logic
 
-2. **Move Git utilities to remote/gitea (Implementation)**
-   - Create `remote/gitea/git.go` with Git resolution functions
-   - Move `resolveCWDToRepository`, `parseGitRemoteOutput`, and `resolveCWDFromPath` functions
-   - Update function signatures to work with new package structure
-   - Add proper error wrapping and context
+2. **Move Git utilities to remote/gitea (Implementation)** ✅
+    - Create `remote/gitea/git.go` with Git resolution functions
+    - Move `resolveCWDToRepository`, `parseGitRemoteOutput`, and `resolveCWDFromPath` functions
+    - Update function signatures to work with new package structure
+    - Add proper error wrapping and context
 
-3. **Move repository validation and metadata (Verification)**
-   - Write tests for `ValidateRepositoryFormat` and repository validation functions
-   - Move validation functions to `remote/gitea/validation.go`
-   - Move `extractRepositoryMetadata` to `remote/gitea/repository.go`
-   - Run integration tests to verify functionality preservation
+3. **Move repository validation and metadata (Verification)** ✅
+    - Write tests for `ValidateRepositoryFormat` and repository validation functions
+    - Move validation functions to `remote/gitea/validation.go`
+    - Move `extractRepositoryMetadata` to `remote/gitea/repository.go`
+    - Run integration tests to verify functionality preservation
 
 ### Task 3: Refactor MCP Handlers with Dependency Injection
 **Goal:** Restructure server handlers to use dependency injection and call remote/gitea package methods
