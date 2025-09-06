@@ -42,12 +42,7 @@ type giteaClientWrapper struct {
 
 // NewGiteaClient creates a new Gitea client that implements GiteaClientInterface
 func NewGiteaClient(baseURL, token string) (GiteaClientInterface, error) {
-	config := &ClientConfig{
-		BaseURL: baseURL,
-		Token:   token,
-	}
-
-	return NewGiteaClientFromConfig(config)
+	return NewGiteaClientFromConfig(&ClientConfig{BaseURL: baseURL, Token: token})
 }
 
 // NewGiteaClientFromConfig creates a new Gitea client from configuration
@@ -55,15 +50,11 @@ func NewGiteaClientFromConfig(config *ClientConfig) (GiteaClientInterface, error
 	if err := config.Validate(); err != nil {
 		return nil, fmt.Errorf("invalid client configuration: %w", err)
 	}
-
 	client, err := gitea.NewClient(config.BaseURL, gitea.SetToken(config.Token))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create Gitea SDK client: %w", err)
 	}
-
-	return &giteaClientWrapper{
-		client: client,
-	}, nil
+	return &giteaClientWrapper{client: client}, nil
 }
 
 // Implement GiteaClientInterface methods by delegating to the wrapped client
