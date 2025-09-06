@@ -17,6 +17,7 @@
 - [ ] Repository-based listing functionality (replacing user-based queries)
 - [x] Gitea SDK migration (replacing tea CLI with direct SDK integration)
 - [x] Basic authentication flow documentation
+- [🔄] Gitea SDK refactor (architectural separation of MCP handlers from SDK implementation)
 
 ## Phase 2: Enhanced Operations (Q2 2026)
 

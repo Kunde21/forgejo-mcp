@@ -7,7 +7,7 @@ These are the tasks to be completed for the spec detailed in @.agent-os/specs/20
 
 ## Tasks
 
-### Task 1: Create Remote Gitea Package Structure
+### Task 1: Create Remote Gitea Package Structure ✅
 **Goal:** Establish the new `remote/gitea` package with core SDK components and interfaces
 
 #### Subtasks:
