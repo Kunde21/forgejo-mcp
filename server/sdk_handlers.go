@@ -3,6 +3,8 @@ package server
 import (
 	"context"
 	"fmt"
+	"os/exec"
+	"regexp"
 	"strings"
 
 	"code.gitea.io/sdk/gitea"
@@ -131,12 +133,65 @@ func validateRepositoryAccess(client GiteaClientInterface, repoParam string) (bo
 }
 
 // resolveCWDToRepository attempts to resolve a CWD path to a repository identifier
-// This is a basic implementation that looks for common patterns
+// Uses git remote -v to query remote URLs and extract repository information
 func resolveCWDToRepository(cwd string) (string, error) {
 	if cwd == "" {
 		return "", fmt.Errorf("CWD is empty")
 	}
 
+	// Check if the directory is a git repository and get remote URLs
+	cmd := exec.Command("git", "remote", "-v")
+	cmd.Dir = cwd
+	output, err := cmd.Output()
+	if err != nil {
+		// If git command fails, fall back to path-based resolution
+		return resolveCWDFromPath(cwd)
+	}
+
+	// Parse the git remote output to extract repository identifier
+	repoID, err := parseGitRemoteOutput(string(output))
+	if err != nil {
+		// If parsing fails, fall back to path-based resolution
+		return resolveCWDFromPath(cwd)
+	}
+
+	return repoID, nil
+}
+
+// parseGitRemoteOutput parses the output of 'git remote -v' to extract repository identifier
+func parseGitRemoteOutput(output string) (string, error) {
+	lines := strings.Split(strings.TrimSpace(output), "\n")
+	if len(lines) == 0 {
+		return "", fmt.Errorf("no remote URLs found")
+	}
+
+	// Regex to match common git remote URL patterns
+	// Supports: https://host/owner/repo, git@host:owner/repo, ssh://git@host/owner/repo
+	re := regexp.MustCompile(`(?:https?://|git@|ssh://git@)([^:/]+)[:/]([^/]+)/([^/\s]+)`)
+
+	for _, line := range lines {
+		// Skip lines that don't contain fetch URLs (look for (fetch) at the end)
+		if !strings.HasSuffix(strings.TrimSpace(line), "(fetch)") {
+			continue
+		}
+
+		matches := re.FindStringSubmatch(line)
+		if len(matches) >= 4 {
+			owner := matches[2]
+			repo := strings.TrimSuffix(matches[3], ".git") // Remove .git extension if present
+
+			repoParam := owner + "/" + repo
+			if valid, _ := ValidateRepositoryFormat(repoParam); valid {
+				return repoParam, nil
+			}
+		}
+	}
+
+	return "", fmt.Errorf("no valid repository identifier found in remote URLs")
+}
+
+// resolveCWDFromPath is the fallback method that uses path-based resolution
+func resolveCWDFromPath(cwd string) (string, error) {
 	// Remove any trailing slashes
 	cwd = strings.TrimSuffix(cwd, "/")
 

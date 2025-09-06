@@ -17,9 +17,11 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-const testRepoName = "test-repo"
-const testUser = "test-user"
-const testRepo = testUser + "/" + testRepoName
+const (
+	testRepoName = "test-repo"
+	testUser     = "test-user"
+	testRepo     = testUser + "/" + testRepoName
+)
 
 // MockGiteaClient implements a comprehensive mock Gitea client for testing
 type MockGiteaClient struct {
@@ -722,7 +724,8 @@ func TestSDKErrorHandling_SDKErrorTransformation(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			logger := logrus.New()
-			mockClient := &MockGiteaClient{mockError: tt.mockError,
+			mockClient := &MockGiteaClient{
+				mockError: tt.mockError,
 				mockRepos: []*gitea.Repository{{
 					ID:    10,
 					Owner: &gitea.User{UserName: testUser},
@@ -3392,7 +3395,6 @@ func (s *TestDataSeeder) SeedPRs(count int, options SeedOptions) []*gitea.PullRe
 
 			prs[i] = pr
 		}
-
 	}
 	return prs
 }
@@ -3797,6 +3799,83 @@ func TestSDKPerformanceComparison(t *testing.T) {
 			// Basic memory efficiency check (not a strict leak test)
 			if memoryUsed > 100*1024*1024 { // 100MB threshold for test data
 				t.Logf("High memory usage detected: %d bytes - may indicate inefficiency", memoryUsed)
+			}
+		})
+	}
+}
+
+// TestGitRemoteResolution tests the git remote -v based repository resolution
+func TestGitRemoteResolution(t *testing.T) {
+	tests := []struct {
+		name            string
+		gitRemoteOutput string
+		expectedRepo    string
+		expectError     bool
+	}{
+		{
+			name: "HTTPS remote URL",
+			gitRemoteOutput: `origin	https://github.com/owner/repo.git (fetch)
+origin	https://github.com/owner/repo.git (push)`,
+			expectedRepo: "owner/repo",
+			expectError:  false,
+		},
+		{
+			name: "SSH remote URL",
+			gitRemoteOutput: `origin	git@github.com:owner/repo.git (fetch)
+origin	git@github.com:owner/repo.git (push)`,
+			expectedRepo: "owner/repo",
+			expectError:  false,
+		},
+		{
+			name: "SSH with full URL",
+			gitRemoteOutput: `origin	ssh://git@github.com/owner/repo.git (fetch)
+origin	ssh://git@github.com/owner/repo.git (push)`,
+			expectedRepo: "owner/repo",
+			expectError:  false,
+		},
+		{
+			name: "Multiple remotes - uses first fetch URL",
+			gitRemoteOutput: `origin	https://github.com/owner/repo.git (fetch)
+origin	https://github.com/owner/repo.git (push)
+upstream	https://github.com/upstream/repo.git (fetch)`,
+			expectedRepo: "owner/repo",
+			expectError:  false,
+		},
+		{
+			name: "No fetch URLs",
+			gitRemoteOutput: `origin	https://github.com/owner/repo.git (push)`,
+			expectedRepo: "",
+			expectError:  true,
+		},
+		{
+			name: "Invalid remote URL format",
+			gitRemoteOutput: `origin	invalid-url (fetch)`,
+			expectedRepo: "",
+			expectError:  true,
+		},
+		{
+			name:            "Empty output",
+			gitRemoteOutput: "",
+			expectedRepo:    "",
+			expectError:     true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result, err := parseGitRemoteOutput(tt.gitRemoteOutput)
+
+			if tt.expectError {
+				if err == nil {
+					t.Errorf("Expected error but got none")
+				}
+			} else {
+				if err != nil {
+					t.Errorf("Unexpected error: %v", err)
+				}
+				if result != tt.expectedRepo {
+					t.Errorf("Expected repo %q, got %q", tt.expectedRepo, result)
+				}
 			}
 		})
 	}
