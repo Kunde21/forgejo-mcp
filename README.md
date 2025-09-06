@@ -107,8 +107,34 @@ go build ./...
 
 ### Testing
 
+Run the complete test suite:
+
 ```bash
 go test ./...
+```
+
+Run specific test files:
+
+```bash
+go test -run TestName ./...
+```
+
+Run integration tests:
+
+```bash
+go test -run Integration ./...
+```
+
+Run tests with verbose output:
+
+```bash
+go test -v ./...
+```
+
+Run tests with coverage:
+
+```bash
+go test -cover ./...
 ```
 
 ### Linting

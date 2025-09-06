@@ -2,7 +2,10 @@ module github.com/kunde21/forgejo-mcp
 
 go 1.25.1
 
-require github.com/mark3labs/mcp-go v0.39.1
+require (
+	github.com/google/go-cmp v0.5.9
+	github.com/mark3labs/mcp-go v0.39.1
+)
 
 require (
 	github.com/bahlo/generic-list-go v0.2.0 // indirect
