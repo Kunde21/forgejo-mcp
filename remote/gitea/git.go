@@ -7,9 +7,9 @@ import (
 	"strings"
 )
 
-// resolveCWDToRepository attempts to resolve a CWD path to a repository identifier
+// ResolveCWDToRepository attempts to resolve a CWD path to a repository identifier
 // Uses git remote -v to query remote URLs and extract repository information
-func resolveCWDToRepository(cwd string) (string, error) {
+func ResolveCWDToRepository(cwd string) (string, error) {
 	if cwd == "" {
 		return "", fmt.Errorf("CWD is empty")
 	}

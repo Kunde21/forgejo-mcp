@@ -2978,7 +2978,7 @@ func TestRepositoryParameterValidation_ExistenceValidation(t *testing.T) {
 				getRepoErr: tt.mockError,
 			}
 
-			valid, err := validateRepositoryExistence(mockClient, tt.repoParam)
+			valid, err := ValidateRepositoryExistence(mockClient, tt.repoParam)
 			if valid != tt.expectValid {
 				t.Errorf("validateRepositoryExistence(%q) = %v, want %v", tt.repoParam, valid, tt.expectValid)
 			}
@@ -3046,7 +3046,7 @@ func TestRepositoryParameterValidation_AccessValidation(t *testing.T) {
 				getRepoErr: tt.mockError,
 			}
 
-			valid, err := validateRepositoryAccess(mockClient, tt.repoParam)
+			valid, err := ValidateRepositoryAccess(mockClient, tt.repoParam)
 			if valid != tt.expectValid {
 				t.Errorf("validateRepositoryAccess(%q) = %v, want %v", tt.repoParam, valid, tt.expectValid)
 			}
@@ -3103,7 +3103,7 @@ func TestRepositoryParameterValidation_OrganizationRepos(t *testing.T) {
 				mockRepos: tt.mockRepos,
 			}
 
-			valid, err := validateRepositoryExistence(mockClient, tt.repoParam)
+			valid, err := ValidateRepositoryExistence(mockClient, tt.repoParam)
 			if valid != tt.expectValid {
 				t.Errorf("validateRepositoryExistence(%q) = %v, want %v", tt.repoParam, valid, tt.expectValid)
 			}
@@ -3159,7 +3159,7 @@ func TestRepositoryParameterValidation_ErrorScenarios(t *testing.T) {
 				getRepoErr: tt.mockError,
 			}
 
-			valid, err := validateRepositoryExistence(mockClient, tt.repoParam)
+			valid, err := ValidateRepositoryExistence(mockClient, tt.repoParam)
 			if valid != tt.expectValid {
 				t.Errorf("validateRepositoryExistence(%q) = %v, want %v", tt.repoParam, valid, tt.expectValid)
 			}

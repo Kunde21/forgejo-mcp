@@ -5,8 +5,8 @@ import (
 	"strings"
 )
 
-// extractRepositoryMetadata extracts and caches repository metadata
-func extractRepositoryMetadata(client GiteaClientInterface, repoParam string) (map[string]any, error) {
+// ExtractRepositoryMetadata extracts and caches repository metadata
+func ExtractRepositoryMetadata(client GiteaClientInterface, repoParam string) (map[string]any, error) {
 	valid, err := ValidateRepositoryFormat(repoParam)
 	if !valid {
 		return nil, err

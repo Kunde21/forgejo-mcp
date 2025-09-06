@@ -52,6 +52,7 @@ Use the context-fetcher subagent to gather minimal context for task understandin
 
 <instructions>
   ACTION: Use context-fetcher subagent to:
+	- REQUEST: "Look for files in .agent-os directory"
     - REQUEST: "Get product pitch from mission-lite.md"
     - REQUEST: "Get spec summary from spec-lite.md"
     - REQUEST: "Get technical approach from technical-spec.md"
