@@ -10,72 +10,9 @@ import (
 	"code.gitea.io/sdk/gitea"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 	"github.com/sirupsen/logrus"
+
+	giteasdk "github.com/Kunde21/forgejo-mcp/remote/gitea"
 )
-
-// SDKError represents an error from the Gitea SDK with additional context
-type SDKError struct {
-	Operation string // The operation that failed (e.g., "ListRepoPullRequests")
-	Cause     error  // The original SDK error
-	Context   string // Additional context about the operation
-}
-
-func (e *SDKError) Error() string {
-	if e.Context != "" {
-		return fmt.Sprintf("Gitea SDK %s failed (%s): %v", e.Operation, e.Context, e.Cause)
-	}
-	return fmt.Sprintf("Gitea SDK %s failed: %v", e.Operation, e.Cause)
-}
-
-func (e *SDKError) Unwrap() error {
-	return e.Cause
-}
-
-// NewSDKError creates a new SDK error with context
-func NewSDKError(operation string, cause error, context ...string) *SDKError {
-	ctx := ""
-	if len(context) > 0 {
-		ctx = strings.Join(context, ", ")
-	}
-	return &SDKError{
-		Operation: operation,
-		Cause:     cause,
-		Context:   ctx,
-	}
-}
-
-// GiteaClientInterface defines the interface for Gitea client operations
-type GiteaClientInterface interface {
-	// Repository operations
-	ListMyRepos(opt gitea.ListReposOptions) ([]*gitea.Repository, *gitea.Response, error)
-	GetRepo(owner, repo string) (*gitea.Repository, *gitea.Response, error)
-	CreateRepo(opt gitea.CreateRepoOption) (*gitea.Repository, *gitea.Response, error)
-	DeleteRepo(owner, repo string) (*gitea.Response, error)
-
-	// Pull Request operations
-	ListRepoPullRequests(owner, repo string, opt gitea.ListPullRequestsOptions) ([]*gitea.PullRequest, *gitea.Response, error)
-	GetPullRequest(owner, repo string, index int64) (*gitea.PullRequest, *gitea.Response, error)
-	CreatePullRequest(owner, repo string, opt gitea.CreatePullRequestOption) (*gitea.PullRequest, *gitea.Response, error)
-	EditPullRequest(owner, repo string, index int64, opt gitea.EditPullRequestOption) (*gitea.PullRequest, *gitea.Response, error)
-
-	// Issue operations
-	ListIssues(opt gitea.ListIssueOption) ([]*gitea.Issue, *gitea.Response, error)
-	ListRepoIssues(owner, repo string, opt gitea.ListIssueOption) ([]*gitea.Issue, *gitea.Response, error)
-	GetIssue(owner, repo string, index int64) (*gitea.Issue, *gitea.Response, error)
-	CreateIssue(owner, repo string, opt gitea.CreateIssueOption) (*gitea.Issue, *gitea.Response, error)
-	EditIssue(owner, repo string, index int64, opt gitea.EditIssueOption) (*gitea.Issue, *gitea.Response, error)
-
-	// User operations
-	GetMyUserInfo() (*gitea.User, *gitea.Response, error)
-	GetUserInfo(user string) (*gitea.User, *gitea.Response, error)
-
-	// Branch operations
-	ListRepoBranches(owner, repo string, opt gitea.ListRepoBranchesOptions) ([]*gitea.Branch, *gitea.Response, error)
-	GetRepoBranch(owner, repo, branch string) (*gitea.Branch, *gitea.Response, error)
-
-	// Commit operations
-	GetSingleCommit(owner, repo, sha string) (*gitea.Commit, *gitea.Response, error)
-	ListRepoCommits(owner, repo string, opt gitea.ListCommitOptions) ([]*gitea.Commit, *gitea.Response, error)
-}
 
 // ValidateRepositoryFormat validates that a repository parameter follows the owner/repo format
 func ValidateRepositoryFormat(repoParam string) (bool, error) {
@@ -106,7 +43,7 @@ func ValidateRepositoryFormat(repoParam string) (bool, error) {
 }
 
 // validateRepositoryExistence checks if a repository exists via Gitea API
-func validateRepositoryExistence(client GiteaClientInterface, repoParam string) (bool, error) {
+func validateRepositoryExistence(client giteasdk.GiteaClientInterface, repoParam string) (bool, error) {
 	valid, err := ValidateRepositoryFormat(repoParam)
 	if !valid {
 		return false, err
@@ -119,7 +56,7 @@ func validateRepositoryExistence(client GiteaClientInterface, repoParam string) 
 }
 
 // validateRepositoryAccess checks if the user has access to the repository
-func validateRepositoryAccess(client GiteaClientInterface, repoParam string) (bool, error) {
+func validateRepositoryAccess(client giteasdk.GiteaClientInterface, repoParam string) (bool, error) {
 	valid, err := ValidateRepositoryFormat(repoParam)
 	if !valid {
 		return false, err
@@ -226,7 +163,7 @@ func resolveCWDFromPath(cwd string) (string, error) {
 }
 
 // extractRepositoryMetadata extracts and caches repository metadata
-func extractRepositoryMetadata(client GiteaClientInterface, repoParam string) (map[string]any, error) {
+func extractRepositoryMetadata(client giteasdk.GiteaClientInterface, repoParam string) (map[string]any, error) {
 	valid, err := ValidateRepositoryFormat(repoParam)
 	if !valid {
 		return nil, err
@@ -269,11 +206,11 @@ func extractRepositoryMetadata(client GiteaClientInterface, repoParam string) (m
 // SDKPRListHandler handles pr_list tool requests with Gitea SDK integration
 type SDKPRListHandler struct {
 	logger *logrus.Logger
-	client GiteaClientInterface
+	client giteasdk.GiteaClientInterface
 }
 
 // NewSDKPRListHandler creates a new SDK PR list handler
-func NewSDKPRListHandler(logger *logrus.Logger, client GiteaClientInterface) *SDKPRListHandler {
+func NewSDKPRListHandler(logger *logrus.Logger, client giteasdk.GiteaClientInterface) *SDKPRListHandler {
 	return &SDKPRListHandler{
 		logger: logger,
 		client: client,
@@ -368,7 +305,7 @@ func (h *SDKPRListHandler) HandlePRListRequest(ctx context.Context, req *mcp.Cal
 
 	prs, _, err := h.client.ListRepoPullRequests(owner, repo, opts)
 	if err != nil {
-		sdkErr := NewSDKError("ListRepoPullRequests", err, fmt.Sprintf("owner=%s, repo=%s", owner, repo))
+		sdkErr := giteasdk.NewSDKError("ListRepoPullRequests", err, fmt.Sprintf("owner=%s, repo=%s", owner, repo))
 		h.logger.Errorf("%v", sdkErr)
 		return &mcp.CallToolResult{
 			Content: []mcp.Content{
@@ -458,11 +395,11 @@ func (h *SDKPRListHandler) normalizePRState(state gitea.StateType) string {
 // SDKRepositoryHandler handles repository operations with Gitea SDK integration
 type SDKRepositoryHandler struct {
 	logger *logrus.Logger
-	client GiteaClientInterface
+	client giteasdk.GiteaClientInterface
 }
 
 // NewSDKRepositoryHandler creates a new SDK repository handler
-func NewSDKRepositoryHandler(logger *logrus.Logger, client GiteaClientInterface) *SDKRepositoryHandler {
+func NewSDKRepositoryHandler(logger *logrus.Logger, client giteasdk.GiteaClientInterface) *SDKRepositoryHandler {
 	return &SDKRepositoryHandler{
 		logger: logger,
 		client: client,
@@ -484,7 +421,7 @@ func (h *SDKRepositoryHandler) ListRepositories(ctx context.Context, req *mcp.Ca
 
 	repos, _, err := h.client.ListMyRepos(opts)
 	if err != nil {
-		sdkErr := NewSDKError("ListMyRepos", err, fmt.Sprintf("limit=%d", args.Limit))
+		sdkErr := giteasdk.NewSDKError("ListMyRepos", err, fmt.Sprintf("limit=%d", args.Limit))
 		h.logger.Errorf("%v", sdkErr)
 		return &mcp.CallToolResult{
 			Content: []mcp.Content{
@@ -546,11 +483,11 @@ func (h *SDKRepositoryHandler) transformReposToResponse(repos []*gitea.Repositor
 // SDKIssueListHandler handles issue operations with Gitea SDK integration
 type SDKIssueListHandler struct {
 	logger *logrus.Logger
-	client GiteaClientInterface
+	client giteasdk.GiteaClientInterface
 }
 
 // NewSDKIssueListHandler creates a new SDK issue list handler
-func NewSDKIssueListHandler(logger *logrus.Logger, client GiteaClientInterface) *SDKIssueListHandler {
+func NewSDKIssueListHandler(logger *logrus.Logger, client giteasdk.GiteaClientInterface) *SDKIssueListHandler {
 	return &SDKIssueListHandler{
 		logger: logger,
 		client: client,
@@ -641,7 +578,7 @@ func (h *SDKIssueListHandler) HandleIssueListRequest(ctx context.Context, req *m
 
 	issues, _, err := h.client.ListRepoIssues(owner, repo, opts)
 	if err != nil {
-		sdkErr := NewSDKError("ListIssues", err, fmt.Sprintf("state=%s, limit=%d", args.State, args.Limit))
+		sdkErr := giteasdk.NewSDKError("ListIssues", err, fmt.Sprintf("state=%s, limit=%d", args.State, args.Limit))
 		h.logger.Errorf("%v", sdkErr)
 		return &mcp.CallToolResult{
 			Content: []mcp.Content{
