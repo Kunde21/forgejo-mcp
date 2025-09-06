@@ -531,103 +531,127 @@ func TestSDKErrorHandling_SDKErrorTransformation(t *testing.T) {
 	}
 }
 
-// TestSDKErrorHandling_IssueHandlerErrorTransformation tests error handling in issue handler
-func TestSDKErrorHandling_IssueHandlerErrorTransformation(t *testing.T) {
-	logger := logrus.New()
-	mockClient := &giteasdk.MockGiteaClient{
-		MockError: fmt.Errorf("rate limit exceeded"),
-		MockRepos: []*gitea.Repository{{ID: 8, Owner: &gitea.User{UserName: testUser}, Name: testRepoName}},
-	}
-
-	handler := &SDKIssueListHandler{
-		logger: logger,
-		client: mockClient,
-	}
-
-	ctx := context.Background()
-	req := &mcp.CallToolRequest{}
-	args := struct {
-		Repository string   `json:"repository,omitempty"`
-		CWD        string   `json:"cwd,omitempty"`
-		State      string   `json:"state,omitempty"`
-		Author     string   `json:"author,omitempty"`
-		Labels     []string `json:"labels,omitempty"`
-		Limit      int      `json:"limit,omitempty"`
+// TestSDKErrorHandling_HandlerErrorTransformation tests error handling across all handlers
+func TestSDKErrorHandling_HandlerErrorTransformation(t *testing.T) {
+	tests := []struct {
+		name          string
+		handlerType   string
+		mockError     error
+		args          interface{}
+		expectedError string
 	}{
-		Repository: testRepo,
+		{
+			name:        "PR handler - rate limit exceeded",
+			handlerType: "pr",
+			mockError:   fmt.Errorf("rate limit exceeded"),
+			args: struct {
+				Repository string `json:"repository,omitempty"`
+				CWD        string `json:"cwd,omitempty"`
+				State      string `json:"state,omitempty"`
+				Author     string `json:"author,omitempty"`
+				Limit      int    `json:"limit,omitempty"`
+			}{Repository: testRepo},
+			expectedError: "Error executing SDK pr list: Gitea SDK ListRepoPullRequests failed (owner=" + testUser + ", repo=" + testRepoName + "): rate limit exceeded",
+		},
+		{
+			name:        "repository handler - invalid token",
+			handlerType: "repo",
+			mockError:   fmt.Errorf("invalid token"),
+			args: struct {
+				Limit int `json:"limit,omitempty"`
+			}{},
+			expectedError: "Error executing SDK repository list: Gitea SDK ListMyRepos failed (limit=0): invalid token",
+		},
+		{
+			name:        "issue handler - rate limit exceeded",
+			handlerType: "issue",
+			mockError:   fmt.Errorf("rate limit exceeded"),
+			args: struct {
+				Repository string   `json:"repository,omitempty"`
+				CWD        string   `json:"cwd,omitempty"`
+				State      string   `json:"state,omitempty"`
+				Author     string   `json:"author,omitempty"`
+				Labels     []string `json:"labels,omitempty"`
+				Limit      int      `json:"limit,omitempty"`
+			}{Repository: testRepo},
+			expectedError: "Error executing SDK issue list: Gitea SDK ListIssues failed (state=, limit=0): rate limit exceeded",
+		},
 	}
 
-	result, data, err := handler.HandleIssueListRequest(ctx, req, args)
-	if err != nil {
-		t.Fatalf("HandleIssueListRequest should not return error, got: %v", err)
-	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			logger := logrus.New()
+			mockClient := &giteasdk.MockGiteaClient{
+				MockError: tt.mockError,
+			}
 
-	if result == nil {
-		t.Fatal("HandleIssueListRequest should return a result even on error")
-	}
+			// Add mock repos for handlers that need them
+			if tt.handlerType == "pr" || tt.handlerType == "issue" {
+				mockClient.MockRepos = []*gitea.Repository{{ID: 8, Owner: &gitea.User{UserName: testUser}, Name: testRepoName}}
+			}
 
-	if len(result.Content) == 0 {
-		t.Fatal("HandleIssueListRequest should return error content")
-	}
+			ctx := context.Background()
+			req := &mcp.CallToolRequest{}
 
-	textContent, ok := result.Content[0].(*mcp.TextContent)
-	if !ok {
-		t.Fatal("HandleIssueListRequest should return TextContent")
-	}
+			var result *mcp.CallToolResult
+			var data interface{}
+			var err error
 
-	expectedError := "Error executing SDK issue list: Gitea SDK ListIssues failed (state=, limit=0): rate limit exceeded"
-	if textContent.Text != expectedError {
-		t.Errorf("Expected error message '%s', got '%s'", expectedError, textContent.Text)
-	}
+			switch tt.handlerType {
+			case "pr":
+				handler := &SDKPRListHandler{logger: logger, client: mockClient}
+				args := tt.args.(struct {
+					Repository string `json:"repository,omitempty"`
+					CWD        string `json:"cwd,omitempty"`
+					State      string `json:"state,omitempty"`
+					Author     string `json:"author,omitempty"`
+					Limit      int    `json:"limit,omitempty"`
+				})
+				result, data, err = handler.HandlePRListRequest(ctx, req, args)
+			case "repo":
+				handler := &SDKRepositoryHandler{logger: logger, client: mockClient}
+				args := tt.args.(struct {
+					Limit int `json:"limit,omitempty"`
+				})
+				result, data, err = handler.ListRepositories(ctx, req, args)
+			case "issue":
+				handler := &SDKIssueListHandler{logger: logger, client: mockClient}
+				args := tt.args.(struct {
+					Repository string   `json:"repository,omitempty"`
+					CWD        string   `json:"cwd,omitempty"`
+					State      string   `json:"state,omitempty"`
+					Author     string   `json:"author,omitempty"`
+					Labels     []string `json:"labels,omitempty"`
+					Limit      int      `json:"limit,omitempty"`
+				})
+				result, data, err = handler.HandleIssueListRequest(ctx, req, args)
+			}
 
-	if data != nil {
-		t.Error("HandleIssueListRequest should return nil data on error")
-	}
-}
+			if err != nil {
+				t.Fatalf("Handler should not return error, got: %v", err)
+			}
 
-// TestSDKErrorHandling_RepositoryHandlerErrorTransformation tests error handling in repository handler
-func TestSDKErrorHandling_RepositoryHandlerErrorTransformation(t *testing.T) {
-	logger := logrus.New()
-	mockClient := &giteasdk.MockGiteaClient{
-		MockError: fmt.Errorf("invalid token"),
-	}
+			if result == nil {
+				t.Fatal("Handler should return a result even on error")
+			}
 
-	handler := &SDKRepositoryHandler{
-		logger: logger,
-		client: mockClient,
-	}
+			if len(result.Content) == 0 {
+				t.Fatal("Handler should return error content")
+			}
 
-	ctx := context.Background()
-	req := &mcp.CallToolRequest{}
-	args := struct {
-		Limit int `json:"limit,omitempty"`
-	}{}
+			textContent, ok := result.Content[0].(*mcp.TextContent)
+			if !ok {
+				t.Fatal("Handler should return TextContent")
+			}
 
-	result, data, err := handler.ListRepositories(ctx, req, args)
-	if err != nil {
-		t.Fatalf("ListRepositories should not return error, got: %v", err)
-	}
+			if textContent.Text != tt.expectedError {
+				t.Errorf("Expected error message '%s', got '%s'", tt.expectedError, textContent.Text)
+			}
 
-	if result == nil {
-		t.Fatal("ListRepositories should return a result even on error")
-	}
-
-	if len(result.Content) == 0 {
-		t.Fatal("ListRepositories should return error content")
-	}
-
-	textContent, ok := result.Content[0].(*mcp.TextContent)
-	if !ok {
-		t.Fatal("ListRepositories should return TextContent")
-	}
-
-	expectedError := "Error executing SDK repository list: Gitea SDK ListMyRepos failed (limit=0): invalid token"
-	if textContent.Text != expectedError {
-		t.Errorf("Expected error message '%s', got '%s'", expectedError, textContent.Text)
-	}
-
-	if data != nil {
-		t.Error("ListRepositories should return nil data on error")
+			if data != nil {
+				t.Error("Handler should return nil data on error")
+			}
+		})
 	}
 }
 
@@ -1090,778 +1114,149 @@ func TestSDKResponseTransformation_EmptyResults(t *testing.T) {
 	}
 }
 
-// TestSDKMigration_CLIToSDKCompatibility tests compatibility between CLI and SDK approaches
-func TestSDKMigration_CLIToSDKCompatibility(t *testing.T) {
-	logger := logrus.New()
-
-	// Setup test data that would be equivalent between CLI and SDK
-	testPRs := []*gitea.PullRequest{
-		{
-			ID:     1,
-			Index:  1,
-			Title:  "Test PR for migration",
-			State:  gitea.StateOpen,
-			Body:   "Migration test PR",
-			Poster: &gitea.User{UserName: "testuser"},
-		},
-	}
-
-	testIssues := []*gitea.Issue{
-		{
-			ID:     1,
-			Index:  1,
-			Title:  "Test Issue for migration",
-			State:  "open",
-			Body:   "Migration test issue",
-			Poster: &gitea.User{UserName: "testuser"},
-		},
-	}
-
-	testRepos := []*gitea.Repository{
-		{
-			ID:          1,
-			Name:        testRepoName,
-			FullName:    testRepo,
-			Description: "Repository for migration testing",
-			Private:     false,
-			Owner:       &gitea.User{UserName: testUser},
-		},
-	}
-
-	// Test SDK handlers with the test data
-	mockClient := &giteasdk.MockGiteaClient{
-		MockPRs:    testPRs,
-		MockIssues: testIssues,
-		MockRepos:  testRepos,
-	}
-
-	prHandler := &SDKPRListHandler{logger: logger, client: mockClient}
-	issueHandler := &SDKIssueListHandler{logger: logger, client: mockClient}
-	repoHandler := &SDKRepositoryHandler{logger: logger, client: mockClient}
-
-	ctx := context.Background()
-	req := &mcp.CallToolRequest{}
-
-	// Test PR migration
-	prArgs := struct {
-		Repository string `json:"repository,omitempty"`
-		CWD        string `json:"cwd,omitempty"`
-		State      string `json:"state,omitempty"`
-		Author     string `json:"author,omitempty"`
-		Limit      int    `json:"limit,omitempty"`
-	}{Repository: testRepo}
-
-	prResult, prData, prErr := prHandler.HandlePRListRequest(ctx, req, prArgs)
-	if prErr != nil {
-		t.Fatalf("SDK PR handler failed: %v", prErr)
-	}
-	if prResult == nil {
-		t.Fatal("SDK PR handler returned nil result")
-	}
-
-	prDataMap, ok := prData.(map[string]interface{})
-	if !ok {
-		t.Fatal("SDK PR handler returned invalid data format")
-	}
-
-	prs, exists := prDataMap["pullRequests"]
-	if !exists {
-		t.Fatal("SDK PR handler missing pullRequests in response")
-	}
-
-	prsSlice, ok := prs.([]map[string]interface{})
-	if !ok {
-		t.Fatal("SDK PR handler returned invalid PRs format")
-	}
-
-	if len(prsSlice) != 1 {
-		t.Errorf("Expected 1 PR from SDK handler, got %d", len(prsSlice))
-	}
-
-	// Test Issue migration
-	issueArgs := struct {
-		Repository string   `json:"repository,omitempty"`
-		CWD        string   `json:"cwd,omitempty"`
-		State      string   `json:"state,omitempty"`
-		Author     string   `json:"author,omitempty"`
-		Labels     []string `json:"labels,omitempty"`
-		Limit      int      `json:"limit,omitempty"`
-	}{Repository: testRepo}
-
-	issueResult, issueData, issueErr := issueHandler.HandleIssueListRequest(ctx, req, issueArgs)
-	if issueErr != nil {
-		t.Fatalf("SDK Issue handler failed: %v", issueErr)
-	}
-	if issueResult == nil {
-		t.Fatal("SDK Issue handler returned nil result")
-	}
-
-	issueDataMap, ok := issueData.(map[string]interface{})
-	if !ok {
-		t.Fatal("SDK Issue handler returned invalid data format")
-	}
-
-	issues, exists := issueDataMap["issues"]
-	if !exists {
-		t.Fatal("SDK Issue handler missing issues in response")
-	}
-
-	issuesSlice, ok := issues.([]map[string]interface{})
-	if !ok {
-		t.Fatal("SDK Issue handler returned invalid issues format")
-	}
-
-	if len(issuesSlice) != 1 {
-		t.Errorf("Expected 1 issue from SDK handler, got %d", len(issuesSlice))
-	}
-
-	// Test Repository migration
-	repoArgs := struct {
-		Limit int `json:"limit,omitempty"`
-	}{}
-
-	repoResult, repoData, repoErr := repoHandler.ListRepositories(ctx, req, repoArgs)
-	if repoErr != nil {
-		t.Fatalf("SDK Repository handler failed: %v", repoErr)
-	}
-	if repoResult == nil {
-		t.Fatal("SDK Repository handler returned nil result")
-	}
-
-	repoDataMap, ok := repoData.(map[string]interface{})
-	if !ok {
-		t.Fatal("SDK Repository handler returned invalid data format")
-	}
-
-	repos, exists := repoDataMap["repositories"]
-	if !exists {
-		t.Fatal("SDK Repository handler missing repositories in response")
-	}
-
-	reposSlice, ok := repos.([]map[string]interface{})
-	if !ok {
-		t.Fatal("SDK Repository handler returned invalid repos format")
-	}
-
-	if len(reposSlice) != 1 {
-		t.Errorf("Expected 1 repository from SDK handler, got %d", len(reposSlice))
-	}
-
-	// Verify data consistency across all handlers
-	if prDataMap["total"] != 1 {
-		t.Errorf("PR handler total mismatch: expected 1, got %v", prDataMap["total"])
-	}
-	if issueDataMap["total"] != 1 {
-		t.Errorf("Issue handler total mismatch: expected 1, got %v", issueDataMap["total"])
-	}
-	if repoDataMap["total"] != 1 {
-		t.Errorf("Repository handler total mismatch: expected 1, got %v", repoDataMap["total"])
-	}
-}
-
-// TestSDKMigration_CommandBuilderCompatibility tests migration from CLI command builders to SDK
-func TestSDKMigration_CommandBuilderCompatibility(t *testing.T) {
-	// Test that SDK handlers can handle the same parameter formats as CLI command builders
-	logger := logrus.New()
-	mockClient := &giteasdk.MockGiteaClient{
-		MockPRs: []*gitea.PullRequest{
-			{ID: 1, Index: 1, Title: "CLI-compatible PR", State: gitea.StateOpen},
-		},
-		MockIssues: []*gitea.Issue{
-			{ID: 1, Index: 1, Title: "CLI-compatible Issue", State: "open"},
-		},
-		MockRepos: []*gitea.Repository{{ID: 8, Owner: &gitea.User{UserName: testUser}, Name: testRepoName}},
-	}
-
-	prHandler := &SDKPRListHandler{logger: logger, client: mockClient}
-	issueHandler := &SDKIssueListHandler{logger: logger, client: mockClient}
-
-	ctx := context.Background()
-	req := &mcp.CallToolRequest{}
-
-	// Test parameters that would be generated by CLI command builders
-	testCases := []struct {
-		name   string
-		prArgs struct {
-			Repository string `json:"repository,omitempty"`
-			CWD        string `json:"cwd,omitempty"`
-			State      string `json:"state,omitempty"`
-			Author     string `json:"author,omitempty"`
-			Limit      int    `json:"limit,omitempty"`
-		}
-		issueArgs struct {
-			Repository string   `json:"repository,omitempty"`
-			CWD        string   `json:"cwd,omitempty"`
-			State      string   `json:"state,omitempty"`
-			Author     string   `json:"author,omitempty"`
-			Labels     []string `json:"labels,omitempty"`
-			Limit      int      `json:"limit,omitempty"`
-		}
-	}{
-		{
-			name: "open state",
-			prArgs: struct {
-				Repository string `json:"repository,omitempty"`
-				CWD        string `json:"cwd,omitempty"`
-				State      string `json:"state,omitempty"`
-				Author     string `json:"author,omitempty"`
-				Limit      int    `json:"limit,omitempty"`
-			}{Repository: testRepo},
-			issueArgs: struct {
-				Repository string   `json:"repository,omitempty"`
-				CWD        string   `json:"cwd,omitempty"`
-				State      string   `json:"state,omitempty"`
-				Author     string   `json:"author,omitempty"`
-				Labels     []string `json:"labels,omitempty"`
-				Limit      int      `json:"limit,omitempty"`
-			}{Repository: testRepo},
-		},
-		{
-			name: "closed state",
-			prArgs: struct {
-				Repository string `json:"repository,omitempty"`
-				CWD        string `json:"cwd,omitempty"`
-				State      string `json:"state,omitempty"`
-				Author     string `json:"author,omitempty"`
-				Limit      int    `json:"limit,omitempty"`
-			}{Repository: testRepo},
-			issueArgs: struct {
-				Repository string   `json:"repository,omitempty"`
-				CWD        string   `json:"cwd,omitempty"`
-				State      string   `json:"state,omitempty"`
-				Author     string   `json:"author,omitempty"`
-				Labels     []string `json:"labels,omitempty"`
-				Limit      int      `json:"limit,omitempty"`
-			}{Repository: testRepo},
-		},
-		{
-			name: "with limit",
-			prArgs: struct {
-				Repository string `json:"repository,omitempty"`
-				CWD        string `json:"cwd,omitempty"`
-				State      string `json:"state,omitempty"`
-				Author     string `json:"author,omitempty"`
-				Limit      int    `json:"limit,omitempty"`
-			}{Repository: testRepo},
-			issueArgs: struct {
-				Repository string   `json:"repository,omitempty"`
-				CWD        string   `json:"cwd,omitempty"`
-				State      string   `json:"state,omitempty"`
-				Author     string   `json:"author,omitempty"`
-				Labels     []string `json:"labels,omitempty"`
-				Limit      int      `json:"limit,omitempty"`
-			}{Repository: testRepo},
-		},
-	}
-
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			// Test PR handler compatibility
-			prResult, prData, prErr := prHandler.HandlePRListRequest(ctx, req, tc.prArgs)
-			if prErr != nil {
-				t.Fatalf("PR handler failed with CLI-compatible params: %v", prErr)
-			}
-			if prResult == nil {
-				t.Fatal("PR handler returned nil result")
-			}
-			if prData == nil {
-				buf, err := json.Marshal(prResult)
-				if err != nil {
-					t.Fatal(err)
-				}
-				t.Fatal("PR handler returned nil data", string(buf))
-			}
-
-			// Test Issue handler compatibility
-			issueResult, issueData, issueErr := issueHandler.HandleIssueListRequest(ctx, req, tc.issueArgs)
-			if issueErr != nil {
-				t.Fatalf("Issue handler failed with CLI-compatible params: %v", issueErr)
-			}
-			if issueResult == nil {
-				t.Fatal("Issue handler returned nil result")
-			}
-			if issueData == nil {
-				t.Fatal("Issue handler returned nil data")
-			}
-		})
-	}
-}
-
-// TestSDKMockSetupAndTeardown tests SDK mock setup and teardown functionality
-func TestSDKMockSetupAndTeardown(t *testing.T) {
+// TestSDKAuthenticationErrors tests authentication error handling across all handlers
+func TestSDKAuthenticationErrors(t *testing.T) {
 	tests := []struct {
-		name         string
-		setupFunc    func() *giteasdk.MockGiteaClient
-		teardownFunc func(*giteasdk.MockGiteaClient)
-		validateFunc func(*testing.T, *giteasdk.MockGiteaClient)
+		name          string
+		mockError     error
+		handlerType   string
+		args          interface{}
+		expectedError string
 	}{
 		{
-			name: "basic mock setup and teardown",
-			setupFunc: func() *giteasdk.MockGiteaClient {
-				return &giteasdk.MockGiteaClient{
-					MockPRs: []*gitea.PullRequest{
-						{ID: 1, Index: 1, Title: "Test PR"},
-					},
-					MockIssues: []*gitea.Issue{
-						{ID: 1, Index: 1, Title: "Test Issue"},
-					},
-					MockRepos: []*gitea.Repository{
-						{ID: 1, Name: "test-repo"},
-					},
-				}
-			},
-			teardownFunc: func(mock *giteasdk.MockGiteaClient) {
-				mock.MockPRs = nil
-				mock.MockIssues = nil
-				mock.MockRepos = nil
-			},
-			validateFunc: func(t *testing.T, mock *giteasdk.MockGiteaClient) {
-				if len(mock.MockPRs) != 0 {
-					t.Error("Teardown should clear mock PRs")
-				}
-				if len(mock.MockIssues) != 0 {
-					t.Error("Teardown should clear mock issues")
-				}
-				if len(mock.MockRepos) != 0 {
-					t.Error("Teardown should clear mock repos")
-				}
-			},
+			name:        "invalid token - PR handler",
+			mockError:   fmt.Errorf("401 Unauthorized: invalid token"),
+			handlerType: "pr",
+			args: struct {
+				Repository string `json:"repository,omitempty"`
+				CWD        string `json:"cwd,omitempty"`
+				State      string `json:"state,omitempty"`
+				Author     string `json:"author,omitempty"`
+				Limit      int    `json:"limit,omitempty"`
+			}{Repository: testRepo},
+			expectedError: "Error executing SDK pr list: Gitea SDK ListRepoPullRequests failed (owner=" + testUser + ", repo=" + testRepoName + "): 401 Unauthorized: invalid token",
 		},
 		{
-			name: "empty mock setup",
-			setupFunc: func() *giteasdk.MockGiteaClient {
-				return &giteasdk.MockGiteaClient{}
-			},
-			teardownFunc: func(mock *giteasdk.MockGiteaClient) {
-				// No-op teardown for empty mock
-			},
-			validateFunc: func(t *testing.T, mock *giteasdk.MockGiteaClient) {
-				if mock.MockPRs != nil && len(mock.MockPRs) != 0 {
-					t.Error("Empty setup should have no PRs")
-				}
-				if mock.MockIssues != nil && len(mock.MockIssues) != 0 {
-					t.Error("Empty setup should have no issues")
-				}
-				if mock.MockRepos != nil && len(mock.MockRepos) != 0 {
-					t.Error("Empty setup should have no repos")
-				}
-			},
+			name:        "expired token - repository handler",
+			mockError:   fmt.Errorf("401 Unauthorized: token expired"),
+			handlerType: "repo",
+			args: struct {
+				Limit int `json:"limit,omitempty"`
+			}{},
+			expectedError: "Error executing SDK repository list: Gitea SDK ListMyRepos failed (limit=0): 401 Unauthorized: token expired",
+		},
+		{
+			name:        "insufficient permissions - issue handler",
+			mockError:   fmt.Errorf("403 Forbidden: insufficient permissions"),
+			handlerType: "issue",
+			args: struct {
+				Repository string   `json:"repository,omitempty"`
+				CWD        string   `json:"cwd,omitempty"`
+				State      string   `json:"state,omitempty"`
+				Author     string   `json:"author,omitempty"`
+				Labels     []string `json:"labels,omitempty"`
+				Limit      int      `json:"limit,omitempty"`
+			}{Repository: testRepo},
+			expectedError: "Error executing SDK issue list: Gitea SDK ListIssues failed (state=, limit=0): 403 Forbidden: insufficient permissions",
+		},
+		{
+			name:        "missing token - PR handler",
+			mockError:   fmt.Errorf("401 Unauthorized: missing authentication token"),
+			handlerType: "pr",
+			args: struct {
+				Repository string `json:"repository,omitempty"`
+				CWD        string `json:"cwd,omitempty"`
+				State      string `json:"state,omitempty"`
+				Author     string `json:"author,omitempty"`
+				Limit      int    `json:"limit,omitempty"`
+			}{Repository: testRepo},
+			expectedError: "Error executing SDK pr list: Gitea SDK ListRepoPullRequests failed (owner=" + testUser + ", repo=" + testRepoName + "): 401 Unauthorized: missing authentication token",
+		},
+		{
+			name:        "rate limit - repository handler",
+			mockError:   fmt.Errorf("429 Too Many Requests: rate limit exceeded"),
+			handlerType: "repo",
+			args: struct {
+				Limit int `json:"limit,omitempty"`
+			}{},
+			expectedError: "Error executing SDK repository list: Gitea SDK ListMyRepos failed (limit=0): 429 Too Many Requests: rate limit exceeded",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// Setup
-			mock := tt.setupFunc()
-			if mock == nil {
-				t.Fatal("Setup function should return a mock client")
+			logger := logrus.New()
+			mockClient := &giteasdk.MockGiteaClient{
+				MockError: tt.mockError,
 			}
 
-			// Validate initial state
-			if mock.MockPRs == nil {
-				mock.MockPRs = []*gitea.PullRequest{}
-			}
-			if mock.MockIssues == nil {
-				mock.MockIssues = []*gitea.Issue{}
-			}
-			if mock.MockRepos == nil {
-				mock.MockRepos = []*gitea.Repository{}
+			// Add mock repos for handlers that need them
+			if tt.handlerType == "pr" || tt.handlerType == "issue" {
+				mockClient.MockRepos = []*gitea.Repository{{ID: 1, Name: testRepoName, FullName: testRepo, Owner: &gitea.User{UserName: testUser}}}
 			}
 
-			// Test mock functionality
-			prs, _, err := mock.ListRepoPullRequests("owner", "repo", gitea.ListPullRequestsOptions{})
+			ctx := context.Background()
+			req := &mcp.CallToolRequest{}
+
+			var result *mcp.CallToolResult
+			var data interface{}
+			var err error
+
+			switch tt.handlerType {
+			case "pr":
+				handler := &SDKPRListHandler{logger: logger, client: mockClient}
+				args := tt.args.(struct {
+					Repository string `json:"repository,omitempty"`
+					CWD        string `json:"cwd,omitempty"`
+					State      string `json:"state,omitempty"`
+					Author     string `json:"author,omitempty"`
+					Limit      int    `json:"limit,omitempty"`
+				})
+				result, data, err = handler.HandlePRListRequest(ctx, req, args)
+			case "repo":
+				handler := &SDKRepositoryHandler{logger: logger, client: mockClient}
+				args := tt.args.(struct {
+					Limit int `json:"limit,omitempty"`
+				})
+				result, data, err = handler.ListRepositories(ctx, req, args)
+			case "issue":
+				handler := &SDKIssueListHandler{logger: logger, client: mockClient}
+				args := tt.args.(struct {
+					Repository string   `json:"repository,omitempty"`
+					CWD        string   `json:"cwd,omitempty"`
+					State      string   `json:"state,omitempty"`
+					Author     string   `json:"author,omitempty"`
+					Labels     []string `json:"labels,omitempty"`
+					Limit      int      `json:"limit,omitempty"`
+				})
+				result, data, err = handler.HandleIssueListRequest(ctx, req, args)
+			}
+
 			if err != nil {
-				t.Fatalf("Mock ListRepoPullRequests failed: %v", err)
-			}
-			if len(prs) != len(mock.MockPRs) {
-				t.Errorf("Expected %d PRs, got %d", len(mock.MockPRs), len(prs))
+				t.Fatalf("Handler should not return error, got: %v", err)
 			}
 
-			issues, _, err := mock.ListIssues(gitea.ListIssueOption{})
-			if err != nil {
-				t.Fatalf("Mock ListIssues failed: %v", err)
-			}
-			if len(issues) != len(mock.MockIssues) {
-				t.Errorf("Expected %d issues, got %d", len(mock.MockIssues), len(issues))
+			if result == nil {
+				t.Fatal("Handler should return a result even on auth error")
 			}
 
-			repos, _, err := mock.ListMyRepos(gitea.ListReposOptions{})
-			if err != nil {
-				t.Fatalf("Mock ListMyRepos failed: %v", err)
-			}
-			if len(repos) != len(mock.MockRepos) {
-				t.Errorf("Expected %d repos, got %d", len(mock.MockRepos), len(repos))
+			if len(result.Content) == 0 {
+				t.Fatal("Handler should return error content")
 			}
 
-			// Teardown
-			tt.teardownFunc(mock)
+			textContent, ok := result.Content[0].(*mcp.TextContent)
+			if !ok {
+				t.Fatal("Handler should return TextContent")
+			}
 
-			// Validate teardown
-			tt.validateFunc(t, mock)
+			if textContent.Text != tt.expectedError {
+				t.Errorf("Expected error message '%s', got '%s'", tt.expectedError, textContent.Text)
+			}
+
+			if data != nil {
+				t.Error("Handler should return nil data on auth error")
+			}
 		})
-	}
-}
-
-// TestSDKMockSetupTeardownIntegration tests mock setup and teardown in integration scenarios
-func TestSDKMockSetupTeardownIntegration(t *testing.T) {
-	logger := logrus.New()
-
-	// Setup phase
-	setupMock := func() *giteasdk.MockGiteaClient {
-		return &giteasdk.MockGiteaClient{
-			MockPRs: []*gitea.PullRequest{
-				{
-					ID:     1,
-					Index:  1,
-					Title:  "Integration Test PR",
-					State:  gitea.StateOpen,
-					Poster: &gitea.User{UserName: testUser},
-				},
-			},
-			MockIssues: []*gitea.Issue{
-				{
-					ID:     1,
-					Index:  1,
-					Title:  "Integration Test Issue",
-					State:  "open",
-					Poster: &gitea.User{UserName: testUser},
-				},
-			},
-			MockRepos: []*gitea.Repository{
-				{
-					ID:       1,
-					Name:     testRepoName,
-					FullName: testRepo,
-					Owner:    &gitea.User{UserName: testUser},
-				},
-			},
-		}
-	}
-
-	teardownMock := func(mock *giteasdk.MockGiteaClient) {
-		mock.MockPRs = nil
-		mock.MockIssues = nil
-		mock.MockRepos = nil
-	}
-
-	// Setup
-	mock := setupMock()
-
-	// Test integration with handlers
-	prHandler := &SDKPRListHandler{logger: logger, client: mock}
-	issueHandler := &SDKIssueListHandler{logger: logger, client: mock}
-	repoHandler := &SDKRepositoryHandler{logger: logger, client: mock}
-
-	ctx := context.Background()
-	req := &mcp.CallToolRequest{}
-
-	// Test PR handler
-	prArgs := struct {
-		Repository string `json:"repository,omitempty"`
-		CWD        string `json:"cwd,omitempty"`
-		State      string `json:"state,omitempty"`
-		Author     string `json:"author,omitempty"`
-		Limit      int    `json:"limit,omitempty"`
-	}{Repository: testRepo}
-
-	prResult, prData, prErr := prHandler.HandlePRListRequest(ctx, req, prArgs)
-	if prErr != nil {
-		t.Fatalf("PR handler failed: %v", prErr)
-	}
-	if prResult == nil {
-		t.Fatal("PR handler returned nil result")
-	}
-	if prData == nil {
-		t.Fatal("PR handler returned nil data")
-	}
-
-	// Test issue handler
-	issueArgs := struct {
-		Repository string   `json:"repository,omitempty"`
-		CWD        string   `json:"cwd,omitempty"`
-		State      string   `json:"state,omitempty"`
-		Author     string   `json:"author,omitempty"`
-		Labels     []string `json:"labels,omitempty"`
-		Limit      int      `json:"limit,omitempty"`
-	}{Repository: testRepo}
-
-	issueResult, issueData, issueErr := issueHandler.HandleIssueListRequest(ctx, req, issueArgs)
-	if issueErr != nil {
-		t.Fatalf("Issue handler failed: %v", issueErr)
-	}
-	if issueResult == nil {
-		t.Fatal("Issue handler returned nil result")
-	}
-	if issueData == nil {
-		t.Fatal("Issue handler returned nil data")
-	}
-
-	// Test repository handler
-	repoArgs := struct {
-		Limit int `json:"limit,omitempty"`
-	}{}
-
-	repoResult, repoData, repoErr := repoHandler.ListRepositories(ctx, req, repoArgs)
-	if repoErr != nil {
-		t.Fatalf("Repository handler failed: %v", repoErr)
-	}
-	if repoResult == nil {
-		t.Fatal("Repository handler returned nil result")
-	}
-	if repoData == nil {
-		t.Fatal("Repository handler returned nil data")
-	}
-
-	// Verify data integrity
-	prDataMap := prData.(map[string]interface{})
-	if prDataMap["total"] != 1 {
-		t.Errorf("Expected 1 PR, got %v", prDataMap["total"])
-	}
-
-	issueDataMap := issueData.(map[string]interface{})
-	if issueDataMap["total"] != 1 {
-		t.Errorf("Expected 1 issue, got %v", issueDataMap["total"])
-	}
-
-	repoDataMap := repoData.(map[string]interface{})
-	if repoDataMap["total"] != 1 {
-		t.Errorf("Expected 1 repository, got %v", repoDataMap["total"])
-	}
-
-	// Teardown
-	teardownMock(mock)
-
-	// Verify teardown
-	if len(mock.MockPRs) != 0 {
-		t.Error("Teardown should clear all mock data")
-	}
-	if len(mock.MockIssues) != 0 {
-		t.Error("Teardown should clear all mock data")
-	}
-	if len(mock.MockRepos) != 0 {
-		t.Error("Teardown should clear all mock data")
-	}
-}
-
-// TestSDKAuthenticationErrors_InvalidToken tests authentication error handling for invalid tokens
-func TestSDKAuthenticationErrors_InvalidToken(t *testing.T) {
-	logger := logrus.New()
-	mockClient := &giteasdk.MockGiteaClient{
-		MockError: fmt.Errorf("401 Unauthorized: invalid token"),
-		MockRepos: []*gitea.Repository{{ID: 1, Name: testRepoName, FullName: testRepo, Owner: &gitea.User{UserName: testUser}}},
-	}
-
-	handler := &SDKPRListHandler{
-		logger: logger,
-		client: mockClient,
-	}
-
-	ctx := context.Background()
-	req := &mcp.CallToolRequest{}
-	args := struct {
-		Repository string `json:"repository,omitempty"`
-		CWD        string `json:"cwd,omitempty"`
-		State      string `json:"state,omitempty"`
-		Author     string `json:"author,omitempty"`
-		Limit      int    `json:"limit,omitempty"`
-	}{Repository: testRepo}
-
-	result, data, err := handler.HandlePRListRequest(ctx, req, args)
-	if err != nil {
-		t.Fatalf("HandlePRListRequest should not return error, got: %v", err)
-	}
-
-	if result == nil {
-		t.Fatal("HandlePRListRequest should return a result even on auth error")
-	}
-
-	if len(result.Content) == 0 {
-		t.Fatal("HandlePRListRequest should return error content")
-	}
-
-	textContent, ok := result.Content[0].(*mcp.TextContent)
-	if !ok {
-		t.Fatal("HandlePRListRequest should return TextContent")
-	}
-
-	expectedError := "Error executing SDK pr list: Gitea SDK ListRepoPullRequests failed (owner=" + testUser + ", repo=" + testRepoName + "): 401 Unauthorized: invalid token"
-	if textContent.Text != expectedError {
-		t.Errorf("Expected auth error message '%s', got '%s'", expectedError, textContent.Text)
-	}
-
-	if data != nil {
-		t.Error("HandlePRListRequest should return nil data on auth error")
-	}
-}
-
-// TestSDKAuthenticationErrors_ExpiredToken tests authentication error handling for expired tokens
-func TestSDKAuthenticationErrors_ExpiredToken(t *testing.T) {
-	logger := logrus.New()
-	mockClient := &giteasdk.MockGiteaClient{
-		MockError: fmt.Errorf("401 Unauthorized: token expired"),
-	}
-
-	handler := &SDKRepositoryHandler{
-		logger: logger,
-		client: mockClient,
-	}
-
-	ctx := context.Background()
-	req := &mcp.CallToolRequest{}
-	args := struct {
-		Limit int `json:"limit,omitempty"`
-	}{}
-
-	result, data, err := handler.ListRepositories(ctx, req, args)
-	if err != nil {
-		t.Fatalf("ListRepositories should not return error, got: %v", err)
-	}
-
-	if result == nil {
-		t.Fatal("ListRepositories should return a result even on auth error")
-	}
-
-	textContent, ok := result.Content[0].(*mcp.TextContent)
-	if !ok {
-		t.Fatal("ListRepositories should return TextContent")
-	}
-
-	expectedError := "Error executing SDK repository list: Gitea SDK ListMyRepos failed (limit=0): 401 Unauthorized: token expired"
-	if textContent.Text != expectedError {
-		t.Errorf("Expected expired token error message '%s', got '%s'", expectedError, textContent.Text)
-	}
-
-	if data != nil {
-		t.Error("ListRepositories should return nil data on auth error")
-	}
-}
-
-// TestSDKAuthenticationErrors_InsufficientPermissions tests authentication error handling for insufficient permissions
-func TestSDKAuthenticationErrors_InsufficientPermissions(t *testing.T) {
-	logger := logrus.New()
-	mockClient := &giteasdk.MockGiteaClient{
-		MockError: fmt.Errorf("403 Forbidden: insufficient permissions"),
-		MockRepos: []*gitea.Repository{{ID: 1, Name: testRepoName, FullName: testRepo, Owner: &gitea.User{UserName: testUser}}},
-	}
-
-	handler := &SDKIssueListHandler{
-		logger: logger,
-		client: mockClient,
-	}
-
-	ctx := context.Background()
-	req := &mcp.CallToolRequest{}
-	args := struct {
-		Repository string   `json:"repository,omitempty"`
-		CWD        string   `json:"cwd,omitempty"`
-		State      string   `json:"state,omitempty"`
-		Author     string   `json:"author,omitempty"`
-		Labels     []string `json:"labels,omitempty"`
-		Limit      int      `json:"limit,omitempty"`
-	}{Repository: testRepo}
-
-	result, data, err := handler.HandleIssueListRequest(ctx, req, args)
-	if err != nil {
-		t.Fatalf("HandleIssueListRequest should not return error, got: %v", err)
-	}
-
-	if result == nil {
-		t.Fatal("HandleIssueListRequest should return a result even on auth error")
-	}
-
-	textContent, ok := result.Content[0].(*mcp.TextContent)
-	if !ok {
-		t.Fatal("HandleIssueListRequest should return TextContent")
-	}
-
-	expectedError := "Error executing SDK issue list: Gitea SDK ListIssues failed (state=, limit=0): 403 Forbidden: insufficient permissions"
-	if textContent.Text != expectedError {
-		t.Errorf("Expected permissions error message '%s', got '%s'", expectedError, textContent.Text)
-	}
-
-	if data != nil {
-		t.Error("HandleIssueListRequest should return nil data on auth error")
-	}
-}
-
-// TestSDKAuthenticationErrors_MissingToken tests authentication error handling for missing tokens
-func TestSDKAuthenticationErrors_MissingToken(t *testing.T) {
-	logger := logrus.New()
-	mockClient := &giteasdk.MockGiteaClient{
-		MockError: fmt.Errorf("401 Unauthorized: missing authentication token"),
-		MockRepos: []*gitea.Repository{{ID: 1, Name: testRepoName, FullName: testRepo, Owner: &gitea.User{UserName: testUser}}},
-	}
-
-	handler := &SDKPRListHandler{
-		logger: logger,
-		client: mockClient,
-	}
-
-	ctx := context.Background()
-	req := &mcp.CallToolRequest{}
-	args := struct {
-		Repository string `json:"repository,omitempty"`
-		CWD        string `json:"cwd,omitempty"`
-		State      string `json:"state,omitempty"`
-		Author     string `json:"author,omitempty"`
-		Limit      int    `json:"limit,omitempty"`
-	}{Repository: testRepo}
-
-	result, data, err := handler.HandlePRListRequest(ctx, req, args)
-	if err != nil {
-		t.Fatalf("HandlePRListRequest should not return error, got: %v", err)
-	}
-
-	textContent, ok := result.Content[0].(*mcp.TextContent)
-	if !ok {
-		t.Fatal("HandlePRListRequest should return TextContent")
-	}
-
-	expectedError := "Error executing SDK pr list: Gitea SDK ListRepoPullRequests failed (owner=" + testUser + ", repo=" + testRepoName + "): 401 Unauthorized: missing authentication token"
-	if textContent.Text != expectedError {
-		t.Errorf("Expected missing token error message '%s', got '%s'", expectedError, textContent.Text)
-	}
-
-	if data != nil {
-		t.Error("HandlePRListRequest should return nil data on auth error")
-	}
-}
-
-// TestSDKAuthenticationErrors_RateLimit tests authentication error handling for rate limiting
-func TestSDKAuthenticationErrors_RateLimit(t *testing.T) {
-	logger := logrus.New()
-	mockClient := &giteasdk.MockGiteaClient{
-		MockError: fmt.Errorf("429 Too Many Requests: rate limit exceeded"),
-	}
-
-	handler := &SDKRepositoryHandler{
-		logger: logger,
-		client: mockClient,
-	}
-
-	ctx := context.Background()
-	req := &mcp.CallToolRequest{}
-	args := struct {
-		Limit int `json:"limit,omitempty"`
-	}{}
-
-	result, data, err := handler.ListRepositories(ctx, req, args)
-	if err != nil {
-		t.Fatalf("ListRepositories should not return error, got: %v", err)
-	}
-
-	textContent, ok := result.Content[0].(*mcp.TextContent)
-	if !ok {
-		t.Fatal("ListRepositories should return TextContent")
-	}
-
-	expectedError := "Error executing SDK repository list: Gitea SDK ListMyRepos failed (limit=0): 429 Too Many Requests: rate limit exceeded"
-	if textContent.Text != expectedError {
-		t.Errorf("Expected rate limit error message '%s', got '%s'", expectedError, textContent.Text)
-	}
-
-	if data != nil {
-		t.Error("ListRepositories should return nil data on auth error")
 	}
 }
 
@@ -2050,103 +1445,6 @@ func TestSDKResponseFormat_IssueResponseIncludesRepositoryMetadata(t *testing.T)
 		if issue["updatedAt"] == "" {
 			t.Error("Expected issue to include updatedAt")
 		}
-	}
-}
-
-// TestSDKResponseFormat_BackwardCompatibility tests backward compatibility of response structure
-func TestSDKResponseFormat_BackwardCompatibility(t *testing.T) {
-	logger := logrus.New()
-	mockClient := &giteasdk.MockGiteaClient{
-		MockPRs: []*gitea.PullRequest{
-			{
-				ID:     1,
-				Index:  1,
-				Title:  "Test PR",
-				State:  gitea.StateOpen,
-				Poster: &gitea.User{UserName: testUser},
-			},
-		},
-		MockIssues: []*gitea.Issue{
-			{
-				ID:      1,
-				Index:   1,
-				Title:   "Test Issue",
-				State:   "open",
-				Poster:  &gitea.User{UserName: testUser},
-				Created: time.Date(2023, 1, 1, 12, 0, 0, 0, time.UTC),
-				Updated: time.Date(2023, 1, 2, 12, 0, 0, 0, time.UTC),
-			},
-		},
-		MockRepos: []*gitea.Repository{
-			{ID: 8, Owner: &gitea.User{UserName: testUser}, Name: testRepoName},
-		},
-	}
-
-	prHandler := &SDKPRListHandler{logger: logger, client: mockClient}
-	issueHandler := &SDKIssueListHandler{logger: logger, client: mockClient}
-
-	ctx := context.Background()
-	req := &mcp.CallToolRequest{}
-
-	// Test PR handler backward compatibility
-	prArgs := struct {
-		Repository string `json:"repository,omitempty"`
-		CWD        string `json:"cwd,omitempty"`
-		State      string `json:"state,omitempty"`
-		Author     string `json:"author,omitempty"`
-		Limit      int    `json:"limit,omitempty"`
-	}{
-		Repository: testRepo,
-		State:      "open",
-	}
-
-	prResult, prData, prErr := prHandler.HandlePRListRequest(ctx, req, prArgs)
-	if prErr != nil {
-		t.Fatalf("PR handler failed: %v", prErr)
-	}
-
-	// Test Issue handler backward compatibility
-	issueArgs := struct {
-		Repository string   `json:"repository,omitempty"`
-		CWD        string   `json:"cwd,omitempty"`
-		State      string   `json:"state,omitempty"`
-		Author     string   `json:"author,omitempty"`
-		Labels     []string `json:"labels,omitempty"`
-		Limit      int      `json:"limit,omitempty"`
-	}{
-		Repository: testRepo,
-		State:      "open",
-	}
-
-	issueResult, issueData, issueErr := issueHandler.HandleIssueListRequest(ctx, req, issueArgs)
-	if issueErr != nil {
-		t.Fatalf("Issue handler failed: %v", issueErr)
-	}
-
-	// Verify both handlers return expected structure
-	if prResult == nil || prData == nil {
-		t.Fatal("PR handler returned nil result or data")
-	}
-	if issueResult == nil || issueData == nil {
-		t.Fatal("Issue handler returned nil result or data")
-	}
-
-	// Verify response structure consistency
-	prDataMap := prData.(map[string]interface{})
-	issueDataMap := issueData.(map[string]interface{})
-
-	if _, exists := prDataMap["total"]; !exists {
-		t.Error("PR response missing total field")
-	}
-	if _, exists := issueDataMap["total"]; !exists {
-		t.Error("Issue response missing total field")
-	}
-
-	if _, exists := prDataMap["pullRequests"]; !exists {
-		t.Error("PR response missing pullRequests field")
-	}
-	if _, exists := issueDataMap["issues"]; !exists {
-		t.Error("Issue response missing issues field")
 	}
 }
 
