@@ -534,8 +534,8 @@ func TestSDKHandlersIntegration(t *testing.T) {
 		State  string   `json:"state,omitempty"`
 		Author string   `json:"author,omitempty"`
 		Labels []string `json:"labels,omitempty"`
-	}{Repository: "testuser/test-repo", State: "open"}
 		Limit  int      `json:"limit,omitempty"`
+	}{Repository: "testuser/test-repo", State: "open"}
 
 	issueResult, issueData, issueErr := issueHandler.HandleIssueListRequest(ctx, req, issueArgs)
 	if issueErr != nil {
@@ -1363,6 +1363,7 @@ func TestSDKMigration_CLIToSDKCompatibility(t *testing.T) {
 		State      string `json:"state,omitempty"`
 		Author     string `json:"author,omitempty"`
 		Limit      int    `json:"limit,omitempty"`
+	}{}
 
 	prResult, prData, prErr := prHandler.HandlePRListRequest(ctx, req, prArgs)
 	if prErr != nil {
@@ -1397,6 +1398,7 @@ func TestSDKMigration_CLIToSDKCompatibility(t *testing.T) {
 		Author string   `json:"author,omitempty"`
 		Labels []string `json:"labels,omitempty"`
 		Limit  int      `json:"limit,omitempty"`
+	}{}
 
 	issueResult, issueData, issueErr := issueHandler.HandleIssueListRequest(ctx, req, issueArgs)
 	if issueErr != nil {
@@ -1515,11 +1517,13 @@ func TestSDKMigration_CommandBuilderCompatibility(t *testing.T) {
 				State      string `json:"state,omitempty"`
 				Author     string `json:"author,omitempty"`
 				Limit      int    `json:"limit,omitempty"`
+			}{},
 			issueArgs: struct {
 				State  string   `json:"state,omitempty"`
 				Author string   `json:"author,omitempty"`
 				Labels []string `json:"labels,omitempty"`
 				Limit  int      `json:"limit,omitempty"`
+			}{},
 		},
 		{
 			name: "closed state",
@@ -1529,11 +1533,13 @@ func TestSDKMigration_CommandBuilderCompatibility(t *testing.T) {
 				State      string `json:"state,omitempty"`
 				Author     string `json:"author,omitempty"`
 				Limit      int    `json:"limit,omitempty"`
+			}{},
 			issueArgs: struct {
 				State  string   `json:"state,omitempty"`
 				Author string   `json:"author,omitempty"`
 				Labels []string `json:"labels,omitempty"`
 				Limit  int      `json:"limit,omitempty"`
+			}{},
 		},
 		{
 			name: "with limit",
@@ -1543,11 +1549,13 @@ func TestSDKMigration_CommandBuilderCompatibility(t *testing.T) {
 				State      string `json:"state,omitempty"`
 				Author     string `json:"author,omitempty"`
 				Limit      int    `json:"limit,omitempty"`
+			}{},
 			issueArgs: struct {
 				State  string   `json:"state,omitempty"`
 				Author string   `json:"author,omitempty"`
 				Labels []string `json:"labels,omitempty"`
 				Limit  int      `json:"limit,omitempty"`
+			}{},
 		},
 	}
 
@@ -1760,6 +1768,7 @@ func TestSDKMockSetupTeardownIntegration(t *testing.T) {
 		State      string `json:"state,omitempty"`
 		Author     string `json:"author,omitempty"`
 		Limit      int    `json:"limit,omitempty"`
+	}{}
 
 	prResult, prData, prErr := prHandler.HandlePRListRequest(ctx, req, prArgs)
 	if prErr != nil {
@@ -1778,6 +1787,7 @@ func TestSDKMockSetupTeardownIntegration(t *testing.T) {
 		Author string   `json:"author,omitempty"`
 		Labels []string `json:"labels,omitempty"`
 		Limit  int      `json:"limit,omitempty"`
+	}{}
 
 	issueResult, issueData, issueErr := issueHandler.HandleIssueListRequest(ctx, req, issueArgs)
 	if issueErr != nil {
