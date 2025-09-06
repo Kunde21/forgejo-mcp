@@ -76,7 +76,29 @@ func (m *MockGiteaClient) ListRepoPullRequests(owner, repo string, opt gitea.Lis
 	if m.mockError != nil {
 		return nil, nil, m.mockError
 	}
-	return m.mockPRs, &gitea.Response{}, nil
+
+	// Filter PRs by repository
+	var filteredPRs []*gitea.PullRequest
+
+	for _, pr := range m.mockPRs {
+		// In a real implementation, PRs would be associated with repositories
+		// For this mock, we'll assume all PRs belong to the requested repository
+		// unless we have repository-specific mock data
+		filteredPRs = append(filteredPRs, pr)
+	}
+
+	// Apply state filtering if specified
+	if opt.State != "" && opt.State != gitea.StateAll {
+		var stateFiltered []*gitea.PullRequest
+		for _, pr := range filteredPRs {
+			if pr.State == opt.State {
+				stateFiltered = append(stateFiltered, pr)
+			}
+		}
+		filteredPRs = stateFiltered
+	}
+
+	return filteredPRs, &gitea.Response{}, nil
 }
 
 func (m *MockGiteaClient) GetPullRequest(owner, repo string, index int64) (*gitea.PullRequest, *gitea.Response, error) {
@@ -120,17 +142,12 @@ func (m *MockGiteaClient) EditPullRequest(owner, repo string, index int64, opt g
 }
 
 // Issue operations
-func (m *MockGiteaClient) ListIssues(opt gitea.ListIssueOption) ([]*gitea.Issue, *gitea.Response, error) {
-	if m.mockError != nil {
-		return nil, nil, m.mockError
-	}
-	return m.mockIssues, &gitea.Response{}, nil
-}
-
 func (m *MockGiteaClient) ListRepoIssues(owner, repo string, opt gitea.ListIssueOption) ([]*gitea.Issue, *gitea.Response, error) {
 	if m.mockError != nil {
 		return nil, nil, m.mockError
 	}
+
+	// For simplicity, return all mock issues
 	return m.mockIssues, &gitea.Response{}, nil
 }
 
@@ -717,6 +734,13 @@ func (m *MockGiteaClientWithErrors) EditPullRequest(owner, repo string, index in
 }
 
 // Issue operations
+func (m *MockGiteaClient) ListIssues(opt gitea.ListIssueOption) ([]*gitea.Issue, *gitea.Response, error) {
+	if m.mockError != nil {
+		return nil, nil, m.mockError
+	}
+	return m.mockIssues, &gitea.Response{}, nil
+}
+
 func (m *MockGiteaClientWithErrors) ListIssues(opt gitea.ListIssueOption) ([]*gitea.Issue, *gitea.Response, error) {
 	if m.mockError != nil {
 		return nil, nil, m.mockError
