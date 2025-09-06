@@ -3,7 +3,7 @@
 These are the tasks to be completed for the spec detailed in @.agent-os/specs/2025-09-06-gitea-sdk-refactor/spec.md
 
 > Created: 2025-09-06
-> Status: Ready for Implementation
+> Status: In Progress
 
 ## Tasks
 
@@ -73,7 +73,7 @@ These are the tasks to be completed for the spec detailed in @.agent-os/specs/20
    - Test each handler individually for functionality preservation
    - Run full test suite to ensure no regressions
 
-### Task 4: Update Tests and Ensure Compatibility
+### Task 4: Update Tests and Ensure Compatibility ✅
 **Goal:** Move and update test files to match new package structure while maintaining test coverage
 
 #### Subtasks:
