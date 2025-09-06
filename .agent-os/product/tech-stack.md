@@ -5,21 +5,12 @@
 
 ## Application Framework
 
-- **Framework:** Go standard library with MCP protocol implementation
+- **Framework:** Official go mcp server `github.com/modelcontextprotocol/go-sdk`
 - **Version:** Go 1.24.6
 
-## CLI Integration
+## SDK Integration
 
-- **Primary Tool:** `tea` CLI (from Gitea project)
-- **Integration Method:** Command execution wrapper
-
-## JavaScript
-
-- **Framework:** None (Backend Go application)
-
-## CSS Framework
-
-- **Framework:** None (Backend Go application)
+- **Primary SDK:** gitea official sdk (from Gitea project)
 
 ## Additional Stack Items
 
