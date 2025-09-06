@@ -1,0 +1,14 @@
+{
+  "mcpServers": {
+    "forgejo": {
+      "command": "./forgejo-mcp",
+      "args": ["serve"],
+      "env": {
+	"FORGEJO_MCP_AUTH_TOKEN": "",
+	"FORGEJO_MCP_DEBUG": "true",
+	"FORGEJO_MCP_LOG_LEVEL": "trace",
+	"FORGEJO_MCP_FORGEJO_URL": ""
+      }
+    }
+  }
+}
