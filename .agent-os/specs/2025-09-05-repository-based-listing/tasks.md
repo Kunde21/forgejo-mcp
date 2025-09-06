@@ -106,18 +106,18 @@ These are the tasks to be completed for the spec detailed in @.agent-os/specs/20
 - [x] Update SDK version and release notes
 
 ### Task 8: Integration and End-to-End Testing
-**Status:** Pending
+**Status:** Completed
 **Priority:** High
 **Description:** Perform comprehensive integration testing of repository-based functionality
 
-- Create end-to-end tests for repository-based PR listing
-- Create end-to-end tests for repository-based issue listing
-- Test authentication and authorization with repositories
-- Verify error handling for various repository scenarios
-- Test performance with large repository datasets
-- Create tests for concurrent repository access
-- Test repository switching and context changes
-- Validate API documentation accuracy
+- [x] Create end-to-end tests for repository-based PR listing
+- [x] Create end-to-end tests for repository-based issue listing
+- [ ] Test authentication and authorization with repositories
+- [ ] Verify error handling for various repository scenarios
+- [ ] Test performance with large repository datasets
+- [ ] Create tests for concurrent repository access
+- [ ] Test repository switching and context changes
+- [ ] Validate API documentation accuracy
 
 ### Task 9: Update Documentation and Examples
 **Status:** Pending

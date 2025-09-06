@@ -14,6 +14,7 @@
 - [x] MCP server implementation
 - [x] Pull Request listing functionality
 - [x] Issue listing functionality
+- [x] Repository-based listing functionality (replacing user-based queries)
 - [x] Gitea SDK migration (replacing tea CLI with direct SDK integration)
 - [x] Basic authentication flow documentation
 
