@@ -7,19 +7,19 @@ These are the tasks to be completed for the spec detailed in @.agent-os/specs/20
 
 ## Tasks
 
-- [ ] 1. Set up MCP server project structure and dependencies
-  - [ ] 1.1 Write tests for MCP server initialization
-  - [ ] 1.2 Initialize Go module and add MCP SDK dependency
-  - [ ] 1.3 Create basic server structure with main.go
-  - [ ] 1.4 Implement server configuration management
-  - [ ] 1.5 Verify all tests pass
+- [x] 1. Set up MCP server project structure and dependencies
+   - [x] 1.1 Write tests for MCP server initialization
+   - [x] 1.2 Initialize Go module and add MCP SDK dependency
+   - [x] 1.3 Create basic server structure with main.go
+   - [x] 1.4 Implement server configuration management
+   - [x] 1.5 Verify all tests pass
 
-- [ ] 2. Implement "Hello, World!" tool
-  - [ ] 2.1 Write tests for tool functionality
-  - [ ] 2.2 Create tool handler for "Hello, World!" response
-  - [ ] 2.3 Register tool with MCP server
-  - [ ] 2.4 Add proper error handling for tool calls
-  - [ ] 2.5 Verify all tests pass
+- [x] 2. Implement "Hello, World!" tool
+   - [x] 2.1 Write tests for tool functionality
+   - [x] 2.2 Create tool handler for "Hello, World!" response
+   - [x] 2.3 Register tool with MCP server
+   - [x] 2.4 Add proper error handling for tool calls
+   - [x] 2.5 Verify all tests pass
 
 - [ ] 3. Configure server and connection handling
   - [ ] 3.1 Write tests for connection management
