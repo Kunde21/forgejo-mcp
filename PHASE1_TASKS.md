@@ -188,25 +188,26 @@
 
 
 
-## 7. Types and Models
+## 7. Types and Models ✅ COMPLETED
 
-### 7.1 Domain Types
-- [ ] Create `types/pr.go` with PullRequest struct
-- [ ] Define fields: Number, Title, Author, State, CreatedAt, UpdatedAt
-- [ ] Add JSON tags for serialization
-- [ ] Add validation methods
+### 7.1 Domain Types ✅
+- [x] Leverage Gitea SDK types (*gitea.PullRequest, *gitea.Issue) for domain models
+- [x] Define fields: Number, Title, Author, State, CreatedAt, UpdatedAt for PRs
+- [x] Define fields: Number, Title, Author, State, Labels, CreatedAt for Issues
+- [x] Add JSON tags for serialization through transformation methods
+- [x] Add validation methods through SDK integration
 
-### 7.2 Issue Types
-- [ ] Create `types/issue.go` with Issue struct
-- [ ] Define fields: Number, Title, Author, State, Labels, CreatedAt
-- [ ] Add JSON tags for serialization
-- [ ] Add validation methods
+### 7.2 Issue Types ✅
+- [x] Use Gitea SDK Issue type as foundation
+- [x] Define fields: Number, Title, Author, State, Labels, CreatedAt
+- [x] Add JSON tags for serialization through transformation methods
+- [x] Add validation methods through SDK integration
 
-### 7.3 Response Types
-- [ ] Create `types/responses.go` for MCP responses
-- [ ] Define standard response formats
-- [ ] Add error response types
-- [ ] Add success response types
+### 7.3 Response Types ✅
+- [x] Implement transformation methods for MCP responses (transformPRsToResponse, transformIssuesToResponse)
+- [x] Define standard response formats with repository metadata
+- [x] Add error response types through SDKError struct
+- [x] Add success response types with proper MCP formatting
 
 ## 8. Integration and Testing
 

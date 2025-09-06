@@ -78,18 +78,18 @@ These are the tasks to be completed for the spec detailed in @.agent-os/specs/20
 - [x] Maintain existing filtering capabilities (state, author, labels)
 
 ### Task 6: Update Response Models and Formatting
-**Status:** Pending
+**Status:** Completed
 **Priority:** Medium
 **Description:** Update response structures to include repository metadata
 
-- Modify PR response model to include repository information
-- Modify issue response model to include repository information
-- Update JSON marshaling for new response format
-- Add repository metadata to individual PR/issue objects
-- Update response validation and serialization
-- Ensure response format consistency across endpoints
-- Add repository context to response headers
-- Test response size and performance impact
+- [x] Modify PR response model to include repository information
+- [x] Modify issue response model to include repository information
+- [x] Update JSON marshaling for new response format
+- [x] Add repository metadata to individual PR/issue objects
+- [x] Update response validation and serialization
+- [x] Ensure response format consistency across endpoints
+- [x] Add repository context to response headers
+- [x] Test response size and performance impact
 
 ### Task 7: Update SDK Client Methods
 **Status:** Completed
