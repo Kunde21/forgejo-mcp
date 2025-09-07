@@ -50,13 +50,55 @@ export FORGEJO_REMOTE_URL="https://your.forgejo.instance"
 export FORGEJO_AUTH_TOKEN="your-api-token"
 ```
 
-Start the MCP server:
+### Running the Server
+
+Start the MCP server using the CLI:
+
+```bash
+# Build the binary
+go build -o forgejo-mcp .
+
+# Start the server
+./forgejo-mcp serve
+```
+
+Or run directly with Go:
+
+```bash
+go run main.go serve
+```
+
+For backward compatibility, you can also run:
 
 ```bash
 go run main.go
 ```
 
 The server will start and listen for MCP protocol messages on stdin/stdout.
+
+### CLI Commands
+
+The application provides several CLI commands:
+
+- `serve`: Start the MCP server (default command)
+- `version`: Show version information
+- `config`: Validate configuration and test connectivity
+
+Example usage:
+
+```bash
+# Show version
+./forgejo-mcp version
+
+# Validate configuration
+./forgejo-mcp config
+
+# Start server with custom config
+./forgejo-mcp serve --config /path/to/config.yaml
+
+# Enable verbose logging
+./forgejo-mcp serve --verbose
+```
 
 ### Tool Usage Examples
 
