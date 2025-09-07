@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 
+	validation "github.com/go-ozzo/ozzo-validation/v4"
 	"github.com/kunde21/forgejo-mcp/remote/gitea"
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
@@ -94,23 +95,25 @@ func (s *Server) handleHello(ctx context.Context, request mcp.CallToolRequest) (
 
 func (s *Server) handleListIssues(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	// Parse arguments
-	repo := mcp.ParseString(request, "repository", "")
-	limit := mcp.ParseInt(request, "limit", 15)
-	offset := mcp.ParseInt(request, "offset", 0)
-
-	// Validate inputs
-	if repo == "" {
-		return mcp.NewToolResultError("repository parameter is required"), nil
+	type ListArgs struct {
+		Repo   string
+		Limit  int
+		Offset int
 	}
-	if limit < 1 || limit > 100 {
-		return mcp.NewToolResultError("limit must be between 1 and 100"), nil
+	args := ListArgs{
+		Repo:   mcp.ParseString(request, "repository", ""),
+		Limit:  mcp.ParseInt(request, "limit", 15),
+		Offset: mcp.ParseInt(request, "offset", 0),
 	}
-	if offset < 0 {
-		return mcp.NewToolResultError("offset must be non-negative"), nil
+	if err := validation.ValidateStruct(&args,
+		validation.Field(&args.Repo, validation.Required),
+		validation.Field(&args.Limit, validation.Min(1), validation.Max(100)),
+		validation.Field(&args.Offset, validation.Min(0)),
+	); err != nil {
+		return mcp.NewToolResultErrorFromErr("invalid request", err), nil
 	}
-
 	// Call the Gitea service
-	issues, err := s.giteaService.ListIssues(ctx, repo, limit, offset)
+	issues, err := s.giteaService.ListIssues(ctx, args.Repo, args.Limit, args.Offset)
 	if err != nil {
 		return mcp.NewToolResultErrorf("failed to list issues: %v", err), nil
 	}

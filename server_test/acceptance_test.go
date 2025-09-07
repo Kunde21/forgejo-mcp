@@ -3,7 +3,6 @@ package servertest
 import (
 	"context"
 	"fmt"
-	"os"
 	"testing"
 
 	"github.com/mark3labs/mcp-go/mcp"
@@ -12,37 +11,24 @@ import (
 // TestListIssuesAcceptance tests the list_issues tool with mock server
 func TestListIssuesAcceptance(t *testing.T) {
 	// Set up mock Gitea server
-	mock := NewMockGiteaServer()
-	defer mock.Close()
-
-	// Add test issues
+	mock := NewMockGiteaServer(t)
 	mock.AddIssues("testuser", "testrepo", []MockIssue{
 		{Index: 1, Title: "Bug: Login fails", State: "open"},
 		{Index: 2, Title: "Feature: Add dark mode", State: "open"},
 		{Index: 3, Title: "Fix: Memory leak", State: "closed"},
 	})
-
-	// Set environment variables to use mock server
-	os.Setenv("FORGEJO_REMOTE_URL", mock.URL())
-	os.Setenv("FORGEJO_AUTH_TOKEN", "mock-token")
-	defer func() {
-		os.Unsetenv("FORGEJO_REMOTE_URL")
-		os.Unsetenv("FORGEJO_AUTH_TOKEN")
-	}()
-
-	// Create test server
-	ts := NewTestServer(t, context.Background())
-	ts.SetMockServer(mock)
-
+	ts := NewTestServer(t, t.Context(), map[string]string{
+		"FORGEJO_REMOTE_URL": mock.URL(),
+		"FORGEJO_AUTH_TOKEN": "mock-token",
+	})
 	if err := ts.Initialize(); err != nil {
 		t.Fatalf("Failed to initialize test server: %v", err)
 	}
-
 	// Test successful issue listing
 	result, err := ts.Client().CallTool(context.Background(), mcp.CallToolRequest{
 		Params: mcp.CallToolParams{
 			Name: "list_issues",
-			Arguments: map[string]interface{}{
+			Arguments: map[string]any{
 				"repository": "testuser/testrepo",
 				"limit":      10,
 				"offset":     0,
@@ -60,10 +46,7 @@ func TestListIssuesAcceptance(t *testing.T) {
 
 // TestListIssuesPagination tests pagination parameters
 func TestListIssuesPagination(t *testing.T) {
-	mock := NewMockGiteaServer()
-	defer mock.Close()
-
-	// Add many test issues
+	mock := NewMockGiteaServer(t)
 	var issues []MockIssue
 	for i := 1; i <= 25; i++ {
 		issues = append(issues, MockIssue{
@@ -73,16 +56,10 @@ func TestListIssuesPagination(t *testing.T) {
 		})
 	}
 	mock.AddIssues("testuser", "testrepo", issues)
-
-	os.Setenv("FORGEJO_REMOTE_URL", mock.URL())
-	os.Setenv("FORGEJO_AUTH_TOKEN", "mock-token")
-	defer func() {
-		os.Unsetenv("FORGEJO_REMOTE_URL")
-		os.Unsetenv("FORGEJO_AUTH_TOKEN")
-	}()
-
-	ts := NewTestServer(t, context.Background())
-	ts.SetMockServer(mock)
+	ts := NewTestServer(t, t.Context(), map[string]string{
+		"FORGEJO_REMOTE_URL": mock.URL(),
+		"FORGEJO_AUTH_TOKEN": "mock-token",
+	})
 
 	if err := ts.Initialize(); err != nil {
 		t.Fatalf("Failed to initialize test server: %v", err)
@@ -92,7 +69,7 @@ func TestListIssuesPagination(t *testing.T) {
 	result, err := ts.Client().CallTool(context.Background(), mcp.CallToolRequest{
 		Params: mcp.CallToolParams{
 			Name: "list_issues",
-			Arguments: map[string]interface{}{
+			Arguments: map[string]any{
 				"repository": "testuser/testrepo",
 				"limit":      10,
 				"offset":     0,
@@ -112,19 +89,11 @@ func TestListIssuesPagination(t *testing.T) {
 
 // TestListIssuesErrorHandling tests error scenarios
 func TestListIssuesErrorHandling(t *testing.T) {
-	mock := NewMockGiteaServer()
-	defer mock.Close()
-
-	os.Setenv("FORGEJO_REMOTE_URL", mock.URL())
-	os.Setenv("FORGEJO_AUTH_TOKEN", "mock-token")
-	defer func() {
-		os.Unsetenv("FORGEJO_REMOTE_URL")
-		os.Unsetenv("FORGEJO_AUTH_TOKEN")
-	}()
-
-	ts := NewTestServer(t, context.Background())
-	ts.SetMockServer(mock)
-
+	mock := NewMockGiteaServer(t)
+	ts := NewTestServer(t, t.Context(), map[string]string{
+		"FORGEJO_REMOTE_URL": mock.URL(),
+		"FORGEJO_AUTH_TOKEN": "mock-token",
+	})
 	if err := ts.Initialize(); err != nil {
 		t.Fatalf("Failed to initialize test server: %v", err)
 	}
@@ -133,7 +102,7 @@ func TestListIssuesErrorHandling(t *testing.T) {
 	result, err := ts.Client().CallTool(context.Background(), mcp.CallToolRequest{
 		Params: mcp.CallToolParams{
 			Name: "list_issues",
-			Arguments: map[string]interface{}{
+			Arguments: map[string]any{
 				"repository": "invalid-repo-format",
 				"limit":      10,
 				"offset":     0,
@@ -152,19 +121,11 @@ func TestListIssuesErrorHandling(t *testing.T) {
 
 // TestListIssuesInputValidation tests input validation
 func TestListIssuesInputValidation(t *testing.T) {
-	mock := NewMockGiteaServer()
-	defer mock.Close()
-
-	os.Setenv("FORGEJO_REMOTE_URL", mock.URL())
-	os.Setenv("FORGEJO_AUTH_TOKEN", "mock-token")
-	defer func() {
-		os.Unsetenv("FORGEJO_REMOTE_URL")
-		os.Unsetenv("FORGEJO_AUTH_TOKEN")
-	}()
-
-	ts := NewTestServer(t, context.Background())
-	ts.SetMockServer(mock)
-
+	mock := NewMockGiteaServer(t)
+	ts := NewTestServer(t, t.Context(), map[string]string{
+		"FORGEJO_REMOTE_URL": mock.URL(),
+		"FORGEJO_AUTH_TOKEN": "mock-token",
+	})
 	if err := ts.Initialize(); err != nil {
 		t.Fatalf("Failed to initialize test server: %v", err)
 	}
@@ -173,7 +134,7 @@ func TestListIssuesInputValidation(t *testing.T) {
 	result, err := ts.Client().CallTool(context.Background(), mcp.CallToolRequest{
 		Params: mcp.CallToolParams{
 			Name: "list_issues",
-			Arguments: map[string]interface{}{
+			Arguments: map[string]any{
 				"limit":  10,
 				"offset": 0,
 			},
@@ -190,38 +151,27 @@ func TestListIssuesInputValidation(t *testing.T) {
 
 // TestListIssuesConcurrent tests concurrent request handling
 func TestListIssuesConcurrent(t *testing.T) {
-	mock := NewMockGiteaServer()
-	defer mock.Close()
-
+	mock := NewMockGiteaServer(t)
 	mock.AddIssues("testuser", "testrepo", []MockIssue{
 		{Index: 1, Title: "Concurrent Issue 1", State: "open"},
 		{Index: 2, Title: "Concurrent Issue 2", State: "open"},
 	})
-
-	os.Setenv("FORGEJO_REMOTE_URL", mock.URL())
-	os.Setenv("FORGEJO_AUTH_TOKEN", "mock-token")
-	defer func() {
-		os.Unsetenv("FORGEJO_REMOTE_URL")
-		os.Unsetenv("FORGEJO_AUTH_TOKEN")
-	}()
-
-	ts := NewTestServer(t, context.Background())
-	ts.SetMockServer(mock)
-
+	ts := NewTestServer(t, t.Context(), map[string]string{
+		"FORGEJO_REMOTE_URL": mock.URL(),
+		"FORGEJO_AUTH_TOKEN": "mock-token",
+	})
 	if err := ts.Initialize(); err != nil {
 		t.Fatalf("Failed to initialize test server: %v", err)
 	}
 
-	// Run concurrent requests
 	const numGoroutines = 5
 	results := make(chan error, numGoroutines)
-
-	for i := 0; i < numGoroutines; i++ {
+	for range numGoroutines {
 		go func() {
 			_, err := ts.Client().CallTool(context.Background(), mcp.CallToolRequest{
 				Params: mcp.CallToolParams{
 					Name: "list_issues",
-					Arguments: map[string]interface{}{
+					Arguments: map[string]any{
 						"repository": "testuser/testrepo",
 						"limit":      10,
 						"offset":     0,
@@ -231,11 +181,46 @@ func TestListIssuesConcurrent(t *testing.T) {
 			results <- err
 		}()
 	}
-
-	// Check results
-	for i := 0; i < numGoroutines; i++ {
+	for range numGoroutines {
 		if err := <-results; err != nil {
 			t.Errorf("Concurrent request failed: %v", err)
 		}
+	}
+}
+
+// TestListIssuesInvalidLimit tests invalid limit parameter values
+func TestListIssuesInvalidLimit(t *testing.T) {
+	mock := NewMockGiteaServer(t)
+
+	mock.AddIssues("testuser", "testrepo", []MockIssue{
+		{Index: 1, Title: "Test Issue 1", State: "open"},
+		{Index: 2, Title: "Test Issue 2", State: "open"},
+	})
+	ts := NewTestServer(t, t.Context(), map[string]string{
+		"FORGEJO_REMOTE_URL": mock.URL(),
+		"FORGEJO_AUTH_TOKEN": "mock-token",
+	})
+	if err := ts.Initialize(); err != nil {
+		t.Fatalf("Failed to initialize test server: %v", err)
+	}
+
+	// Test with limit > 100 (invalid)
+	result, err := ts.Client().CallTool(context.Background(), mcp.CallToolRequest{
+		Params: mcp.CallToolParams{
+			Name: "list_issues",
+			Arguments: map[string]any{
+				"repository": "testuser/testrepo",
+				"limit":      200, // Invalid: > 100
+				"offset":     0,
+			},
+		},
+	})
+	if err != nil {
+		t.Fatalf("Failed to call list_issues tool: %v", err)
+	}
+
+	// Should return error for invalid limit
+	if result.Content == nil {
+		t.Error("Expected error content in result")
 	}
 }

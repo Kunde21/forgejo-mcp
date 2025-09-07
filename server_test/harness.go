@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"maps"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -16,13 +17,12 @@ import (
 
 // TestServer represents a test harness for running the MCP server
 type TestServer struct {
-	ctx        context.Context
-	cancel     context.CancelFunc
-	t          *testing.T
-	client     *client.Client
-	once       *sync.Once
-	started    bool
-	mockServer *MockGiteaServer
+	ctx     context.Context
+	cancel  context.CancelFunc
+	t       *testing.T
+	client  *client.Client
+	once    *sync.Once
+	started bool
 }
 
 // MockGiteaServer represents a mock Gitea API server for testing
@@ -39,7 +39,7 @@ type MockIssue struct {
 }
 
 // NewMockGiteaServer creates a new mock Gitea server
-func NewMockGiteaServer() *MockGiteaServer {
+func NewMockGiteaServer(t *testing.T) *MockGiteaServer {
 	mock := &MockGiteaServer{
 		issues: make(map[string][]MockIssue),
 	}
@@ -50,17 +50,13 @@ func NewMockGiteaServer() *MockGiteaServer {
 	handler.HandleFunc("/api/v1/repos/", mock.handleRepoIssues)
 
 	mock.server = httptest.NewServer(handler)
+	t.Cleanup(mock.server.Close)
 	return mock
 }
 
 // URL returns the mock server URL
 func (m *MockGiteaServer) URL() string {
 	return m.server.URL
-}
-
-// Close shuts down the mock server
-func (m *MockGiteaServer) Close() {
-	m.server.Close()
 }
 
 // AddIssues adds mock issues for a repository
@@ -97,16 +93,21 @@ func (m *MockGiteaServer) handleRepoIssues(w http.ResponseWriter, r *http.Reques
 }
 
 // NewTestServer creates a new TestServer instance
-func NewTestServer(t *testing.T, ctx context.Context) *TestServer {
+func NewTestServer(t *testing.T, ctx context.Context, env map[string]string) *TestServer {
 	if ctx == nil {
 		ctx = t.Context()
 	}
 	ctx, cancel := context.WithCancel(ctx)
-	env := []string{
-		"FORGEJO_REMOTE_URL=https://nonexistent-domain-12345.com",
-		"FORGEJO_AUTH_TOKEN=test-token",
+	defaults := map[string]string{
+		"FORGEJO_REMOTE_URL": "http://change-me.now.localhost",
+		"FORGEJO_AUTH_TOKEN": "test-token",
 	}
-	client, err := client.NewStdioMCPClientWithOptions("go", env, []string{"run", "../."})
+	maps.Copy(defaults, env)
+	clEnv := []string{}
+	for key, value := range env {
+		clEnv = append(clEnv, key+"="+value)
+	}
+	client, err := client.NewStdioMCPClientWithOptions("go", clEnv, []string{"run", "../."})
 	if err != nil {
 		t.Fatal("failed to create stdio MCP client: ", err)
 	}
@@ -128,16 +129,6 @@ func NewTestServer(t *testing.T, ctx context.Context) *TestServer {
 	return ts
 }
 func (ts *TestServer) Client() *client.Client { return ts.client }
-
-// SetMockServer sets the mock Gitea server for testing
-func (ts *TestServer) SetMockServer(mock *MockGiteaServer) {
-	ts.mockServer = mock
-}
-
-// MockServer returns the mock Gitea server
-func (ts *TestServer) MockServer() *MockGiteaServer {
-	return ts.mockServer
-}
 
 // IsRunning checks if the server process is running
 func (ts *TestServer) IsRunning() bool {

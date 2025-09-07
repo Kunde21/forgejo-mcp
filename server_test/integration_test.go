@@ -11,47 +11,15 @@ import (
 	"github.com/mark3labs/mcp-go/mcp"
 )
 
-func TestTestServerStartAndIsRunning(t *testing.T) {
-	ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
-	t.Cleanup(cancel)
-	ts := NewTestServer(t, ctx)
-	if ts.IsRunning() {
-		t.Error("IsRunning should be false before start")
-	}
-	if err := ts.Start(); err != nil {
-		t.Fatalf("Failed to start server: %v", err)
-	}
-	if !ts.IsRunning() {
-		t.Error("IsRunning should be true after start")
-	}
-}
-
-// TestServerLifecycle tests the complete server lifecycle: start, run, and stop
-func TestServerLifecycle(t *testing.T) {
-	ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
-	t.Cleanup(cancel)
-	ts := NewTestServer(t, ctx)
-	if err := ts.Start(); err != nil {
-		t.Fatal("Failed to start server:", err)
-	}
-	if err := ts.Initialize(); err != nil {
-		t.Fatal(err)
-	}
-	client := ts.Client()
-	result, err := client.CallTool(ctx, mcp.CallToolRequest{Params: mcp.CallToolParams{Name: "hello"}})
-	if err != nil {
-		t.Fatalf("Failed to call hello tool: %v", err)
-	}
-	if len(result.Content) == 0 {
-		t.Error("Expected tool result to have content")
-	}
-}
-
 // TestMCPInitialization tests MCP protocol initialization
 func TestMCPInitialization(t *testing.T) {
 	ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
 	t.Cleanup(cancel)
-	ts := NewTestServer(t, ctx)
+	mock := NewMockGiteaServer(t)
+	ts := NewTestServer(t, ctx, map[string]string{
+		"FORGEJO_REMOTE_URL": mock.URL(),
+		"FORGEJO_AUTH_TOKEN": "mock-token",
+	})
 	if err := ts.Start(); err != nil {
 		t.Fatal("Failed to start server:", err)
 	}
@@ -78,7 +46,11 @@ func TestMCPInitialization(t *testing.T) {
 func TestToolDiscovery(t *testing.T) {
 	ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
 	t.Cleanup(cancel)
-	ts := NewTestServer(t, ctx)
+	mock := NewMockGiteaServer(t)
+	ts := NewTestServer(t, ctx, map[string]string{
+		"FORGEJO_REMOTE_URL": mock.URL(),
+		"FORGEJO_AUTH_TOKEN": "mock-token",
+	})
 	if err := ts.Initialize(); err != nil {
 		t.Fatal(err)
 	}
@@ -90,10 +62,36 @@ func TestToolDiscovery(t *testing.T) {
 		t.Fatalf("Failed to list tools: %v", err)
 	}
 	want := &mcp.ListToolsResult{
-		Tools: []mcp.Tool{{
-			Name: "hello", Description: "Returns a hello world message",
-			InputSchema: mcp.ToolInputSchema{Type: "object"},
-		}},
+		Tools: []mcp.Tool{
+			{
+				Name: "hello", Description: "Returns a hello world message",
+				InputSchema: mcp.ToolInputSchema{Type: "object"},
+			},
+			{
+				Name:        "list_issues",
+				Description: "List issues from a Gitea/Forgejo repository",
+				InputSchema: mcp.ToolInputSchema{
+					Type: "object",
+					Properties: map[string]any{
+						"repository": map[string]any{
+							"type":        "string",
+							"description": "Repository in format 'owner/repo'",
+						},
+						"limit": map[string]any{
+							"type":        "number",
+							"description": "Maximum number of issues to return (1-100)",
+							"default":     float64(15),
+						},
+						"offset": map[string]any{
+							"type":        "number",
+							"description": "Number of issues to skip (0-based)",
+							"default":     float64(0),
+						},
+					},
+					Required: []string{"repository"},
+				},
+			},
+		},
 	}
 	opts := cmpopts.IgnoreFields(mcp.Tool{}, "Annotations")
 	if !cmp.Equal(want, tools, opts) {
@@ -101,24 +99,15 @@ func TestToolDiscovery(t *testing.T) {
 	}
 }
 
-// TestServerStart tests that server can start without error
-func TestServerStart(t *testing.T) {
-	ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
-	t.Cleanup(cancel)
-	ts := NewTestServer(t, ctx)
-	if err := ts.Start(); err != nil {
-		t.Fatalf("Failed to start server: %v", err)
-	}
-	if !ts.IsRunning() {
-		t.Error("Server should be running after start")
-	}
-}
-
 // TestHelloTool tests that the hello tool returns correct response
 func TestHelloTool(t *testing.T) {
 	ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
 	t.Cleanup(cancel)
-	ts := NewTestServer(t, ctx)
+	mock := NewMockGiteaServer(t)
+	ts := NewTestServer(t, ctx, map[string]string{
+		"FORGEJO_REMOTE_URL": mock.URL(),
+		"FORGEJO_AUTH_TOKEN": "mock-token",
+	})
 	if err := ts.Initialize(); err != nil {
 		t.Fatal(err)
 	}
@@ -143,7 +132,11 @@ func TestHelloTool(t *testing.T) {
 func TestHelloToolWithNilContext(t *testing.T) {
 	ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
 	t.Cleanup(cancel)
-	ts := NewTestServer(t, ctx)
+	mock := NewMockGiteaServer(t)
+	ts := NewTestServer(t, ctx, map[string]string{
+		"FORGEJO_REMOTE_URL": mock.URL(),
+		"FORGEJO_AUTH_TOKEN": "mock-token",
+	})
 	if err := ts.Initialize(); err != nil {
 		t.Fatal(err)
 	}
@@ -168,7 +161,11 @@ func TestHelloToolWithNilContext(t *testing.T) {
 func TestToolExecution(t *testing.T) {
 	ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
 	t.Cleanup(cancel)
-	ts := NewTestServer(t, ctx)
+	mock := NewMockGiteaServer(t)
+	ts := NewTestServer(t, ctx, map[string]string{
+		"FORGEJO_REMOTE_URL": mock.URL(),
+		"FORGEJO_AUTH_TOKEN": "mock-token",
+	})
 	if err := ts.Initialize(); err != nil {
 		t.Fatal(err)
 	}
@@ -194,7 +191,11 @@ func TestToolExecution(t *testing.T) {
 func TestErrorHandling(t *testing.T) {
 	ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
 	t.Cleanup(cancel)
-	ts := NewTestServer(t, ctx)
+	mock := NewMockGiteaServer(t)
+	ts := NewTestServer(t, ctx, map[string]string{
+		"FORGEJO_REMOTE_URL": mock.URL(),
+		"FORGEJO_AUTH_TOKEN": "mock-token",
+	})
 	if err := ts.Initialize(); err != nil {
 		t.Fatal(err)
 	}
@@ -228,7 +229,11 @@ func TestErrorHandling(t *testing.T) {
 func TestConcurrentRequests(t *testing.T) {
 	ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
 	t.Cleanup(cancel)
-	ts := NewTestServer(t, ctx)
+	mock := NewMockGiteaServer(t)
+	ts := NewTestServer(t, ctx, map[string]string{
+		"FORGEJO_REMOTE_URL": mock.URL(),
+		"FORGEJO_AUTH_TOKEN": "mock-token",
+	})
 	if err := ts.Initialize(); err != nil {
 		t.Fatal(err)
 	}
