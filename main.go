@@ -10,6 +10,7 @@ import (
 	"github.com/kunde21/forgejo-mcp/remote/gitea"
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
+	_ "github.com/spf13/cobra"
 )
 
 type Server struct {
