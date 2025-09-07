@@ -6,6 +6,7 @@ import (
 	"log"
 
 	validation "github.com/go-ozzo/ozzo-validation/v4"
+	"github.com/kunde21/forgejo-mcp/config"
 	"github.com/kunde21/forgejo-mcp/remote/gitea"
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
@@ -13,20 +14,23 @@ import (
 
 type Server struct {
 	mcpServer    *server.MCPServer
-	config       *Config
+	config       *config.Config
 	giteaService *gitea.Service
 }
 
 func NewServer() (*Server, error) {
-	config := LoadConfig()
+	cfg, err := config.LoadConfig()
+	if err != nil {
+		return nil, fmt.Errorf("failed to load config: %w", err)
+	}
 
 	// Validate configuration
-	if err := config.Validate(); err != nil {
+	if err := cfg.Validate(); err != nil {
 		return nil, fmt.Errorf("configuration validation failed: %w", err)
 	}
 
 	// Create Gitea client
-	giteaClient, err := gitea.NewGiteaClient(config.RemoteURL, config.AuthToken)
+	giteaClient, err := gitea.NewGiteaClient(cfg.RemoteURL, cfg.AuthToken)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create Gitea client: %w", err)
 	}
@@ -35,7 +39,7 @@ func NewServer() (*Server, error) {
 	giteaService := gitea.NewService(giteaClient)
 
 	s := &Server{
-		config:       config,
+		config:       cfg,
 		giteaService: giteaService,
 	}
 
@@ -119,7 +123,10 @@ func (s *Server) handleListIssues(ctx context.Context, request mcp.CallToolReque
 	}
 
 	// Format response
-	return mcp.NewToolResultStructured(issues, fmt.Sprintf("Found %d issues", len(issues))), nil
+	type issueList struct {
+		Issues []gitea.Issue `json:"issues"`
+	}
+	return mcp.NewToolResultStructured(issueList{Issues: issues}, fmt.Sprintf("Found %d issues", len(issues))), nil
 }
 
 func main() {

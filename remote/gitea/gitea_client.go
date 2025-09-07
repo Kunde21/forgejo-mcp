@@ -28,11 +28,10 @@ func NewGiteaClient(url, token string) (*GiteaClient, error) {
 // ListIssues retrieves issues from the specified repository
 func (c *GiteaClient) ListIssues(ctx context.Context, repo string, limit, offset int) ([]Issue, error) {
 	// Parse repository string (format: "owner/repo")
-	parts := strings.Split(repo, "/")
-	if len(parts) != 2 {
+	owner, repoName, ok := strings.Cut(repo, "/")
+	if !ok {
 		return nil, fmt.Errorf("invalid repository format: %s, expected 'owner/repo'", repo)
 	}
-	owner, repoName := parts[0], parts[1]
 
 	// List issues using Gitea SDK
 	opts := gitea.ListIssueOption{
