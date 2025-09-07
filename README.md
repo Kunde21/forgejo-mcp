@@ -32,37 +32,79 @@ The application can be configured through environment variables or a configurati
 
 ### Environment Variables
 
-- `FORGEJO_MCP_REMOTE_URL` - URL of your Forgejo instance
-- `FORGEJO_MCP_AUTH_TOKEN` - Authentication token for Forgejo API
-- `FORGEJO_MCP_DEBUG` - Enable debug logging (default: false)
-- `FORGEJO_MCP_LOG_LEVEL` - Log level (default: "info")
+- `FORGEJO_REMOTE_URL` - URL of your Forgejo/Gitea instance (required)
+- `FORGEJO_AUTH_TOKEN` - Authentication token for Forgejo/Gitea API (required)
+- `MCP_HOST` - Host for MCP server (default: localhost)
+- `MCP_PORT` - Port for MCP server (default: 3000)
 
 ### Configuration File
 
-Create a `config.yaml` file in the current directory or in `~/.forgejo-mcp/config.yaml`:
-
-```yaml
-forgejo_url: "https://your.forgejo.instance"
-auth_token: "your-auth-token"
-debug: false
-log_level: "info"
-```
+The server uses environment variables for configuration. No configuration file is currently supported.
 
 ## Usage
 
-All calls are expected to come from a git repository with a forgejo server remote.
+Set the required environment variables:
+
+```bash
+export FORGEJO_REMOTE_URL="https://your.forgejo.instance"
+export FORGEJO_AUTH_TOKEN="your-api-token"
+```
 
 Start the MCP server:
 
 ```bash
-forgejo-mcp serve
+go run main.go
 ```
 
-For more options:
+The server will start and listen for MCP protocol messages on stdin/stdout.
 
-```bash
-forgejo-mcp --help
-forgejo-mcp serve --help
+### Tool Usage Examples
+
+#### List Issues
+
+```json
+{
+  "method": "tools/call",
+  "params": {
+    "name": "list_issues",
+    "arguments": {
+      "repository": "myorg/myrepo",
+      "limit": 10,
+      "offset": 0
+    }
+  }
+}
+```
+
+Response:
+```json
+{
+  "result": {
+    "content": [
+      {
+        "type": "text",
+        "text": "Found 3 issues"
+      }
+    ],
+    "structured": [
+      {
+        "number": 1,
+        "title": "Bug: Login fails",
+        "state": "open"
+      },
+      {
+        "number": 2,
+        "title": "Feature: Add dark mode",
+        "state": "open"
+      },
+      {
+        "number": 3,
+        "title": "Fix: Memory leak",
+        "state": "closed"
+      }
+    ]
+  }
+}
 ```
 
 ## Features
@@ -87,6 +129,9 @@ Tools List:
 Manage issues in your forgejo repository
 
 Tools List:
+- `list_issues`: List issues from a repository with pagination support
+  - Parameters: repository (owner/repo), limit (1-100), offset (0-based)
+  - Returns: Array of issues with number, title, and status
 - List Issues: show all open issues on the current repository
 - Open Issue: create a new issue with details about a feature request or a bug
 - Close Issue: close an issue that has been answered or completed
