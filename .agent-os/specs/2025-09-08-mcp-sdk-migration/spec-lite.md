@@ -1,0 +1,3 @@
+# Spec Summary (Lite)
+
+Migrate the forgejo-mcp server from the third-party `github.com/mark3labs/mcp-go` SDK to the official `github.com/modelcontextprotocol/go-sdk/mcp` SDK to ensure long-term stability, protocol compliance, and official support. This migration involves updating all imports, adapting to the official SDK's API, and ensuring all existing MCP tools and functionality continue to work without disruption. The project will benefit from standardized implementation and better long-term maintenance while maintaining complete backward compatibility.
