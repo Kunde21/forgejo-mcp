@@ -67,18 +67,17 @@ These are the tasks to be completed for the spec detailed in @.agent-os/specs/20
 
 ### Phase 3: Testing and Validation
 
-- [ ] **Update unit tests**
-   - [x] Fix compilation errors in core server test files
-   - [ ] Update test assertions for new SDK behavior
-   - [ ] Add tests for new SDK features being utilized
-   - [ ] Ensure all existing tests pass with new SDK
-   ⚠️ Integration tests need API updates for new SDK
+ - [x] **Update unit tests**
+    - [x] Fix compilation errors in core server test files
+    - [x] Update test assertions for new SDK behavior
+    - [x] Add tests for new SDK features being utilized
+    - [x] Ensure all existing tests pass with new SDK
 
-- [ ] **Update integration tests**
-  - [ ] Migrate test harness to use new SDK client
-  - [ ] Update integration test scenarios for new SDK
-  - [ ] Verify end-to-end functionality with new SDK
-  - [ ] Test error scenarios and edge cases
+ - [x] **Update integration tests**
+   - [x] Migrate test harness to use new SDK client
+   - [x] Update integration test scenarios for new SDK
+   - [x] Verify end-to-end functionality with new SDK
+   - [x] Test error scenarios and edge cases
 
 - [ ] **Manual testing checklist**
   - [ ] Test server startup and shutdown
