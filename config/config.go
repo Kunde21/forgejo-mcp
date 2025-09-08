@@ -13,7 +13,7 @@ type Config struct {
 	AuthToken string `mapstructure:"auth_token"`
 }
 
-func LoadConfig() (*Config, error) {
+func Load() (*Config, error) {
 	viper.SetDefault("host", "localhost")
 	viper.SetDefault("port", 3000)
 	viper.SetDefault("remote_url", "")

@@ -25,7 +25,7 @@ tools for interacting with Forgejo repositories.`,
 	}
 
 	// Add serve-specific flags
-	cmd.Flags().String("host", "localhost", "Host to bind the server to")
+	cmd.Flags().String(Loadocalhost", "Host to bind the server to")
 	cmd.Flags().Int("port", 3000, "Port to bind the server to")
 
 	return cmd

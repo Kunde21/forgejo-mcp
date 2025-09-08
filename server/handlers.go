@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	validation "github.com/go-ozzo/ozzo-validation/v4"
+	v "github.com/go-ozzo/ozzo-validation/v4"
 	"github.com/kunde21/forgejo-mcp/remote/gitea"
 	"github.com/mark3labs/mcp-go/mcp"
 )
@@ -19,6 +19,10 @@ func (s *Server) handleHello(ctx context.Context, request mcp.CallToolRequest) (
 	return mcp.NewToolResultText("Hello, World!"), nil
 }
 
+type IssueList struct {
+	Issues []gitea.Issue `json:"issues"`
+}
+
 func (s *Server) handleListIssues(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	// Parse arguments
 	type ListArgs struct {
@@ -31,23 +35,18 @@ func (s *Server) handleListIssues(ctx context.Context, request mcp.CallToolReque
 		Limit:  mcp.ParseInt(request, "limit", 15),
 		Offset: mcp.ParseInt(request, "offset", 0),
 	}
-	if err := validation.ValidateStruct(&args,
-		validation.Field(&args.Repo, validation.Required),
-		validation.Field(&args.Limit, validation.Min(1), validation.Max(100)),
-		validation.Field(&args.Offset, validation.Min(0)),
+	if err := v.ValidateStruct(&args,
+		v.Field(&args.Repo, v.Required),
+		v.Field(&args.Limit, v.Min(1), v.Max(100)),
+		v.Field(&args.Offset, v.Min(0)),
 	); err != nil {
 		return mcp.NewToolResultErrorFromErr("invalid request", err), nil
 	}
 
-	// Call the Gitea service
 	issues, err := s.giteaService.ListIssues(ctx, args.Repo, args.Limit, args.Offset)
 	if err != nil {
 		return mcp.NewToolResultErrorf("failed to list issues: %v", err), nil
 	}
 
-	// Format response
-	type issueList struct {
-		Issues []gitea.Issue `json:"issues"`
-	}
-	return mcp.NewToolResultStructured(issueList{Issues: issues}, fmt.Sprintf("Found %d issues", len(issues))), nil
+	return mcp.NewToolResultStructured(IssueList{Issues: issues}, fmt.Sprintf("Found %d issues", len(issues))), nil
 }

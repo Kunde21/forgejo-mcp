@@ -30,7 +30,7 @@ func runConfig(cmd *cobra.Command, args []string) error {
 	cmd.Println("🔍 Validating configuration...")
 
 	// Load configuration
-	cfg, err := config.LoadConfig()
+	cfg, err := config.Load()
 	if err != nil {
 		return fmt.Errorf("failed to load configuration: %w", err)
 	}
