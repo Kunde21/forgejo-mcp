@@ -22,6 +22,10 @@ func New() (*Server, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to load config: %w", err)
 	}
+	return NewFromConfig(cfg)
+}
+
+func NewFromConfig(cfg *config.Config) (*Server, error) {
 	if err := cfg.Validate(); err != nil {
 		return nil, fmt.Errorf("configuration validation failed: %w", err)
 	}
@@ -54,7 +58,6 @@ func New() (*Server, error) {
 			mcp.Description("Number of issues to skip (0-based)"),
 		),
 	), s.handleListIssues)
-
 	s.mcpServer = mcpServer
 	return s, nil
 }
@@ -70,3 +73,5 @@ func (s *Server) Stop() error {
 	// It runs until the process ends
 	return nil
 }
+
+func (s *Server) MCPServer() *server.MCPServer { return s.mcpServer }

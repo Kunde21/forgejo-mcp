@@ -11,6 +11,8 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/kunde21/forgejo-mcp/config"
+	"github.com/kunde21/forgejo-mcp/server"
 	"github.com/mark3labs/mcp-go/client"
 	"github.com/mark3labs/mcp-go/mcp"
 )
@@ -107,7 +109,14 @@ func NewTestServer(t *testing.T, ctx context.Context, env map[string]string) *Te
 	for key, value := range env {
 		clEnv = append(clEnv, key+"="+value)
 	}
-	client, err := client.NewStdioMCPClientWithOptions("go", clEnv, []string{"run", "../."})
+	srv, err := server.NewFromConfig(&config.Config{
+		RemoteURL: defaults["FORGEJO_REMOTE_URL"],
+		AuthToken: defaults["FORGEJO_AUTH_TOKEN"],
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	client, err := client.NewInProcessClient(srv.MCPServer())
 	if err != nil {
 		t.Fatal("failed to create stdio MCP client: ", err)
 	}
