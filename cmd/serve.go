@@ -12,7 +12,11 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// NewServeCmd creates the serve subcommand
+// NewServeCmd creates the serve subcommand for starting the MCP server.
+// This command initializes and starts the MCP server with proper signal handling
+// for graceful shutdown.
+//
+// Migration Note: Updated to work with the official MCP SDK server implementation.
 func NewServeCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "serve",
@@ -31,6 +35,12 @@ tools for interacting with Forgejo repositories.`,
 	return cmd
 }
 
+// runServe executes the serve command, starting the MCP server.
+// It handles command-line flags, server initialization, and graceful shutdown
+// on interrupt signals.
+//
+// Migration Note: Server startup updated to use the official SDK's
+// server initialization and lifecycle management.
 func runServe(cmd *cobra.Command, args []string) error {
 	// Get flag values
 	host, err := cmd.Flags().GetString("host")
@@ -45,17 +55,17 @@ func runServe(cmd *cobra.Command, args []string) error {
 
 	log.Printf("Starting MCP server on %s:%d", host, port)
 
-	// Create and start server
+	// Initialize the MCP server with official SDK
 	srv, err := server.New()
 	if err != nil {
 		return fmt.Errorf("failed to create server: %v", err)
 	}
 
-	// Set up signal handling for graceful shutdown
+	// Set up signal handling for graceful shutdown on interrupt/termination
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer cancel()
 
-	// Start server in a goroutine
+	// Start server in background goroutine to allow concurrent signal handling
 	errChan := make(chan error, 1)
 	go func() {
 		if err := srv.Start(); err != nil {

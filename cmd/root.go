@@ -8,7 +8,12 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// NewRootCmd creates and returns the root command for forgejo-mcp
+// NewRootCmd creates and returns the root command for forgejo-mcp.
+// This sets up the main CLI interface using Cobra, including global flags
+// and subcommands for server operation.
+//
+// Migration Note: CLI structure maintained for backward compatibility
+// while integrating with the updated MCP server implementation.
 func NewRootCmd() *cobra.Command {
 	rootCmd := &cobra.Command{
 		Use:   "forgejo-mcp",

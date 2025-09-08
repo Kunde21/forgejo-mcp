@@ -100,29 +100,29 @@ These are the tasks to be completed for the spec detailed in @.agent-os/specs/20
 
 ### Phase 4: Documentation and Cleanup
 
-- [ ] **Update code documentation**
-  - [ ] Update all godoc comments referencing old SDK
-  - [ ] Add migration notes to relevant functions
-  - [ ] Document any behavior changes for users
-  - [ ] Update inline comments for clarity
+- [x] **Update code documentation**
+   - [x] Update all godoc comments referencing old SDK
+   - [x] Add migration notes to relevant functions
+   - [x] Document any behavior changes for users
+   - [x] Update inline comments for clarity
 
-- [ ] **Update README.md**
-  - [ ] Update installation instructions if changed
-  - [ ] Document new SDK requirements
-  - [ ] Add migration guide for existing users
-  - [ ] Update example configurations
+- [x] **Update README.md**
+   - [x] Update installation instructions if changed
+   - [x] Document new SDK requirements
+   - [x] Add migration guide for existing users
+   - [x] Update example configurations
 
-- [ ] **Update configuration examples**
-  - [ ] Update config.example.yaml with new SDK options
-  - [ ] Document any new configuration parameters
-  - [ ] Add migration notes for config changes
-  - [ ] Provide upgrade path documentation
+- [x] **Update configuration examples**
+   - [x] Update config.example.yaml with new SDK options
+   - [x] Document any new configuration parameters
+   - [x] Add migration notes for config changes
+   - [x] Provide upgrade path documentation
 
-- [ ] **Update MCP manifest**
-  - [ ] Update mcp.json with new SDK specifications
-  - [ ] Verify tool schemas match new format
-  - [ ] Update version information
-  - [ ] Test manifest with MCP clients
+- [x] **Update MCP manifest**
+   - [x] Update mcp.json with new SDK specifications
+   - [x] Verify tool schemas match new format
+   - [x] Update version information
+   - [x] Test manifest with MCP clients
 
 - [ ] **Create migration guide**
   - [ ] Document step-by-step migration process for users

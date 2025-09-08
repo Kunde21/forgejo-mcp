@@ -2,11 +2,14 @@
 # This file demonstrates how to configure the application using viper
 # Copy this file to config.yaml and update the values as needed
 # You can place the config file in the root directory or ./config directory
+#
+# Migration Note: Configuration structure unchanged after SDK migration
+# All existing configurations remain compatible with the official MCP SDK
 
-# Server configuration
+# Server configuration (MCP server settings)
 host: "localhost"
 port: 3000
 
-# Forgejo/Gitea configuration
+# Forgejo/Gitea configuration (API integration settings)
 remote_url: "https://your-forgejo-instance.com"
 auth_token: "your-auth-token-here"

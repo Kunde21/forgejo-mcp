@@ -4,13 +4,37 @@ Model Context Protocol server for interacting with Forgejo repositories.
 
 ## Description
 
-This server provides MCP (Model Context Protocol) access to Forgejo and Gitea repository features using the official SDKs. It enables AI agents to interact with remote repositories for common development tasks like managing pull requests and issues with direct API integration for improved performance and reliability.
+This server provides MCP (Model Context Protocol) access to Forgejo and Gitea repository features using the **official Model Context Protocol SDK** (`github.com/modelcontextprotocol/go-sdk/mcp v0.4.0`). It enables AI agents to interact with remote repositories for common development tasks like managing pull requests and issues with direct API integration for improved performance and reliability.
+
+**Migration Note**: This project has been updated to use the official MCP SDK instead of the third-party `mark3labs/mcp-go` library for better protocol compliance, long-term stability, and official support.
 
 ## Prerequisites
 
 - Go 1.24.6 or later
-- Access to a Forgejo instance
-- Authentication token for Forgejo API access
+- Access to a Forgejo/Gitea instance
+- Authentication token for Forgejo/Gitea API access
+- Official MCP SDK (`github.com/modelcontextprotocol/go-sdk/mcp v0.4.0`)
+
+## Migration from Previous Versions
+
+If you're upgrading from a version using the third-party `mark3labs/mcp-go` SDK:
+
+### What Changed
+- **SDK**: Migrated from `mark3labs/mcp-go` to official `github.com/modelcontextprotocol/go-sdk/mcp v0.4.0`
+- **Protocol Compliance**: Improved adherence to MCP protocol specifications
+- **API Stability**: Official SDK provides long-term stability and support
+- **Tool Registration**: Updated tool registration methods (`mcp.AddTool()`)
+- **Handler Signatures**: New handler function signatures for better type safety
+
+### Upgrade Steps
+1. **Update Dependencies**: Run `go mod tidy` to fetch the new SDK
+2. **Rebuild**: Clean rebuild with `go build ./...`
+3. **Test**: Run your test suite to ensure compatibility
+4. **Configuration**: No configuration changes required - fully backward compatible
+
+### Breaking Changes
+- None for end users - all existing functionality preserved
+- Internal API changes only affect custom integrations
 
 ## Installation
 
@@ -153,9 +177,14 @@ Response:
 
 ### SDK Integration
 
-This server uses the official Gitea SDK for direct API integration with Gitea instances, providing improved performance, reliability, and comprehensive error handling compared to CLI-based approaches.
+This server uses the **official Model Context Protocol SDK** for standardized MCP protocol implementation, combined with the official Gitea SDK for direct API integration with Gitea/Forgejo instances. This provides:
 
-Authentication is handled through API tokens configured at startup. All operations are performed directly via the Gitea REST API.
+- **Official Protocol Support**: Full compliance with MCP specifications
+- **Improved Performance**: Direct API integration with comprehensive error handling
+- **Enhanced Reliability**: Official SDK with long-term support guarantees
+- **Better Tool Management**: Standardized tool registration and lifecycle management
+
+Authentication is handled through API tokens configured at startup. All operations are performed directly via the Gitea/Forgejo REST API using the official SDKs.
 
 ### PR interactions
 
