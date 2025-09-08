@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/mark3labs/mcp-go/mcp"
+	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
 // TestListIssuesAcceptance tests the list_issues tool with mock server
@@ -25,14 +25,12 @@ func TestListIssuesAcceptance(t *testing.T) {
 		t.Fatalf("Failed to initialize test server: %v", err)
 	}
 	// Test successful issue listing
-	result, err := ts.Client().CallTool(context.Background(), mcp.CallToolRequest{
-		Params: mcp.CallToolParams{
-			Name: "list_issues",
-			Arguments: map[string]any{
-				"repository": "testuser/testrepo",
-				"limit":      10,
-				"offset":     0,
-			},
+	result, err := ts.Client().CallTool(context.Background(), &mcp.CallToolParams{
+		Name: "list_issues",
+		Arguments: map[string]any{
+			"repository": "testuser/testrepo",
+			"limit":      10,
+			"offset":     0,
 		},
 	})
 	if err != nil {
@@ -66,14 +64,12 @@ func TestListIssuesPagination(t *testing.T) {
 	}
 
 	// Test with limit 10, offset 0
-	result, err := ts.Client().CallTool(context.Background(), mcp.CallToolRequest{
-		Params: mcp.CallToolParams{
-			Name: "list_issues",
-			Arguments: map[string]any{
-				"repository": "testuser/testrepo",
-				"limit":      10,
-				"offset":     0,
-			},
+	result, err := ts.Client().CallTool(context.Background(), &mcp.CallToolParams{
+		Name: "list_issues",
+		Arguments: map[string]any{
+			"repository": "testuser/testrepo",
+			"limit":      10,
+			"offset":     0,
 		},
 	})
 	if err != nil {
@@ -99,14 +95,12 @@ func TestListIssuesErrorHandling(t *testing.T) {
 	}
 
 	// Test with invalid repository format
-	result, err := ts.Client().CallTool(context.Background(), mcp.CallToolRequest{
-		Params: mcp.CallToolParams{
-			Name: "list_issues",
-			Arguments: map[string]any{
-				"repository": "invalid-repo-format",
-				"limit":      10,
-				"offset":     0,
-			},
+	result, err := ts.Client().CallTool(context.Background(), &mcp.CallToolParams{
+		Name: "list_issues",
+		Arguments: map[string]any{
+			"repository": "invalid-repo-format",
+			"limit":      10,
+			"offset":     0,
 		},
 	})
 	if err != nil {
@@ -131,13 +125,11 @@ func TestListIssuesInputValidation(t *testing.T) {
 	}
 
 	// Test with missing repository
-	result, err := ts.Client().CallTool(context.Background(), mcp.CallToolRequest{
-		Params: mcp.CallToolParams{
-			Name: "list_issues",
-			Arguments: map[string]any{
-				"limit":  10,
-				"offset": 0,
-			},
+	result, err := ts.Client().CallTool(context.Background(), &mcp.CallToolParams{
+		Name: "list_issues",
+		Arguments: map[string]any{
+			"limit":  10,
+			"offset": 0,
 		},
 	})
 	if err != nil {
@@ -168,14 +160,12 @@ func TestListIssuesConcurrent(t *testing.T) {
 	results := make(chan error, numGoroutines)
 	for range numGoroutines {
 		go func() {
-			_, err := ts.Client().CallTool(context.Background(), mcp.CallToolRequest{
-				Params: mcp.CallToolParams{
-					Name: "list_issues",
-					Arguments: map[string]any{
-						"repository": "testuser/testrepo",
-						"limit":      10,
-						"offset":     0,
-					},
+			_, err := ts.Client().CallTool(context.Background(), &mcp.CallToolParams{
+				Name: "list_issues",
+				Arguments: map[string]any{
+					"repository": "testuser/testrepo",
+					"limit":      10,
+					"offset":     0,
 				},
 			})
 			results <- err
@@ -205,14 +195,12 @@ func TestListIssuesInvalidLimit(t *testing.T) {
 	}
 
 	// Test with limit > 100 (invalid)
-	result, err := ts.Client().CallTool(context.Background(), mcp.CallToolRequest{
-		Params: mcp.CallToolParams{
-			Name: "list_issues",
-			Arguments: map[string]any{
-				"repository": "testuser/testrepo",
-				"limit":      200, // Invalid: > 100
-				"offset":     0,
-			},
+	result, err := ts.Client().CallTool(context.Background(), &mcp.CallToolParams{
+		Name: "list_issues",
+		Arguments: map[string]any{
+			"repository": "testuser/testrepo",
+			"limit":      200, // Invalid: > 100
+			"offset":     0,
 		},
 	})
 	if err != nil {

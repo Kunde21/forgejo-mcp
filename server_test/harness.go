@@ -3,7 +3,6 @@ package servertest
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"maps"
 	"net/http"
 	"net/http/httptest"
@@ -13,8 +12,7 @@ import (
 
 	"github.com/kunde21/forgejo-mcp/config"
 	"github.com/kunde21/forgejo-mcp/server"
-	"github.com/mark3labs/mcp-go/client"
-	"github.com/mark3labs/mcp-go/mcp"
+	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
 // TestServer represents a test harness for running the MCP server
@@ -22,7 +20,8 @@ type TestServer struct {
 	ctx     context.Context
 	cancel  context.CancelFunc
 	t       *testing.T
-	client  *client.Client
+	client  *mcp.Client
+	session *mcp.ClientSession
 	once    *sync.Once
 	started bool
 }
@@ -116,28 +115,47 @@ func NewTestServer(t *testing.T, ctx context.Context, env map[string]string) *Te
 	if err != nil {
 		t.Fatal(err)
 	}
-	client, err := client.NewInProcessClient(srv.MCPServer())
+	// Create client with in-memory transport
+	client := mcp.NewClient(&mcp.Implementation{
+		Name:    "test-client",
+		Version: "1.0.0",
+	}, nil)
+
+	// Create in-memory transports for client-server communication
+	clientTransport, serverTransport := mcp.NewInMemoryTransports()
+
+	// Start server in background
+	go func() {
+		if err := srv.MCPServer().Run(ctx, serverTransport); err != nil {
+			t.Logf("Server error: %v", err)
+		}
+	}()
+
+	// Connect client
+	session, err := client.Connect(ctx, clientTransport, &mcp.ClientSessionOptions{})
 	if err != nil {
-		t.Fatal("failed to create stdio MCP client: ", err)
+		t.Fatal("failed to connect client: ", err)
 	}
+
 	ts := &TestServer{
-		ctx:    ctx,
-		cancel: cancel,
-		t:      t,
-		client: client,
-		once:   &sync.Once{},
+		ctx:     ctx,
+		cancel:  cancel,
+		t:       t,
+		client:  client,
+		session: session,
+		once:    &sync.Once{},
 	}
 
 	// Use t.Cleanup for resource cleanup
 	t.Cleanup(func() {
 		cancel()
-		if err := client.Close(); err != nil {
+		if err := session.Close(); err != nil {
 			t.Log(err)
 		}
 	})
 	return ts
 }
-func (ts *TestServer) Client() *client.Client { return ts.client }
+func (ts *TestServer) Client() *mcp.ClientSession { return ts.session }
 
 // IsRunning checks if the server process is running
 func (ts *TestServer) IsRunning() bool {
@@ -146,37 +164,13 @@ func (ts *TestServer) IsRunning() bool {
 
 // Start starts the server process with error handling
 func (ts *TestServer) Start() error {
-	var err error
-	ts.once.Do(func() {
-		err = ts.client.Start(ts.ctx)
-		ts.started = err == nil
-	})
-	if err != nil {
-		return fmt.Errorf("failed to start server process: %w", err)
-	}
+	// In the new SDK, the server is already started when we created the session
+	ts.started = true
 	return nil
 }
 
 // Initialize initializes the MCP client for communication with the server
 func (ts *TestServer) Initialize() error {
-	if !ts.started {
-		if err := ts.Start(); err != nil {
-			return err
-		}
-	}
-	// Perform MCP initialization handshake
-	_, err := ts.client.Initialize(ts.ctx, mcp.InitializeRequest{
-		Params: mcp.InitializeParams{
-			ProtocolVersion: "2024-11-05",
-			ClientInfo: mcp.Implementation{
-				Name:    "test-client",
-				Version: "1.0.0",
-			},
-			Capabilities: mcp.ClientCapabilities{},
-		},
-	})
-	if err != nil {
-		return fmt.Errorf("failed to initialize MCP protocol: %w", err)
-	}
+	// In the new SDK, initialization happens automatically during connection
 	return nil
 }

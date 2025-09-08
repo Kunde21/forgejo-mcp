@@ -1,17 +1,17 @@
 package server
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/kunde21/forgejo-mcp/config"
 	"github.com/kunde21/forgejo-mcp/remote/gitea"
-	"github.com/mark3labs/mcp-go/mcp"
-	"github.com/mark3labs/mcp-go/server"
+	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
 // Server represents the MCP server instance
 type Server struct {
-	mcpServer    *server.MCPServer
+	mcpServer    *mcp.Server
 	config       *config.Config
 	giteaService *gitea.Service
 }
@@ -37,34 +37,29 @@ func NewFromConfig(cfg *config.Config) (*Server, error) {
 		config:       cfg,
 		giteaService: gitea.NewService(giteaClient),
 	}
-	mcpServer := server.NewMCPServer("forgejo-mcp", "1.0.0")
+	mcpServer := mcp.NewServer(&mcp.Implementation{
+		Name:    "forgejo-mcp",
+		Version: "1.0.0",
+	}, nil)
 
-	mcpServer.AddTool(mcp.NewTool("hello",
-		mcp.WithDescription("Returns a hello world message"),
-	), s.handleHello)
+	// Add tools using the new SDK
+	mcp.AddTool(mcpServer, &mcp.Tool{
+		Name:        "hello",
+		Description: "Returns a hello world message",
+	}, s.handleHello)
 
-	mcpServer.AddTool(mcp.NewTool("list_issues",
-		mcp.WithDescription("List issues from a Gitea/Forgejo repository"),
-		mcp.WithString("repository",
-			mcp.Required(),
-			mcp.Description("Repository in format 'owner/repo'"),
-		),
-		mcp.WithNumber("limit",
-			mcp.DefaultNumber(15),
-			mcp.Description("Maximum number of issues to return (1-100)"),
-		),
-		mcp.WithNumber("offset",
-			mcp.DefaultNumber(0),
-			mcp.Description("Number of issues to skip (0-based)"),
-		),
-	), s.handleListIssues)
+	mcp.AddTool(mcpServer, &mcp.Tool{
+		Name:        "list_issues",
+		Description: "List issues from a Gitea/Forgejo repository",
+	}, s.handleListIssues)
+
 	s.mcpServer = mcpServer
 	return s, nil
 }
 
 // Start starts the MCP server
 func (s *Server) Start() error {
-	return server.ServeStdio(s.mcpServer)
+	return s.mcpServer.Run(context.Background(), &mcp.StdioTransport{})
 }
 
 // Stop stops the MCP server
@@ -74,4 +69,4 @@ func (s *Server) Stop() error {
 	return nil
 }
 
-func (s *Server) MCPServer() *server.MCPServer { return s.mcpServer }
+func (s *Server) MCPServer() *mcp.Server { return s.mcpServer }

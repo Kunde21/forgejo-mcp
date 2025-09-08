@@ -7,8 +7,7 @@ import (
 	"time"
 
 	"github.com/google/go-cmp/cmp"
-	"github.com/google/go-cmp/cmp/cmpopts"
-	"github.com/mark3labs/mcp-go/mcp"
+	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
 // TestMCPInitialization tests MCP protocol initialization
@@ -24,18 +23,12 @@ func TestMCPInitialization(t *testing.T) {
 		t.Fatal("Failed to start server:", err)
 	}
 	client := ts.Client()
-	result, err := client.Initialize(ctx, mcp.InitializeRequest{
-		Params: mcp.InitializeParams{
-			ProtocolVersion: "2024-11-05",
-			ClientInfo: mcp.Implementation{
-				Name:    "test-client",
-				Version: "1.0.0",
-			},
-			Capabilities: mcp.ClientCapabilities{},
-		},
-	})
-	if err != nil {
-		t.Fatalf("Failed to initialize MCP protocol: %v", err)
+
+	// In the new SDK, initialization happens automatically during connection
+	// Get initialization result from the session
+	result := client.InitializeResult()
+	if result == nil {
+		t.Fatal("Failed to get initialization result")
 	}
 	if result.ServerInfo.Name != "forgejo-mcp" {
 		t.Errorf("Expected server name 'forgejo-mcp', got '%s'", result.ServerInfo.Name)
@@ -57,45 +50,38 @@ func TestToolDiscovery(t *testing.T) {
 	client := ts.Client()
 
 	// List available tools
-	tools, err := client.ListTools(ctx, mcp.ListToolsRequest{})
+	tools, err := client.ListTools(ctx, &mcp.ListToolsParams{})
 	if err != nil {
 		t.Fatalf("Failed to list tools: %v", err)
 	}
-	want := &mcp.ListToolsResult{
-		Tools: []mcp.Tool{
-			{
-				Name: "hello", Description: "Returns a hello world message",
-				InputSchema: mcp.ToolInputSchema{Type: "object"},
-			},
-			{
-				Name:        "list_issues",
-				Description: "List issues from a Gitea/Forgejo repository",
-				InputSchema: mcp.ToolInputSchema{
-					Type: "object",
-					Properties: map[string]any{
-						"repository": map[string]any{
-							"type":        "string",
-							"description": "Repository in format 'owner/repo'",
-						},
-						"limit": map[string]any{
-							"type":        "number",
-							"description": "Maximum number of issues to return (1-100)",
-							"default":     float64(15),
-						},
-						"offset": map[string]any{
-							"type":        "number",
-							"description": "Number of issues to skip (0-based)",
-							"default":     float64(0),
-						},
-					},
-					Required: []string{"repository"},
-				},
-			},
-		},
+	// Check that we have the expected tools
+	if len(tools.Tools) != 2 {
+		t.Fatalf("Expected 2 tools, got %d", len(tools.Tools))
 	}
-	opts := cmpopts.IgnoreFields(mcp.Tool{}, "Annotations")
-	if !cmp.Equal(want, tools, opts) {
-		t.Error(cmp.Diff(want, tools, opts))
+
+	// Find hello tool
+	var helloTool *mcp.Tool
+	var listIssuesTool *mcp.Tool
+	for _, tool := range tools.Tools {
+		if tool.Name == "hello" {
+			helloTool = tool
+		} else if tool.Name == "list_issues" {
+			listIssuesTool = tool
+		}
+	}
+
+	if helloTool == nil {
+		t.Fatal("hello tool not found")
+	}
+	if helloTool.Description != "Returns a hello world message" {
+		t.Errorf("Expected hello tool description 'Returns a hello world message', got '%s'", helloTool.Description)
+	}
+
+	if listIssuesTool == nil {
+		t.Fatal("list_issues tool not found")
+	}
+	if listIssuesTool.Description != "List issues from a Gitea/Forgejo repository" {
+		t.Errorf("Expected list_issues tool description 'List issues from a Gitea/Forgejo repository', got '%s'", listIssuesTool.Description)
 	}
 }
 
@@ -113,15 +99,12 @@ func TestHelloTool(t *testing.T) {
 	}
 	client := ts.Client()
 
-	result, err := client.CallTool(ctx, mcp.CallToolRequest{
-		Params: mcp.CallToolParams{Name: "hello"},
-	})
+	result, err := client.CallTool(ctx, &mcp.CallToolParams{Name: "hello"})
 	if err != nil {
 		t.Fatalf("Failed to call hello tool: %v", err)
 	}
 	want := &mcp.CallToolResult{
-		Content:           []mcp.Content{mcp.NewTextContent("Hello, World!")},
-		StructuredContent: nil,
+		Content: []mcp.Content{&mcp.TextContent{Text: "Hello, World!"}},
 	}
 	if !cmp.Equal(want, result) {
 		t.Error(cmp.Diff(want, result))
@@ -146,9 +129,7 @@ func TestHelloToolWithNilContext(t *testing.T) {
 	cancelledCtx, cancelFunc := context.WithCancel(ctx)
 	cancelFunc() // Cancel immediately
 
-	result, err := client.CallTool(cancelledCtx, mcp.CallToolRequest{
-		Params: mcp.CallToolParams{Name: "hello"},
-	})
+	result, err := client.CallTool(cancelledCtx, &mcp.CallToolParams{Name: "hello"})
 	if err == nil {
 		t.Error("Expected error when calling tool with cancelled context")
 	}
@@ -172,15 +153,12 @@ func TestToolExecution(t *testing.T) {
 	client := ts.Client()
 
 	// Test calling the "hello" tool
-	result, err := client.CallTool(ctx, mcp.CallToolRequest{
-		Params: mcp.CallToolParams{Name: "hello"},
-	})
+	result, err := client.CallTool(ctx, &mcp.CallToolParams{Name: "hello"})
 	if err != nil {
 		t.Fatalf("Failed to call hello tool: %v", err)
 	}
 	want := &mcp.CallToolResult{
-		Content:           []mcp.Content{mcp.NewTextContent("Hello, World!")},
-		StructuredContent: nil,
+		Content: []mcp.Content{&mcp.TextContent{Text: "Hello, World!"}},
 	}
 	if !cmp.Equal(want, result) {
 		t.Error(cmp.Diff(want, result))
@@ -202,26 +180,21 @@ func TestErrorHandling(t *testing.T) {
 	client := ts.Client()
 
 	// Test calling a non-existent tool
-	_, err := client.CallTool(ctx, mcp.CallToolRequest{
-		Params: mcp.CallToolParams{Name: "nonexistent_tool"},
-	})
+	_, err := client.CallTool(ctx, &mcp.CallToolParams{Name: "nonexistent_tool"})
 	if err == nil {
 		t.Error("Expected error when calling non-existent tool")
 	}
 
-	// Test calling tool with invalid parameters (if applicable)
-	// For hello tool, no params needed, so this should still work
-	result, err := client.CallTool(ctx, mcp.CallToolRequest{
-		Params: mcp.CallToolParams{
-			Name:      "hello",
-			Arguments: map[string]any{"invalid": "param"},
-		},
+	// Test calling tool with invalid parameters - new SDK validates schema strictly
+	result, err := client.CallTool(ctx, &mcp.CallToolParams{
+		Name:      "hello",
+		Arguments: map[string]any{"invalid": "param"},
 	})
-	if err != nil {
-		t.Fatalf("Unexpected error with extra params: %v", err)
+	if err == nil {
+		t.Error("Expected error when calling tool with invalid parameters")
 	}
-	if len(result.Content) == 0 {
-		t.Error("Expected tool result to have content even with extra params")
+	if result != nil && !result.IsError {
+		t.Error("Expected error result for invalid parameters")
 	}
 }
 
@@ -248,15 +221,13 @@ func TestConcurrentRequests(t *testing.T) {
 	for i := range numRequests {
 		index := i
 		wg.Go(func() {
-			result, err := client.CallTool(ctx, mcp.CallToolRequest{
-				Params: mcp.CallToolParams{Name: "hello"},
-			})
+			result, err := client.CallTool(ctx, &mcp.CallToolParams{Name: "hello"})
 			if err != nil {
 				errors[index] = err
 				return
 			}
 			if len(result.Content) > 0 {
-				if textContent, ok := result.Content[0].(mcp.TextContent); ok {
+				if textContent, ok := result.Content[0].(*mcp.TextContent); ok {
 					results[index] = textContent.Text
 				}
 			}

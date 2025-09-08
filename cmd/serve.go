@@ -25,7 +25,7 @@ tools for interacting with Forgejo repositories.`,
 	}
 
 	// Add serve-specific flags
-	cmd.Flags().String(Loadocalhost", "Host to bind the server to")
+	cmd.Flags().String("host", "localhost", "Host to bind the server to")
 	cmd.Flags().Int("port", 3000, "Port to bind the server to")
 
 	return cmd
@@ -46,7 +46,7 @@ func runServe(cmd *cobra.Command, args []string) error {
 	log.Printf("Starting MCP server on %s:%d", host, port)
 
 	// Create and start server
-	srv, err := server.NewServer()
+	srv, err := server.New()
 	if err != nil {
 		return fmt.Errorf("failed to create server: %v", err)
 	}

@@ -6,47 +6,69 @@ import (
 
 	v "github.com/go-ozzo/ozzo-validation/v4"
 	"github.com/kunde21/forgejo-mcp/remote/gitea"
-	"github.com/mark3labs/mcp-go/mcp"
+	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
-func (s *Server) handleHello(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+func (s *Server) handleHello(ctx context.Context, request *mcp.CallToolRequest, args struct{}) (*mcp.CallToolResult, any, error) {
 	// Basic validation - check if request is valid
 	if ctx == nil {
-		return mcp.NewToolResultError("Context is required"), nil
+		return &mcp.CallToolResult{
+			Content: []mcp.Content{
+				&mcp.TextContent{Text: "Context is required"},
+			},
+			IsError: true,
+		}, nil, nil
 	}
 
 	// Return the hello world message
-	return mcp.NewToolResultText("Hello, World!"), nil
+	return &mcp.CallToolResult{
+		Content: []mcp.Content{
+			&mcp.TextContent{Text: "Hello, World!"},
+		},
+	}, nil, nil
 }
 
 type IssueList struct {
 	Issues []gitea.Issue `json:"issues"`
 }
 
-func (s *Server) handleListIssues(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-	// Parse arguments
-	type ListArgs struct {
-		Repo   string
-		Limit  int
-		Offset int
+func (s *Server) handleListIssues(ctx context.Context, request *mcp.CallToolRequest, args struct {
+	Repository string `json:"repository"`
+	Limit      int    `json:"limit"`
+	Offset     int    `json:"offset"`
+}) (*mcp.CallToolResult, any, error) {
+	// Set defaults
+	if args.Limit == 0 {
+		args.Limit = 15
 	}
-	args := ListArgs{
-		Repo:   mcp.ParseString(request, "repository", ""),
-		Limit:  mcp.ParseInt(request, "limit", 15),
-		Offset: mcp.ParseInt(request, "offset", 0),
-	}
+
+	// Validate arguments
 	if err := v.ValidateStruct(&args,
-		v.Field(&args.Repo, v.Required),
+		v.Field(&args.Repository, v.Required),
 		v.Field(&args.Limit, v.Min(1), v.Max(100)),
 		v.Field(&args.Offset, v.Min(0)),
 	); err != nil {
-		return mcp.NewToolResultErrorFromErr("invalid request", err), nil
+		return &mcp.CallToolResult{
+			Content: []mcp.Content{
+				&mcp.TextContent{Text: fmt.Sprintf("Invalid request: %v", err)},
+			},
+			IsError: true,
+		}, nil, nil
 	}
 
-	issues, err := s.giteaService.ListIssues(ctx, args.Repo, args.Limit, args.Offset)
+	issues, err := s.giteaService.ListIssues(ctx, args.Repository, args.Limit, args.Offset)
 	if err != nil {
-		return mcp.NewToolResultErrorf("failed to list issues: %v", err), nil
+		return &mcp.CallToolResult{
+			Content: []mcp.Content{
+				&mcp.TextContent{Text: fmt.Sprintf("Failed to list issues: %v", err)},
+			},
+			IsError: true,
+		}, nil, nil
 	}
 
-	return mcp.NewToolResultStructured(IssueList{Issues: issues}, fmt.Sprintf("Found %d issues", len(issues))), nil
+	return &mcp.CallToolResult{
+		Content: []mcp.Content{
+			&mcp.TextContent{Text: fmt.Sprintf("Found %d issues", len(issues))},
+		},
+	}, IssueList{Issues: issues}, nil
 }
