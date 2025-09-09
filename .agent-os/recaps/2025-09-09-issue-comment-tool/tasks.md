@@ -3,7 +3,8 @@
 These are the tasks to be completed for the spec detailed in @.agent-os/specs/2025-09-09-issue-comment-tool/spec.md
 
 > Created: 2025-09-09
-> Status: Ready for Implementation
+> Status: Implementation Complete ✅
+> Completed: 2025-09-09
 
 ## Tasks
 

@@ -1,8 +1,8 @@
 # Product Roadmap
 
-> Last Updated: 2025-09-07
+> Last Updated: 2025-09-09
 > Version: 1.0.0
-> Status: Planning
+> Status: Active Development
 
 ## Phase 1: Basic MCP Server (Q1 2026) ✅
 
@@ -44,7 +44,7 @@
 ### Must-Have Features
 
 - PR comment functionality
-- Issue comment functionality
+- [x] Issue comment functionality
 
 ## Phase 5: Advanced Operations (Q2 2026)
 
