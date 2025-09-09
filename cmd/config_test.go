@@ -202,7 +202,7 @@ func TestConfigCmd_Subcommands(t *testing.T) {
 	// For now, we just check that the command structure is valid
 	// The actual subcommands would be tested separately
 	// Commands() returns nil when there are no subcommands, which is fine
-	if subcommands != nil && len(subcommands) > 0 {
+	if len(subcommands) > 0 {
 		t.Logf("Config command has %d subcommands", len(subcommands))
 	}
 }
