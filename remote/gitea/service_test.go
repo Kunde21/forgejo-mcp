@@ -28,94 +28,57 @@ func TestServiceCreateIssueComment(t *testing.T) {
 	}
 }
 
-func TestServiceCreateIssueCommentValidation(t *testing.T) {
-	// Test validation for CreateIssueComment
+func TestServiceCreateIssueCommentWithoutValidation(t *testing.T) {
+	// Test CreateIssueComment method without validation
 	ctx := context.Background()
 	mockClient := &mockGiteaClient{}
 	service := NewService(mockClient)
 
+	// Test successful comment creation - service layer no longer validates
 	testCases := []struct {
 		name        string
 		repo        string
 		issueNumber int
 		comment     string
-		expectError bool
 	}{
-		{"valid input", "owner/repo", 1, "Valid comment", false},
-		{"empty repo", "", 1, "Comment", true},
-		{"invalid repo format", "invalid-format", 1, "Comment", true},
-		{"zero issue number", "owner/repo", 0, "Comment", true},
-		{"negative issue number", "owner/repo", -1, "Comment", true},
-		{"empty comment", "owner/repo", 1, "", true},
-		{"whitespace comment", "owner/repo", 1, "   ", true},
+		{"valid input", "owner/repo", 1, "Valid comment"},
+		{"empty repo", "", 1, "Comment"},
+		{"invalid repo format", "invalid-format", 1, "Comment"},
+		{"zero issue number", "owner/repo", 0, "Comment"},
+		{"negative issue number", "owner/repo", -1, "Comment"},
+		{"empty comment", "owner/repo", 1, ""},
+		{"whitespace comment", "owner/repo", 1, "   "},
 	}
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			_, err := service.CreateIssueComment(ctx, tc.repo, tc.issueNumber, tc.comment)
-			if tc.expectError && err == nil {
-				t.Error("Expected error but got none")
+			comment, err := service.CreateIssueComment(ctx, tc.repo, tc.issueNumber, tc.comment)
+			if err != nil {
+				t.Errorf("Expected no error, got %v", err)
 			}
-			if !tc.expectError && err != nil {
-				t.Errorf("Expected no error but got %v", err)
+			if comment == nil {
+				t.Error("Expected comment to be returned")
 			}
-		})
-	}
-}
-
-func TestServiceValidateIssueNumber(t *testing.T) {
-	// Test issue number validation
-	service := &Service{}
-
-	testCases := []struct {
-		issueNumber int
-		expectError bool
-	}{
-		{1, false},
-		{100, false},
-		{0, true},
-		{-1, true},
-		{-100, true},
-	}
-
-	for _, tc := range testCases {
-		t.Run("", func(t *testing.T) {
-			err := service.validateIssueNumber(tc.issueNumber)
-			if tc.expectError && err == nil {
-				t.Errorf("Expected error for issue number %d", tc.issueNumber)
-			}
-			if !tc.expectError && err != nil {
-				t.Errorf("Expected no error for issue number %d, got %v", tc.issueNumber, err)
+			if comment.Content != tc.comment {
+				t.Errorf("Expected comment content %q, got %s", tc.comment, comment.Content)
 			}
 		})
 	}
 }
 
-func TestServiceValidateCommentContent(t *testing.T) {
-	// Test comment content validation
-	service := &Service{}
+func TestServiceListIssues(t *testing.T) {
+	// Test ListIssues method without validation
+	ctx := context.Background()
+	mockClient := &mockGiteaClient{}
+	service := NewService(mockClient)
 
-	testCases := []struct {
-		comment     string
-		expectError bool
-	}{
-		{"Valid comment", false},
-		{"Another valid comment", false},
-		{"", true},
-		{"   ", true},
-		{"\t\n", true},
+	// Test successful issue listing
+	issues, err := service.ListIssues(ctx, "owner/repo", 10, 0)
+	if err != nil {
+		t.Errorf("Expected no error, got %v", err)
 	}
-
-	for _, tc := range testCases {
-		t.Run("", func(t *testing.T) {
-			err := service.validateCommentContent(tc.comment)
-			if tc.expectError && err == nil {
-				t.Errorf("Expected error for comment %q", tc.comment)
-			}
-			if !tc.expectError && err != nil {
-				t.Errorf("Expected no error for comment %q, got %v", tc.comment, err)
-			}
-		})
+	if issues == nil {
+		t.Error("Expected issues to be returned")
 	}
 }
 

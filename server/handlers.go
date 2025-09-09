@@ -6,6 +6,7 @@ import (
 
 	v "github.com/go-ozzo/ozzo-validation/v4"
 	"github.com/kunde21/forgejo-mcp/remote/gitea"
+	"github.com/kunde21/forgejo-mcp/validation"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
@@ -64,13 +65,13 @@ func (s *Server) handleListIssues(ctx context.Context, request *mcp.CallToolRequ
 		args.Limit = 15
 	}
 
-	// Validate input arguments using ozzo-validation
+	// Validate input arguments using shared validation utilities
 	if err := v.ValidateStruct(&args,
-		v.Field(&args.Repository, v.Required),
-		v.Field(&args.Limit, v.Min(1), v.Max(100)),
-		v.Field(&args.Offset, v.Min(0)),
+		v.Field(&args.Repository, v.Required, validation.RepositoryRule()),
+		v.Field(&args.Limit, validation.CombinedPaginationLimitRule()),
+		v.Field(&args.Offset, validation.PaginationOffsetRule()),
 	); err != nil {
-		return TextErrorf("Invalid request: %v", err), nil, nil
+		return TextErrorf("Validation failed: %v", err), nil, nil
 	}
 
 	// Fetch issues from the Gitea/Forgejo repository
@@ -110,13 +111,13 @@ func (s *Server) handleCreateIssueComment(ctx context.Context, request *mcp.Call
 		return TextError("Context is required"), nil, nil
 	}
 
-	// Validate input arguments using ozzo-validation
+	// Validate input arguments using shared validation utilities
 	if err := v.ValidateStruct(&args,
-		v.Field(&args.Repository, v.Required),
-		v.Field(&args.IssueNumber, v.Min(1)),
-		v.Field(&args.Comment, v.Required, v.Length(1, 0)), // Non-empty string
+		v.Field(&args.Repository, v.Required, validation.RepositoryRule()),
+		v.Field(&args.IssueNumber, validation.IssueNumberRule()),
+		v.Field(&args.Comment, v.Required, validation.CommentContentRule()),
 	); err != nil {
-		return TextErrorf("Invalid request: %v", err), nil, nil
+		return TextErrorf("Validation failed: %v", err), nil, nil
 	}
 
 	// Create the comment using the service layer
