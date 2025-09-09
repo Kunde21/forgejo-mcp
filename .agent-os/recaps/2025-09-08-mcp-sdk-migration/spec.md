@@ -2,7 +2,7 @@
 
 > Spec: MCP SDK Migration
 > Created: 2025-09-08
-> Status: Completed
+> Status: Done
 
 ## Overview
 

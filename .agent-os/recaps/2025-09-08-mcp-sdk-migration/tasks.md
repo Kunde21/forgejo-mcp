@@ -3,7 +3,7 @@
 These are the tasks to be completed for the spec detailed in @.agent-os/specs/2025-09-08-mcp-sdk-migration/spec.md
 
 > Created: 2025-09-08
-> Status: Ready for Implementation
+> Status: Done
 
 ## Tasks
 
