@@ -296,7 +296,7 @@ func TestHandleCreateIssueCommentValidation(t *testing.T) {
 				"comment":      "Test comment",
 			},
 			expectError: true,
-			errorMsg:    "issue number",
+			errorMsg:    "issue_number",
 		},
 		{
 			name: "negative issue number",
@@ -306,7 +306,7 @@ func TestHandleCreateIssueCommentValidation(t *testing.T) {
 				"comment":      "Test comment",
 			},
 			expectError: true,
-			errorMsg:    "issue number",
+			errorMsg:    "issue_number",
 		},
 		{
 			name: "missing comment",
@@ -392,7 +392,7 @@ func TestHandleCreateIssueCommentValidation(t *testing.T) {
 				if err != nil {
 					t.Errorf("Expected validation error but handler returned error: %v", err)
 				} else if result != nil && !result.IsError {
-					t.Errorf("Expected validation error but got success result")
+					t.Errorf("Expected validation error but got success result %+v", result.Content[0])
 				} else if result != nil && len(result.Content) > 0 {
 					if textContent, ok := result.Content[0].(*mcp.TextContent); ok && tc.errorMsg != "" {
 						if !contains(textContent.Text, tc.errorMsg) {

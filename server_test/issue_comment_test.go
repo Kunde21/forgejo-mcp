@@ -118,7 +118,7 @@ func TestCreateIssueCommentToolValidationErrors(t *testing.T) {
 				"comment":      "Test comment",
 			},
 			expectError: true,
-			errorMsg:    "issue number",
+			errorMsg:    "issue_number",
 		},
 		{
 			name: "empty comment",

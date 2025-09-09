@@ -2,11 +2,13 @@ package server
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"regexp"
+	"strings"
 
 	v "github.com/go-ozzo/ozzo-validation/v4"
 	"github.com/kunde21/forgejo-mcp/remote/gitea"
-	"github.com/kunde21/forgejo-mcp/validation"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
@@ -39,6 +41,9 @@ func (s *Server) handleHello(ctx context.Context, request *mcp.CallToolRequest, 
 	return TextResult("Hello, World!"), nil, nil
 }
 
+// RepositoryRegex defines the pattern for valid repository names
+var RepositoryRegex = regexp.MustCompile(`^[a-zA-Z0-9._-]+/[a-zA-Z0-9._-]+$`)
+
 // IssueList represents a collection of repository issues.
 // This struct is used as the result data for the list_issues tool.
 type IssueList struct {
@@ -67,9 +72,9 @@ func (s *Server) handleListIssues(ctx context.Context, request *mcp.CallToolRequ
 
 	// Validate input arguments using shared validation utilities
 	if err := v.ValidateStruct(&args,
-		v.Field(&args.Repository, v.Required, validation.RepositoryRule()),
-		v.Field(&args.Limit, validation.CombinedPaginationLimitRule()),
-		v.Field(&args.Offset, validation.PaginationOffsetRule()),
+		v.Field(&args.Repository, v.Required, v.Match(RepositoryRegex)),
+		v.Field(&args.Limit, v.Min(0), v.Max(100)),
+		v.Field(&args.Offset, v.Min(0).Error("offset must be non-negative")),
 	); err != nil {
 		return TextErrorf("Validation failed: %v", err), nil, nil
 	}
@@ -79,12 +84,24 @@ func (s *Server) handleListIssues(ctx context.Context, request *mcp.CallToolRequ
 	if err != nil {
 		return TextErrorf("Failed to list issues: %v", err), nil, nil
 	}
-	return TextResultf("Found %d issues", len(issues)), IssueList{Issues: issues}, nil
+	buf, err := json.MarshalIndent(issues, "", "  ")
+	if err != nil {
+		return TextErrorf("Failed to list issues: %v", err), nil, nil
+	}
+	return TextResultf("Found %d issues\n%v", len(issues), buf), IssueList{Issues: issues}, nil
 }
+
+func nonEmpty(s string) bool { return len(strings.TrimSpace(s)) > 0 }
 
 // CommentResult represents the result data for the create_issue_comment tool.
 type CommentResult struct {
 	Comment gitea.IssueComment `json:"comment"`
+}
+
+type IssueCommentArgs struct {
+	Repository  string `json:"repository"`
+	IssueNumber int    `json:"issue_number"`
+	Comment     string `json:"comment"`
 }
 
 // handleCreateIssueComment handles the "create_issue_comment" tool request.
@@ -101,21 +118,13 @@ type CommentResult struct {
 //
 // Migration Note: Implements MCP SDK v0.4.0 handler signature with ozzo-validation
 // for parameter validation and structured error responses.
-func (s *Server) handleCreateIssueComment(ctx context.Context, request *mcp.CallToolRequest, args struct {
-	Repository  string `json:"repository"`
-	IssueNumber int    `json:"issue_number"`
-	Comment     string `json:"comment"`
-}) (*mcp.CallToolResult, any, error) {
-	// Validate context - required for proper request handling
-	if ctx == nil {
-		return TextError("Context is required"), nil, nil
-	}
+func (s *Server) handleCreateIssueComment(ctx context.Context, request *mcp.CallToolRequest, args IssueCommentArgs) (*mcp.CallToolResult, *CommentResult, error) {
 
 	// Validate input arguments using shared validation utilities
 	if err := v.ValidateStruct(&args,
-		v.Field(&args.Repository, v.Required, validation.RepositoryRule()),
-		v.Field(&args.IssueNumber, validation.IssueNumberRule()),
-		v.Field(&args.Comment, v.Required, validation.CommentContentRule()),
+		v.Field(&args.Repository, v.Required, v.Match(RepositoryRegex)),
+		v.Field(&args.IssueNumber, v.Required, v.Min(1)),
+		v.Field(&args.Comment, v.Required, v.NewStringRule(nonEmpty, v.ErrRequired.Message())),
 	); err != nil {
 		return TextErrorf("Validation failed: %v", err), nil, nil
 	}
@@ -126,9 +135,6 @@ func (s *Server) handleCreateIssueComment(ctx context.Context, request *mcp.Call
 		return TextErrorf("Failed to create comment: %v", err), nil, nil
 	}
 
-	// Format success response with comment metadata
-	responseText := fmt.Sprintf("Comment created successfully. ID: %d, Created: %s\nComment body: %s",
-		comment.ID, comment.Created, comment.Content)
-
-	return TextResult(responseText), CommentResult{Comment: *comment}, nil
+	return TextResultf("Comment created successfully. ID: %d, Created: %s\nComment body: %s",
+		comment.ID, comment.Created, comment.Content), &CommentResult{Comment: *comment}, nil
 }
