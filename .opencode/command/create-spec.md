@@ -1,7 +1,6 @@
 ---
 description: Create detailed spec for the given description. Use a plan file if available.
-agent: build
-model: anthropic/claude-opus-4-1-20250805
+agent: plan
 ---
 Create a detailed spec for a new feature with technical specifications and task breakdown
 
