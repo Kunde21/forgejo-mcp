@@ -3,6 +3,7 @@ package servertest
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"maps"
 	"net/http"
 	"net/http/httptest"
@@ -127,7 +128,9 @@ func NewTestServer(t *testing.T, ctx context.Context, env map[string]string) *Te
 	// Start server in background
 	go func() {
 		if err := srv.MCPServer().Run(ctx, serverTransport); err != nil {
-			t.Logf("Server error: %v", err)
+			if !errors.Is(context.Canceled, err) {
+				t.Logf("Server error: %v", err)
+			}
 		}
 	}()
 

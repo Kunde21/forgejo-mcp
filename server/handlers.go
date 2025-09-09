@@ -9,6 +9,19 @@ import (
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
+func TextResult(msg string) *mcp.CallToolResult {
+	return &mcp.CallToolResult{Content: []mcp.Content{&mcp.TextContent{Text: msg}}}
+}
+func TextResultf(format string, args ...any) *mcp.CallToolResult {
+	return &mcp.CallToolResult{Content: []mcp.Content{&mcp.TextContent{Text: fmt.Sprintf(format, args...)}}}
+}
+func TextError(msg string) *mcp.CallToolResult {
+	return &mcp.CallToolResult{Content: []mcp.Content{&mcp.TextContent{Text: msg}}, IsError: true}
+}
+func TextErrorf(format string, args ...any) *mcp.CallToolResult {
+	return &mcp.CallToolResult{Content: []mcp.Content{&mcp.TextContent{Text: fmt.Sprintf(format, args...)}}, IsError: true}
+}
+
 // handleHello handles the "hello" tool request.
 // This is a simple demonstration tool that returns a hello world message.
 //
@@ -18,21 +31,11 @@ import (
 func (s *Server) handleHello(ctx context.Context, request *mcp.CallToolRequest, args struct{}) (*mcp.CallToolResult, any, error) {
 	// Validate context - required for proper request handling
 	if ctx == nil {
-		return &mcp.CallToolResult{
-			Content: []mcp.Content{
-				&mcp.TextContent{Text: "Context is required"},
-			},
-			IsError: true,
-		}, nil, nil
+		return TextError("Context is required"), nil, nil
 	}
-
 	// Return successful response with hello message
 	// Migration: Uses official SDK's CallToolResult structure
-	return &mcp.CallToolResult{
-		Content: []mcp.Content{
-			&mcp.TextContent{Text: "Hello, World!"},
-		},
-	}, nil, nil
+	return TextResult("Hello, World!"), nil, nil
 }
 
 // IssueList represents a collection of repository issues.
@@ -67,28 +70,13 @@ func (s *Server) handleListIssues(ctx context.Context, request *mcp.CallToolRequ
 		v.Field(&args.Limit, v.Min(1), v.Max(100)),
 		v.Field(&args.Offset, v.Min(0)),
 	); err != nil {
-		return &mcp.CallToolResult{
-			Content: []mcp.Content{
-				&mcp.TextContent{Text: fmt.Sprintf("Invalid request: %v", err)},
-			},
-			IsError: true,
-		}, nil, nil
+		return TextErrorf("Invalid request: %v", err), nil, nil
 	}
 
 	// Fetch issues from the Gitea/Forgejo repository
 	issues, err := s.giteaService.ListIssues(ctx, args.Repository, args.Limit, args.Offset)
 	if err != nil {
-		return &mcp.CallToolResult{
-			Content: []mcp.Content{
-				&mcp.TextContent{Text: fmt.Sprintf("Failed to list issues: %v", err)},
-			},
-			IsError: true,
-		}, nil, nil
+		return TextErrorf("Failed to list issues: %v", err), nil, nil
 	}
-
-	return &mcp.CallToolResult{
-		Content: []mcp.Content{
-			&mcp.TextContent{Text: fmt.Sprintf("Found %d issues", len(issues))},
-		},
-	}, IssueList{Issues: issues}, nil
+	return TextResultf("Found %d issues", len(issues)), IssueList{Issues: issues}, nil
 }
