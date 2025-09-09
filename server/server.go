@@ -47,9 +47,22 @@ func NewFromConfig(cfg *config.Config) (*Server, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to create Gitea client: %w", err)
 	}
+	return NewFromService(gitea.NewService(giteaClient), cfg)
+}
+
+// NewFromService creates a new MCP server instance with the provided service.
+// This allows for dependency injection, particularly useful for testing with mock services.
+func NewFromService(service *gitea.Service, cfg *config.Config) (*Server, error) {
+	if service == nil {
+		return nil, fmt.Errorf("service cannot be nil")
+	}
+	if cfg == nil {
+		cfg = &config.Config{}
+	}
+
 	s := &Server{
 		config:       cfg,
-		giteaService: gitea.NewService(giteaClient),
+		giteaService: service,
 	}
 	mcpServer := mcp.NewServer(&mcp.Implementation{
 		Name:    "forgejo-mcp",
@@ -66,6 +79,11 @@ func NewFromConfig(cfg *config.Config) (*Server, error) {
 		Name:        "list_issues",
 		Description: "List issues from a Gitea/Forgejo repository",
 	}, s.handleListIssues)
+
+	mcp.AddTool(mcpServer, &mcp.Tool{
+		Name:        "create_issue_comment",
+		Description: "Create a comment on a Forgejo/Gitea repository issue",
+	}, s.handleCreateIssueComment)
 
 	s.mcpServer = mcpServer
 	return s, nil

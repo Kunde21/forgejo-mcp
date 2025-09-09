@@ -173,6 +173,44 @@ Response:
 }
 ```
 
+#### Create Issue Comment
+
+```json
+{
+  "method": "tools/call",
+  "params": {
+    "name": "create_issue_comment",
+    "arguments": {
+      "repository": "myorg/myrepo",
+      "issue_number": 42,
+      "comment": "This is a helpful comment on the issue."
+    }
+  }
+}
+```
+
+Response:
+```json
+{
+  "result": {
+    "content": [
+      {
+        "type": "text",
+        "text": "Comment created successfully. ID: 123, Created: 2025-09-09T10:30:00Z\nComment body: This is a helpful comment on the issue."
+      }
+    ],
+    "structured": {
+      "comment": {
+        "id": 123,
+        "content": "This is a helpful comment on the issue.",
+        "author": "testuser",
+        "created": "2025-09-09T10:30:00Z"
+      }
+    }
+  }
+}
+```
+
 ## Features
 
 ### SDK Integration
@@ -203,6 +241,9 @@ Tools List:
 - `list_issues`: List issues from a repository with pagination support
   - Parameters: repository (owner/repo), limit (1-100), offset (0-based)
   - Returns: Array of issues with number, title, and status
+- `create_issue_comment`: Create a comment on a repository issue
+  - Parameters: repository (owner/repo), issue_number (positive integer), comment (non-empty string)
+  - Returns: Comment creation confirmation with metadata
 - List Issues: show all open issues on the current repository
 - Open Issue: create a new issue with details about a feature request or a bug
 - Close Issue: close an issue that has been answered or completed

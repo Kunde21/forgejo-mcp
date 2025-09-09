@@ -80,3 +80,54 @@ func (s *Server) handleListIssues(ctx context.Context, request *mcp.CallToolRequ
 	}
 	return TextResultf("Found %d issues", len(issues)), IssueList{Issues: issues}, nil
 }
+
+// CommentResult represents the result data for the create_issue_comment tool.
+type CommentResult struct {
+	Comment gitea.IssueComment `json:"comment"`
+}
+
+// handleCreateIssueComment handles the "create_issue_comment" tool request.
+// It creates a new comment on a specified Forgejo/Gitea issue.
+//
+// Parameters:
+//   - repository: The repository path in "owner/repo" format
+//   - issue_number: The issue number to comment on (must be positive)
+//   - comment: The comment content (cannot be empty)
+//
+// Returns:
+//   - Success: Comment creation confirmation with metadata
+//   - Error: Validation errors or API failures
+//
+// Migration Note: Implements MCP SDK v0.4.0 handler signature with ozzo-validation
+// for parameter validation and structured error responses.
+func (s *Server) handleCreateIssueComment(ctx context.Context, request *mcp.CallToolRequest, args struct {
+	Repository  string `json:"repository"`
+	IssueNumber int    `json:"issue_number"`
+	Comment     string `json:"comment"`
+}) (*mcp.CallToolResult, any, error) {
+	// Validate context - required for proper request handling
+	if ctx == nil {
+		return TextError("Context is required"), nil, nil
+	}
+
+	// Validate input arguments using ozzo-validation
+	if err := v.ValidateStruct(&args,
+		v.Field(&args.Repository, v.Required),
+		v.Field(&args.IssueNumber, v.Min(1)),
+		v.Field(&args.Comment, v.Required, v.Length(1, 0)), // Non-empty string
+	); err != nil {
+		return TextErrorf("Invalid request: %v", err), nil, nil
+	}
+
+	// Create the comment using the service layer
+	comment, err := s.giteaService.CreateIssueComment(ctx, args.Repository, args.IssueNumber, args.Comment)
+	if err != nil {
+		return TextErrorf("Failed to create comment: %v", err), nil, nil
+	}
+
+	// Format success response with comment metadata
+	responseText := fmt.Sprintf("Comment created successfully. ID: %d, Created: %s\nComment body: %s",
+		comment.ID, comment.Created, comment.Content)
+
+	return TextResult(responseText), CommentResult{Comment: *comment}, nil
+}
