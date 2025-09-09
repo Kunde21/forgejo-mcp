@@ -59,3 +59,32 @@ func (c *GiteaClient) ListIssues(ctx context.Context, repo string, limit, offset
 
 	return issues, nil
 }
+
+// CreateIssueComment creates a comment on the specified issue
+func (c *GiteaClient) CreateIssueComment(ctx context.Context, repo string, issueNumber int, comment string) (*IssueComment, error) {
+	// Parse repository string (format: "owner/repo")
+	owner, repoName, ok := strings.Cut(repo, "/")
+	if !ok {
+		return nil, fmt.Errorf("invalid repository format: %s, expected 'owner/repo'", repo)
+	}
+
+	// Create comment using Gitea SDK
+	opts := gitea.CreateIssueCommentOption{
+		Body: comment,
+	}
+
+	giteaComment, _, err := c.client.CreateIssueComment(owner, repoName, int64(issueNumber), opts)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create issue comment: %w", err)
+	}
+
+	// Convert to our IssueComment struct
+	issueComment := &IssueComment{
+		ID:      int(giteaComment.ID),
+		Content: giteaComment.Body,
+		Author:  giteaComment.Poster.UserName,
+		Created: giteaComment.Created.Format("2006-01-02T15:04:05Z"),
+	}
+
+	return issueComment, nil
+}

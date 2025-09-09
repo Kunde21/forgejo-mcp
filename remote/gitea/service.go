@@ -4,15 +4,16 @@ import (
 	"context"
 	"fmt"
 	"regexp"
+	"strings"
 )
 
 // Service provides business logic for Gitea operations
 type Service struct {
-	client IssueLister
+	client GiteaClientInterface
 }
 
 // NewService creates a new Gitea service
-func NewService(client IssueLister) *Service {
+func NewService(client GiteaClientInterface) *Service {
 	return &Service{
 		client: client,
 	}
@@ -32,6 +33,27 @@ func (s *Service) ListIssues(ctx context.Context, repo string, limit, offset int
 
 	// Call the underlying client
 	return s.client.ListIssues(ctx, repo, limit, offset)
+}
+
+// CreateIssueComment creates a comment on an issue with validation
+func (s *Service) CreateIssueComment(ctx context.Context, repo string, issueNumber int, comment string) (*IssueComment, error) {
+	// Validate repository format
+	if err := s.validateRepository(repo); err != nil {
+		return nil, fmt.Errorf("repository validation failed: %w", err)
+	}
+
+	// Validate issue number
+	if err := s.validateIssueNumber(issueNumber); err != nil {
+		return nil, fmt.Errorf("issue number validation failed: %w", err)
+	}
+
+	// Validate comment content
+	if err := s.validateCommentContent(comment); err != nil {
+		return nil, fmt.Errorf("comment content validation failed: %w", err)
+	}
+
+	// Call the underlying client
+	return s.client.CreateIssueComment(ctx, repo, issueNumber, comment)
 }
 
 // validateRepository checks if the repository string is in the correct format
@@ -56,6 +78,26 @@ func (s *Service) validatePagination(limit, offset int) error {
 	}
 	if offset < 0 {
 		return fmt.Errorf("offset must be non-negative")
+	}
+	return nil
+}
+
+// validateIssueNumber checks if the issue number is valid
+func (s *Service) validateIssueNumber(issueNumber int) error {
+	if issueNumber < 1 {
+		return fmt.Errorf("issue number must be positive")
+	}
+	return nil
+}
+
+// validateCommentContent checks if the comment content is valid
+func (s *Service) validateCommentContent(comment string) error {
+	if comment == "" {
+		return fmt.Errorf("comment content cannot be empty")
+	}
+	// Trim whitespace and check again
+	if len(strings.TrimSpace(comment)) == 0 {
+		return fmt.Errorf("comment content cannot be only whitespace")
 	}
 	return nil
 }

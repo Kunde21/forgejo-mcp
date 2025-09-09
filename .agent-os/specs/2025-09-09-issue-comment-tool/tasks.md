@@ -8,34 +8,34 @@ These are the tasks to be completed for the spec detailed in @.agent-os/specs/20
 ## Tasks
 
 ### 1. Interface Extension (remote/gitea/interface.go)
-1.1 Write tests for IssueCommenter interface and IssueComment struct
-1.2 Define IssueCommenter interface with CreateIssueComment method signature
-1.3 Define IssueComment struct for comment data representation
-1.4 Ensure interface consistency with existing IssueLister pattern
-1.5 Add interface documentation with godoc comments
-1.6 Verify interface compiles without breaking existing code
-1.7 Run interface tests to validate structure
-1.8 Verify all tests pass
+1.1 [x] Write tests for IssueCommenter interface and IssueComment struct
+1.2 [x] Define IssueCommenter interface with CreateIssueComment method signature
+1.3 [x] Define IssueComment struct for comment data representation
+1.4 [x] Ensure interface consistency with existing IssueLister pattern
+1.5 [x] Add interface documentation with godoc comments
+1.6 [x] Verify interface compiles without breaking existing code
+1.7 [x] Run interface tests to validate structure
+1.8 [x] Verify all tests pass
 
 ### 2. Client Implementation (remote/gitea/gitea_client.go)
-2.1 Write tests for CreateIssueComment method implementation
-2.2 Implement CreateIssueComment method using Gitea SDK
-2.3 Add repository parsing logic (owner/repo format)
-2.4 Implement conversion between Gitea SDK comment types and internal IssueComment struct
-2.5 Add proper error handling with context preservation
-2.6 Add method documentation with godoc comments
-2.7 Ensure client follows existing patterns from ListIssues implementation
-2.8 Verify all tests pass
+2.1 [x] Write tests for CreateIssueComment method implementation
+2.2 [x] Implement CreateIssueComment method using Gitea SDK
+2.3 [x] Add repository parsing logic (owner/repo format)
+2.4 [x] Implement conversion between Gitea SDK comment types and internal IssueComment struct
+2.5 [x] Add proper error handling with context preservation
+2.6 [x] Add method documentation with godoc comments
+2.7 [x] Ensure client follows existing patterns from ListIssues implementation
+2.8 [x] Verify all tests pass
 
 ### 3. Service Layer (remote/gitea/service.go)
-3.1 Write tests for service comment creation functionality
-3.2 Extend Service struct to implement IssueCommenter interface
-3.3 Add comment creation business logic method
-3.4 Implement repository format validation using regex patterns
-3.5 Add issue number validation (positive integer check)
-3.6 Implement comment content validation (non-empty check)
-3.7 Add service method documentation with godoc comments
-3.8 Verify all tests pass
+3.1 [x] Write tests for service comment creation functionality
+3.2 [x] Extend Service struct to implement IssueCommenter interface
+3.3 [x] Add comment creation business logic method
+3.4 [x] Implement repository format validation using regex patterns
+3.5 [x] Add issue number validation (positive integer check)
+3.6 [x] Implement comment content validation (non-empty check)
+3.7 [x] Add service method documentation with godoc comments
+3.8 [x] Verify all tests pass
 
 ### 4. MCP Handler (server/handlers.go)
 4.1 Write tests for handleCreateIssueComment handler function
