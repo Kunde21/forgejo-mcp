@@ -9,8 +9,8 @@ import (
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
-// TestCreateIssueCommentToolSuccess tests successful comment creation
-func TestCreateIssueCommentToolSuccess(t *testing.T) {
+// TestCreateIssueCommentToolSuccessHTTP tests successful comment creation with HTTP-based MockGiteaServer
+func TestCreateIssueCommentToolSuccessHTTP(t *testing.T) {
 	ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
 	t.Cleanup(cancel)
 
@@ -31,7 +31,7 @@ func TestCreateIssueCommentToolSuccess(t *testing.T) {
 		Arguments: map[string]any{
 			"repository":   "testuser/testrepo",
 			"issue_number": 42,
-			"comment":      "This is a test comment",
+			"comment":      "This is a test comment via HTTP",
 		},
 	})
 	if err != nil {
@@ -57,8 +57,8 @@ func TestCreateIssueCommentToolSuccess(t *testing.T) {
 	}
 }
 
-// TestCreateIssueCommentToolValidationErrors tests parameter validation
-func TestCreateIssueCommentToolValidationErrors(t *testing.T) {
+// TestCreateIssueCommentToolValidationErrorsHTTP tests parameter validation with HTTP-based MockGiteaServer
+func TestCreateIssueCommentToolValidationErrorsHTTP(t *testing.T) {
 	ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
 	t.Cleanup(cancel)
 
@@ -167,8 +167,8 @@ func TestCreateIssueCommentToolValidationErrors(t *testing.T) {
 	}
 }
 
-// TestCreateIssueCommentToolAPIError tests API error scenarios
-func TestCreateIssueCommentToolAPIError(t *testing.T) {
+// TestCreateIssueCommentToolAPIErrorHTTP tests API error scenarios with HTTP-based MockGiteaServer
+func TestCreateIssueCommentToolAPIErrorHTTP(t *testing.T) {
 	ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
 	t.Cleanup(cancel)
 
@@ -184,7 +184,7 @@ func TestCreateIssueCommentToolAPIError(t *testing.T) {
 	}
 	client := ts.Client()
 
-	// Test with repository that doesn't exist (mock will return error)
+	// Test with repository that doesn't exist (mock will return 404)
 	result, err := client.CallTool(ctx, &mcp.CallToolParams{
 		Name: "create_issue_comment",
 		Arguments: map[string]any{
@@ -199,8 +199,8 @@ func TestCreateIssueCommentToolAPIError(t *testing.T) {
 	}
 }
 
-// TestCreateIssueCommentToolCancelledContext tests context cancellation
-func TestCreateIssueCommentToolCancelledContext(t *testing.T) {
+// TestCreateIssueCommentToolCancelledContextHTTP tests context cancellation with HTTP-based MockGiteaServer
+func TestCreateIssueCommentToolCancelledContextHTTP(t *testing.T) {
 	ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
 	t.Cleanup(cancel)
 

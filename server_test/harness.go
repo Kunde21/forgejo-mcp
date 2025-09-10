@@ -4,17 +4,14 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"maps"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"sync"
 	"testing"
-	"time"
 
 	"github.com/kunde21/forgejo-mcp/config"
-	giteamcp "github.com/kunde21/forgejo-mcp/remote/gitea"
 	"github.com/kunde21/forgejo-mcp/server"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
@@ -47,74 +44,17 @@ type MockIssue struct {
 
 // MockComment represents a mock comment for testing
 type MockComment struct {
-	ID      int    `json:"id"`
-	Content string `json:"content"`
-	Author  string `json:"author"`
-	Created string `json:"created"`
+	ID        int             `json:"id"`
+	Body      string          `json:"body"`
+	CreatedAt string          `json:"created_at"`
+	UpdatedAt string          `json:"updated_at"`
+	User      MockCommentUser `json:"user"`
 }
 
-// MockGiteaClient implements GiteaClientInterface for testing
-type MockGiteaClient struct {
-	issues   map[string][]giteamcp.Issue
-	comments map[string][]*giteamcp.IssueComment
-	nextID   int
-}
-
-// NewMockGiteaClient creates a new mock Gitea client
-func NewMockGiteaClient() *MockGiteaClient {
-	return &MockGiteaClient{
-		issues:   make(map[string][]giteamcp.Issue),
-		comments: make(map[string][]*giteamcp.IssueComment),
-		nextID:   1,
-	}
-}
-
-// ListIssues implements IssueLister interface
-func (m *MockGiteaClient) ListIssues(ctx context.Context, repo string, limit, offset int) ([]giteamcp.Issue, error) {
-	issues, exists := m.issues[repo]
-	if !exists {
-		return nil, fmt.Errorf("repository not found")
-	}
-
-	// Apply pagination
-	start := offset
-	end := start + limit
-	if start > len(issues) {
-		return []giteamcp.Issue{}, nil
-	}
-	if end > len(issues) {
-		end = len(issues)
-	}
-
-	return issues[start:end], nil
-}
-
-// CreateIssueComment implements IssueCommenter interface
-func (m *MockGiteaClient) CreateIssueComment(ctx context.Context, repo string, issueNumber int, comment string) (*giteamcp.IssueComment, error) {
-	// Simulate error for nonexistent repositories
-	if repo == "nonexistent/repo" {
-		return nil, fmt.Errorf("repository not found")
-	}
-
-	// Create mock comment
-	mockComment := &giteamcp.IssueComment{
-		ID:      m.nextID,
-		Content: comment,
-		Author:  "testuser",
-		Created: time.Now().Format("2006-01-02T15:04:05Z"),
-	}
-	m.nextID++
-
-	// Store comment
-	key := repo + "/comments"
-	m.comments[key] = append(m.comments[key], mockComment)
-
-	return mockComment, nil
-}
-
-// AddMockIssues adds mock issues for testing
-func (m *MockGiteaClient) AddMockIssues(repo string, issues []giteamcp.Issue) {
-	m.issues[repo] = issues
+// MockCommentUser represents the user who created the comment
+type MockCommentUser struct {
+	ID       int    `json:"id"`
+	Username string `json:"username"`
 }
 
 // NewMockGiteaServer creates a new mock Gitea server
@@ -195,6 +135,12 @@ func (m *MockGiteaServer) handleRepoRequests(w http.ResponseWriter, r *http.Requ
 		repo := pathParts[1]
 		repoKey := owner + "/" + repo
 
+		// Check if repository exists (simulate API error for nonexistent repos)
+		if repoKey == "nonexistent/repo" {
+			http.NotFound(w, r)
+			return
+		}
+
 		// Parse comment from request body
 		var commentReq struct {
 			Body string `json:"body"`
@@ -206,10 +152,14 @@ func (m *MockGiteaServer) handleRepoRequests(w http.ResponseWriter, r *http.Requ
 
 		// Create mock comment
 		comment := MockComment{
-			ID:      m.nextID,
-			Content: commentReq.Body,
-			Author:  "testuser",
-			Created: "2025-09-09T10:30:00Z",
+			ID:        m.nextID,
+			Body:      commentReq.Body,
+			CreatedAt: "2025-09-09T10:30:00Z",
+			UpdatedAt: "2025-09-09T10:30:00Z",
+			User: MockCommentUser{
+				ID:       1,
+				Username: "testuser",
+			},
 		}
 		m.nextID++
 
@@ -228,11 +178,6 @@ func (m *MockGiteaServer) handleRepoRequests(w http.ResponseWriter, r *http.Requ
 
 // NewTestServer creates a new TestServer instance
 func NewTestServer(t *testing.T, ctx context.Context, env map[string]string) *TestServer {
-	return NewTestServerWithClient(t, ctx, env, nil)
-}
-
-// NewTestServerWithClient creates a new TestServer instance with an optional mock client
-func NewTestServerWithClient(t *testing.T, ctx context.Context, env map[string]string, mockClient giteamcp.GiteaClientInterface) *TestServer {
 	if ctx == nil {
 		ctx = t.Context()
 	}
@@ -242,28 +187,12 @@ func NewTestServerWithClient(t *testing.T, ctx context.Context, env map[string]s
 		"FORGEJO_AUTH_TOKEN": "test-token",
 	}
 	maps.Copy(defaults, env)
-	clEnv := []string{}
-	for key, value := range env {
-		clEnv = append(clEnv, key+"="+value)
-	}
 
-	var srv *server.Server
-	var err error
-
-	if mockClient != nil {
-		// Use mock client for testing
-		mockService := giteamcp.NewService(mockClient)
-		srv, err = server.NewFromService(mockService, &config.Config{
-			RemoteURL: defaults["FORGEJO_REMOTE_URL"],
-			AuthToken: defaults["FORGEJO_AUTH_TOKEN"],
-		})
-	} else {
-		// Use real client
-		srv, err = server.NewFromConfig(&config.Config{
-			RemoteURL: defaults["FORGEJO_REMOTE_URL"],
-			AuthToken: defaults["FORGEJO_AUTH_TOKEN"],
-		})
-	}
+	// Use real client
+	srv, err := server.NewFromConfig(&config.Config{
+		RemoteURL: defaults["FORGEJO_REMOTE_URL"],
+		AuthToken: defaults["FORGEJO_AUTH_TOKEN"],
+	})
 
 	if err != nil {
 		t.Fatal(err)
@@ -310,6 +239,7 @@ func NewTestServerWithClient(t *testing.T, ctx context.Context, env map[string]s
 	})
 	return ts
 }
+
 func (ts *TestServer) Client() *mcp.ClientSession { return ts.session }
 
 // IsRunning checks if the server process is running
