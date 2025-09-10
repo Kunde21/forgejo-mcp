@@ -50,14 +50,15 @@ func TestToolDiscovery(t *testing.T) {
 		t.Fatalf("Failed to list tools: %v", err)
 	}
 	// Check that we have the expected tools
-	if len(tools.Tools) != 3 {
-		t.Fatalf("Expected 3 tools, got %d", len(tools.Tools))
+	if len(tools.Tools) != 4 {
+		t.Fatalf("Expected 4 tools, got %d", len(tools.Tools))
 	}
 
 	// Find tools
 	var helloTool *mcp.Tool
 	var listIssuesTool *mcp.Tool
 	var createCommentTool *mcp.Tool
+	var listCommentsTool *mcp.Tool
 	for _, tool := range tools.Tools {
 		switch tool.Name {
 		case "hello":
@@ -66,6 +67,8 @@ func TestToolDiscovery(t *testing.T) {
 			listIssuesTool = tool
 		case "create_issue_comment":
 			createCommentTool = tool
+		case "list_issue_comments":
+			listCommentsTool = tool
 		}
 	}
 
@@ -88,6 +91,13 @@ func TestToolDiscovery(t *testing.T) {
 	}
 	if createCommentTool.Description != "Create a comment on a Forgejo/Gitea repository issue" {
 		t.Errorf("Expected create_issue_comment tool description 'Create a comment on a Forgejo/Gitea repository issue', got '%s'", createCommentTool.Description)
+	}
+
+	if listCommentsTool == nil {
+		t.Fatal("list_issue_comments tool not found")
+	}
+	if listCommentsTool.Description != "List comments from a Forgejo/Gitea repository issue with pagination support" {
+		t.Errorf("Expected list_issue_comments tool description 'List comments from a Forgejo/Gitea repository issue with pagination support', got '%s'", listCommentsTool.Description)
 	}
 
 	// Verify tool has input schema

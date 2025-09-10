@@ -15,12 +15,15 @@ import (
 func TextResult(msg string) *mcp.CallToolResult {
 	return &mcp.CallToolResult{Content: []mcp.Content{&mcp.TextContent{Text: msg}}}
 }
+
 func TextResultf(format string, args ...any) *mcp.CallToolResult {
 	return &mcp.CallToolResult{Content: []mcp.Content{&mcp.TextContent{Text: fmt.Sprintf(format, args...)}}}
 }
+
 func TextError(msg string) *mcp.CallToolResult {
 	return &mcp.CallToolResult{Content: []mcp.Content{&mcp.TextContent{Text: msg}}, IsError: true}
 }
+
 func TextErrorf(format string, args ...any) *mcp.CallToolResult {
 	return &mcp.CallToolResult{Content: []mcp.Content{&mcp.TextContent{Text: fmt.Sprintf(format, args...)}}, IsError: true}
 }
@@ -137,4 +140,72 @@ func (s *Server) handleCreateIssueComment(ctx context.Context, request *mcp.Call
 
 	return TextResultf("Comment created successfully. ID: %d, Created: %s\nComment body: %s",
 		comment.ID, comment.Created, comment.Content), &CommentResult{Comment: *comment}, nil
+}
+
+// CommentListResult represents the result data for the list_issue_comments tool.
+type CommentListResult struct {
+	Comments []gitea.IssueComment `json:"comments"`
+	Total    int                  `json:"total"`
+	Limit    int                  `json:"limit"`
+	Offset   int                  `json:"offset"`
+}
+
+// handleListIssueComments handles the "list_issue_comments" tool request.
+// It retrieves comments from a specified Forgejo/Gitea issue with optional pagination.
+//
+// Parameters:
+//   - repository: The repository path in "owner/repo" format
+//   - issue_number: The issue number to list comments from (must be positive)
+//   - limit: Maximum number of comments to return (1-100, default 15)
+//   - offset: Number of comments to skip for pagination (default 0)
+//
+// Returns:
+//   - Success: Comment list with pagination metadata
+//   - Error: Validation errors or API failures
+//
+// Migration Note: Implements MCP SDK v0.4.0 handler signature with ozzo-validation
+// for parameter validation and structured error responses.
+func (s *Server) handleListIssueComments(ctx context.Context, request *mcp.CallToolRequest, args struct {
+	Repository  string `json:"repository"`
+	IssueNumber int    `json:"issue_number"`
+	Limit       int    `json:"limit"`
+	Offset      int    `json:"offset"`
+}) (*mcp.CallToolResult, any, error) {
+	// Set default limit if not provided
+	if args.Limit == 0 {
+		args.Limit = 15
+	}
+
+	// Validate input arguments using ozzo-validation
+	if err := v.ValidateStruct(&args,
+		v.Field(&args.Repository, v.Required),
+		v.Field(&args.IssueNumber, v.Min(1)),
+		v.Field(&args.Limit, v.Min(1), v.Max(100)),
+		v.Field(&args.Offset, v.Min(0)),
+	); err != nil {
+		return TextErrorf("Invalid request: %v", err), nil, nil
+	}
+
+	// Fetch comments from the Gitea/Forgejo repository
+	commentList, err := s.giteaService.ListIssueComments(ctx, args.Repository, args.IssueNumber, args.Limit, args.Offset)
+	if err != nil {
+		return TextErrorf("Failed to list issue comments: %v", err), nil, nil
+	}
+
+	// Format success response with comment count and pagination info
+	endIndex := args.Offset + len(commentList.Comments)
+	if endIndex > commentList.Total {
+		endIndex = commentList.Total
+	}
+	responseText := fmt.Sprintf("Found %d comments (showing %d-%d)",
+		commentList.Total,
+		args.Offset+1,
+		endIndex)
+
+	return TextResult(responseText), CommentListResult{
+		Comments: commentList.Comments,
+		Total:    commentList.Total,
+		Limit:    commentList.Limit,
+		Offset:   commentList.Offset,
+	}, nil
 }

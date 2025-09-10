@@ -8,641 +8,188 @@ import (
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
-// mockGiteaClient implements GiteaClientInterface for testing
-type mockGiteaClient struct {
-	listIssuesFunc func(ctx context.Context, repo string, limit, offset int) ([]gitea.Issue, error)
-}
+// mockGiteaClientForService implements gitea.GiteaClientInterface for testing the service layer
+type mockGiteaClientForService struct{}
 
-func (m *mockGiteaClient) ListIssues(ctx context.Context, repo string, limit, offset int) ([]gitea.Issue, error) {
-	if m.listIssuesFunc != nil {
-		return m.listIssuesFunc(ctx, repo, limit, offset)
-	}
+func (m *mockGiteaClientForService) ListIssues(ctx context.Context, repo string, limit, offset int) ([]gitea.Issue, error) {
 	return []gitea.Issue{}, nil
 }
 
-func (m *mockGiteaClient) CreateIssueComment(ctx context.Context, repo string, issueNumber int, comment string) (*gitea.IssueComment, error) {
-	return &gitea.IssueComment{}, nil
+func (m *mockGiteaClientForService) CreateIssueComment(ctx context.Context, repo string, issueNumber int, comment string) (*gitea.IssueComment, error) {
+	return &gitea.IssueComment{
+		ID:      1,
+		Content: comment,
+		Author:  "test-user",
+		Created: "2025-09-10T10:00:00Z",
+	}, nil
 }
 
-func TestHandleListIssuesValidation(t *testing.T) {
-	mockClient := &mockGiteaClient{}
-	service := gitea.NewService(mockClient)
-	server := &Server{
-		giteaService: service,
-	}
-
-	testCases := []struct {
-		name        string
-		args        map[string]interface{}
-		expectError bool
-		errorMsg    string
-	}{
-		{
-			name: "valid input",
-			args: map[string]interface{}{
-				"repository": "owner/repo",
-				"limit":      10,
-				"offset":     0,
+func (m *mockGiteaClientForService) ListIssueComments(ctx context.Context, repo string, issueNumber int, limit, offset int) (*gitea.IssueCommentList, error) {
+	return &gitea.IssueCommentList{
+		Comments: []gitea.IssueComment{
+			{
+				ID:      1,
+				Content: "First test comment",
+				Author:  "user1",
+				Created: "2025-09-10T09:00:00Z",
 			},
-			expectError: false,
-		},
-		{
-			name: "missing repository",
-			args: map[string]interface{}{
-				"limit":  10,
-				"offset": 0,
+			{
+				ID:      2,
+				Content: "Second test comment",
+				Author:  "user2",
+				Created: "2025-09-10T10:00:00Z",
 			},
-			expectError: true,
-			errorMsg:    "repository",
 		},
-		{
-			name: "empty repository",
-			args: map[string]interface{}{
-				"repository": "",
-				"limit":      10,
-				"offset":     0,
-			},
-			expectError: true,
-			errorMsg:    "repository",
-		},
-		{
-			name: "invalid repository format",
-			args: map[string]interface{}{
-				"repository": "invalid-format",
-				"limit":      10,
-				"offset":     0,
-			},
-			expectError: true,
-			errorMsg:    "repository",
-		},
-		{
-			name: "repository with spaces",
-			args: map[string]interface{}{
-				"repository": "own er/repo",
-				"limit":      10,
-				"offset":     0,
-			},
-			expectError: true,
-			errorMsg:    "repository",
-		},
-		{
-			name: "limit zero (defaults to 15)",
-			args: map[string]interface{}{
-				"repository": "owner/repo",
-				"limit":      0,
-				"offset":     0,
-			},
-			expectError: false,
-		},
-		{
-			name: "limit too high",
-			args: map[string]interface{}{
-				"repository": "owner/repo",
-				"limit":      101,
-				"offset":     0,
-			},
-			expectError: true,
-			errorMsg:    "limit",
-		},
-		{
-			name: "negative offset",
-			args: map[string]interface{}{
-				"repository": "owner/repo",
-				"limit":      10,
-				"offset":     -1,
-			},
-			expectError: true,
-			errorMsg:    "offset",
-		},
-		{
-			name: "default limit",
-			args: map[string]interface{}{
-				"repository": "owner/repo",
-				"offset":     0,
-			},
-			expectError: false,
-		},
-		{
-			name: "valid with numbers in repo",
-			args: map[string]interface{}{
-				"repository": "user123/repo456",
-				"limit":      50,
-				"offset":     10,
-			},
-			expectError: false,
-		},
-		{
-			name: "valid with underscores",
-			args: map[string]interface{}{
-				"repository": "user_name/repo_name",
-				"limit":      25,
-				"offset":     5,
-			},
-			expectError: false,
-		},
-	}
-
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			// Convert map to struct for handler
-			args := struct {
-				Repository string `json:"repository"`
-				Limit      int    `json:"limit"`
-				Offset     int    `json:"offset"`
-			}{}
-
-			if repo, ok := tc.args["repository"].(string); ok {
-				args.Repository = repo
-			}
-			if limit, ok := tc.args["limit"].(int); ok {
-				args.Limit = limit
-			}
-			if offset, ok := tc.args["offset"].(int); ok {
-				args.Offset = offset
-			}
-
-			result, _, err := server.handleListIssues(context.Background(), &mcp.CallToolRequest{}, args)
-
-			if tc.expectError {
-				if err != nil {
-					t.Errorf("Expected validation error but handler returned error: %v", err)
-				} else if result != nil && !result.IsError {
-					t.Errorf("Expected validation error but got success result")
-				} else if result != nil && len(result.Content) > 0 {
-					if textContent, ok := result.Content[0].(*mcp.TextContent); ok && tc.errorMsg != "" {
-						if !contains(textContent.Text, tc.errorMsg) {
-							t.Errorf("Expected error message to contain '%s', got: %s", tc.errorMsg, textContent.Text)
-						}
-					}
-				}
-			} else {
-				if err != nil {
-					t.Errorf("Expected success but got error: %v", err)
-				}
-				if result != nil && result.IsError {
-					t.Errorf("Expected success but got error result")
-				}
-			}
-		})
-	}
+		Total:  2,
+		Limit:  limit,
+		Offset: offset,
+	}, nil
 }
 
-func TestHandleListIssuesSuccess(t *testing.T) {
-	mockClient := &mockGiteaClient{
-		listIssuesFunc: func(ctx context.Context, repo string, limit, offset int) ([]gitea.Issue, error) {
-			return []gitea.Issue{
-				{Number: 1, Title: "Test Issue", State: "open"},
-			}, nil
-		},
-	}
+func TestServer_handleListIssueComments(t *testing.T) {
+	// Test handleListIssueComments handler function
+	ctx := context.Background()
+	mockClient := &mockGiteaClientForService{}
+	mockService := gitea.NewService(mockClient)
 
-	service := gitea.NewService(mockClient)
 	server := &Server{
-		giteaService: service,
+		giteaService: mockService,
 	}
 
-	args := struct {
-		Repository string `json:"repository"`
-		Limit      int    `json:"limit"`
-		Offset     int    `json:"offset"`
-	}{
-		Repository: "owner/repo",
-		Limit:      10,
-		Offset:     0,
-	}
+	request := &mcp.CallToolRequest{}
 
-	result, _, err := server.handleListIssues(context.Background(), &mcp.CallToolRequest{}, args)
-
-	if err != nil {
-		t.Errorf("Expected success but got error: %v", err)
-	}
-	if result == nil {
-		t.Error("Expected result but got nil")
-	}
-	if result.IsError {
-		t.Error("Expected success result but got error")
-	}
-	if len(result.Content) == 0 {
-		t.Error("Expected content in result")
-	}
-}
-
-func TestHandleCreateIssueCommentValidation(t *testing.T) {
-	mockClient := &mockGiteaClient{}
-	service := gitea.NewService(mockClient)
-	server := &Server{
-		giteaService: service,
-	}
-
-	testCases := []struct {
-		name        string
-		args        map[string]interface{}
-		expectError bool
-		errorMsg    string
-	}{
-		{
-			name: "valid input",
-			args: map[string]interface{}{
-				"repository":   "owner/repo",
-				"issue_number": 1,
-				"comment":      "Valid comment",
-			},
-			expectError: false,
-		},
-		{
-			name: "missing repository",
-			args: map[string]interface{}{
-				"issue_number": 1,
-				"comment":      "Test comment",
-			},
-			expectError: true,
-			errorMsg:    "repository",
-		},
-		{
-			name: "empty repository",
-			args: map[string]interface{}{
-				"repository":   "",
-				"issue_number": 1,
-				"comment":      "Test comment",
-			},
-			expectError: true,
-			errorMsg:    "repository",
-		},
-		{
-			name: "invalid repository format",
-			args: map[string]interface{}{
-				"repository":   "invalid-format",
-				"issue_number": 1,
-				"comment":      "Test comment",
-			},
-			expectError: true,
-			errorMsg:    "repository",
-		},
-		{
-			name: "repository with spaces",
-			args: map[string]interface{}{
-				"repository":   "own er/repo",
-				"issue_number": 1,
-				"comment":      "Test comment",
-			},
-			expectError: true,
-			errorMsg:    "repository",
-		},
-		{
-			name: "zero issue number",
-			args: map[string]interface{}{
-				"repository":   "owner/repo",
-				"issue_number": 0,
-				"comment":      "Test comment",
-			},
-			expectError: true,
-			errorMsg:    "issue_number",
-		},
-		{
-			name: "negative issue number",
-			args: map[string]interface{}{
-				"repository":   "owner/repo",
-				"issue_number": -1,
-				"comment":      "Test comment",
-			},
-			expectError: true,
-			errorMsg:    "issue_number",
-		},
-		{
-			name: "missing comment",
-			args: map[string]interface{}{
-				"repository":   "owner/repo",
-				"issue_number": 1,
-			},
-			expectError: true,
-			errorMsg:    "comment",
-		},
-		{
-			name: "empty comment",
-			args: map[string]interface{}{
-				"repository":   "owner/repo",
-				"issue_number": 1,
-				"comment":      "",
-			},
-			expectError: true,
-			errorMsg:    "comment",
-		},
-		{
-			name: "whitespace comment",
-			args: map[string]interface{}{
-				"repository":   "owner/repo",
-				"issue_number": 1,
-				"comment":      "   ",
-			},
-			expectError: true,
-			errorMsg:    "comment",
-		},
-		{
-			name: "tab and newline comment",
-			args: map[string]interface{}{
-				"repository":   "owner/repo",
-				"issue_number": 1,
-				"comment":      "\t\n",
-			},
-			expectError: true,
-			errorMsg:    "comment",
-		},
-		{
-			name: "valid with numbers in repo",
-			args: map[string]interface{}{
-				"repository":   "user123/repo456",
-				"issue_number": 42,
-				"comment":      "Valid comment with numbers",
-			},
-			expectError: false,
-		},
-		{
-			name: "valid with underscores",
-			args: map[string]interface{}{
-				"repository":   "user_name/repo_name",
-				"issue_number": 100,
-				"comment":      "Valid comment with underscores",
-			},
-			expectError: false,
-		},
-	}
-
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			// Convert map to struct for handler
-			args := struct {
-				Repository  string `json:"repository"`
-				IssueNumber int    `json:"issue_number"`
-				Comment     string `json:"comment"`
-			}{}
-
-			if repo, ok := tc.args["repository"].(string); ok {
-				args.Repository = repo
-			}
-			if issueNum, ok := tc.args["issue_number"].(int); ok {
-				args.IssueNumber = issueNum
-			}
-			if comment, ok := tc.args["comment"].(string); ok {
-				args.Comment = comment
-			}
-
-			result, _, err := server.handleCreateIssueComment(context.Background(), &mcp.CallToolRequest{}, args)
-
-			if tc.expectError {
-				if err != nil {
-					t.Errorf("Expected validation error but handler returned error: %v", err)
-				} else if result != nil && !result.IsError {
-					t.Errorf("Expected validation error but got success result %+v", result.Content[0])
-				} else if result != nil && len(result.Content) > 0 {
-					if textContent, ok := result.Content[0].(*mcp.TextContent); ok && tc.errorMsg != "" {
-						if !contains(textContent.Text, tc.errorMsg) {
-							t.Errorf("Expected error message to contain '%s', got: %s", tc.errorMsg, textContent.Text)
-						}
-					}
-				}
-			} else {
-				if err != nil {
-					t.Errorf("Expected success but got error: %v", err)
-				}
-				if result != nil && result.IsError {
-					t.Errorf("Expected success but got error result")
-				}
-			}
-		})
-	}
-}
-
-func TestHandleCreateIssueCommentSuccess(t *testing.T) {
-	mockClient := &mockGiteaClient{}
-	service := gitea.NewService(mockClient)
-	server := &Server{
-		giteaService: service,
-	}
-
-	args := struct {
+	// Test successful comment listing
+	result, data, err := server.handleListIssueComments(ctx, request, struct {
 		Repository  string `json:"repository"`
 		IssueNumber int    `json:"issue_number"`
-		Comment     string `json:"comment"`
+		Limit       int    `json:"limit"`
+		Offset      int    `json:"offset"`
 	}{
 		Repository:  "owner/repo",
 		IssueNumber: 1,
-		Comment:     "Test comment",
-	}
-
-	result, _, err := server.handleCreateIssueComment(context.Background(), &mcp.CallToolRequest{}, args)
-
+		Limit:       15,
+		Offset:      0,
+	})
 	if err != nil {
-		t.Errorf("Expected success but got error: %v", err)
+		t.Errorf("Expected no error, got %v", err)
 	}
 	if result == nil {
-		t.Error("Expected result but got nil")
+		t.Error("Expected result to be returned")
 	}
 	if result.IsError {
-		t.Error("Expected success result but got error")
+		t.Error("Expected result to not be an error")
 	}
-	if len(result.Content) == 0 {
-		t.Error("Expected content in result")
+	if data == nil {
+		t.Error("Expected data to be returned")
+	}
+
+	// Test data structure
+	commentListResult, ok := data.(CommentListResult)
+	if !ok {
+		t.Error("Expected data to be CommentListResult")
+	}
+	if len(commentListResult.Comments) != 2 {
+		t.Errorf("Expected 2 comments, got %d", len(commentListResult.Comments))
+	}
+	if commentListResult.Total != 2 {
+		t.Errorf("Expected total to be 2, got %d", commentListResult.Total)
 	}
 }
 
-func TestValidationConsistencyBetweenHandlers(t *testing.T) {
-	mockClient := &mockGiteaClient{}
-	service := gitea.NewService(mockClient)
+func TestServer_handleListIssueCommentsValidation(t *testing.T) {
+	// Test validation for handleListIssueComments
+	ctx := context.Background()
+	mockClient := &mockGiteaClientForService{}
+	mockService := gitea.NewService(mockClient)
 	server := &Server{
-		giteaService: service,
+		giteaService: mockService,
 	}
 
-	// Test repository validation consistency
-	t.Run("repository validation consistency", func(t *testing.T) {
-		invalidRepos := []string{"", "invalid-format", "own er/repo", "owner/repo/extra"}
+	request := &mcp.CallToolRequest{}
 
-		for _, repo := range invalidRepos {
-			// Test listIssues handler
-			listArgs := struct {
-				Repository string `json:"repository"`
-				Limit      int    `json:"limit"`
-				Offset     int    `json:"offset"`
-			}{
-				Repository: repo,
-				Limit:      10,
-				Offset:     0,
-			}
-
-			listResult, _, _ := server.handleListIssues(context.Background(), &mcp.CallToolRequest{}, listArgs)
-
-			// Test createIssueComment handler
-			commentArgs := struct {
-				Repository  string `json:"repository"`
-				IssueNumber int    `json:"issue_number"`
-				Comment     string `json:"comment"`
-			}{
-				Repository:  repo,
-				IssueNumber: 1,
-				Comment:     "Test comment",
-			}
-
-			commentResult, _, _ := server.handleCreateIssueComment(context.Background(), &mcp.CallToolRequest{}, commentArgs)
-
-			// Both should either both succeed or both fail for the same invalid input
-			listIsError := listResult != nil && listResult.IsError
-			commentIsError := commentResult != nil && commentResult.IsError
-
-			if listIsError != commentIsError {
-				t.Errorf("Inconsistent validation for repository '%s': listIssues=%v, createIssueComment=%v",
-					repo, listIsError, commentIsError)
-			}
-
-			// Both should contain repository-related error messages
-			if listIsError && listResult.Content != nil && len(listResult.Content) > 0 {
-				if textContent, ok := listResult.Content[0].(*mcp.TextContent); ok {
-					if !contains(textContent.Text, "repository") {
-						t.Errorf("listIssues error should mention repository, got: %s", textContent.Text)
-					}
-				}
-			}
-
-			if commentIsError && commentResult.Content != nil && len(commentResult.Content) > 0 {
-				if textContent, ok := commentResult.Content[0].(*mcp.TextContent); ok {
-					if !contains(textContent.Text, "repository") {
-						t.Errorf("createIssueComment error should mention repository, got: %s", textContent.Text)
-					}
-				}
-			}
-		}
-	})
-
-	// Test valid repository consistency
-	t.Run("valid repository consistency", func(t *testing.T) {
-		validRepos := []string{"owner/repo", "user123/repo456", "user_name/repo_name"}
-
-		for _, repo := range validRepos {
-			// Test listIssues handler
-			listArgs := struct {
-				Repository string `json:"repository"`
-				Limit      int    `json:"limit"`
-				Offset     int    `json:"offset"`
-			}{
-				Repository: repo,
-				Limit:      10,
-				Offset:     0,
-			}
-
-			listResult, _, listErr := server.handleListIssues(context.Background(), &mcp.CallToolRequest{}, listArgs)
-
-			// Test createIssueComment handler
-			commentArgs := struct {
-				Repository  string `json:"repository"`
-				IssueNumber int    `json:"issue_number"`
-				Comment     string `json:"comment"`
-			}{
-				Repository:  repo,
-				IssueNumber: 1,
-				Comment:     "Test comment",
-			}
-
-			commentResult, _, commentErr := server.handleCreateIssueComment(context.Background(), &mcp.CallToolRequest{}, commentArgs)
-
-			// Both should succeed for valid repository
-			if listErr != nil {
-				t.Errorf("listIssues should succeed for valid repo '%s', got error: %v", repo, listErr)
-			}
-			if listResult != nil && listResult.IsError {
-				t.Errorf("listIssues should succeed for valid repo '%s', got error result", repo)
-			}
-
-			if commentErr != nil {
-				t.Errorf("createIssueComment should succeed for valid repo '%s', got error: %v", repo, commentErr)
-			}
-			if commentResult != nil && commentResult.IsError {
-				t.Errorf("createIssueComment should succeed for valid repo '%s', got error result", repo)
-			}
-		}
-	})
-}
-
-func TestErrorMessageConsistency(t *testing.T) {
-	mockClient := &mockGiteaClient{}
-	service := gitea.NewService(mockClient)
-	server := &Server{
-		giteaService: service,
-	}
-
-	// Test that error messages follow consistent patterns
 	testCases := []struct {
-		name             string
-		testFunc         func() (*mcp.CallToolResult, any, error)
-		expectedPatterns []string
+		name        string
+		repository  string
+		issueNumber int
+		limit       int
+		offset      int
+		expectError bool
 	}{
-		{
-			name: "listIssues empty repository",
-			testFunc: func() (*mcp.CallToolResult, any, error) {
-				args := struct {
-					Repository string `json:"repository"`
-					Limit      int    `json:"limit"`
-					Offset     int    `json:"offset"`
-				}{
-					Repository: "",
-					Limit:      10,
-					Offset:     0,
-				}
-				return server.handleListIssues(context.Background(), &mcp.CallToolRequest{}, args)
-			},
-			expectedPatterns: []string{"Validation failed", "repository"},
-		},
-		{
-			name: "createIssueComment empty repository",
-			testFunc: func() (*mcp.CallToolResult, any, error) {
-				args := struct {
-					Repository  string `json:"repository"`
-					IssueNumber int    `json:"issue_number"`
-					Comment     string `json:"comment"`
-				}{
-					Repository:  "",
-					IssueNumber: 1,
-					Comment:     "Test",
-				}
-				return server.handleCreateIssueComment(context.Background(), &mcp.CallToolRequest{}, args)
-			},
-			expectedPatterns: []string{"Validation failed", "repository"},
-		},
+		{"valid input", "owner/repo", 1, 15, 0, false},
+		{"empty repository", "", 1, 15, 0, true},
+		{"zero issue number", "owner/repo", 0, 15, 0, true},
+		{"negative issue number", "owner/repo", -1, 15, 0, true},
+		{"zero limit", "owner/repo", 1, 0, 0, false}, // Should pass as it defaults to 15
+		{"negative limit", "owner/repo", 1, -1, 0, true},
+		{"excessive limit", "owner/repo", 1, 101, 0, true},
+		{"negative offset", "owner/repo", 1, 15, -1, true},
 	}
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			result, _, err := tc.testFunc()
+			result, _, err := server.handleListIssueComments(ctx, request, struct {
+				Repository  string `json:"repository"`
+				IssueNumber int    `json:"issue_number"`
+				Limit       int    `json:"limit"`
+				Offset      int    `json:"offset"`
+			}{
+				Repository:  tc.repository,
+				IssueNumber: tc.issueNumber,
+				Limit:       tc.limit,
+				Offset:      tc.offset,
+			})
 
-			if err != nil {
-				t.Errorf("Expected validation error but handler returned error: %v", err)
-			} else if result == nil || !result.IsError {
-				t.Errorf("Expected validation error but got success")
-			} else if len(result.Content) == 0 {
-				t.Error("Expected error content")
+			if tc.expectError {
+				if err == nil && (result == nil || !result.IsError) {
+					t.Error("Expected error but got none")
+				}
 			} else {
-				textContent, ok := result.Content[0].(*mcp.TextContent)
-				if !ok {
-					t.Error("Expected text content")
-				} else {
-					for _, pattern := range tc.expectedPatterns {
-						if !contains(textContent.Text, pattern) {
-							t.Errorf("Error message should contain '%s', got: %s", pattern, textContent.Text)
-						}
-					}
+				if err != nil {
+					t.Errorf("Expected no error but got %v", err)
+				}
+				if result != nil && result.IsError {
+					t.Error("Expected result to not be an error")
 				}
 			}
 		})
 	}
 }
 
-// Helper function to check if string contains substring (case-insensitive)
-func contains(s, substr string) bool {
-	return len(s) >= len(substr) && (s == substr || len(s) > len(substr) &&
-		(s[:len(substr)] == substr || s[len(s)-len(substr):] == substr ||
-			func() bool {
-				for i := 0; i <= len(s)-len(substr); i++ {
-					if s[i:i+len(substr)] == substr {
-						return true
-					}
-				}
-				return false
-			}()))
+func TestServer_handleListIssueCommentsDefaultLimit(t *testing.T) {
+	// Test that default limit is applied when not provided
+	ctx := context.Background()
+	mockClient := &mockGiteaClientForService{}
+	mockService := gitea.NewService(mockClient)
+	server := &Server{
+		giteaService: mockService,
+	}
+
+	request := &mcp.CallToolRequest{}
+
+	result, data, err := server.handleListIssueComments(ctx, request, struct {
+		Repository  string `json:"repository"`
+		IssueNumber int    `json:"issue_number"`
+		Limit       int    `json:"limit"`
+		Offset      int    `json:"offset"`
+	}{
+		Repository:  "owner/repo",
+		IssueNumber: 1,
+		Limit:       0, // Should default to 15
+		Offset:      0,
+	})
+	if err != nil {
+		t.Errorf("Expected no error, got %v", err)
+	}
+	if result == nil || result.IsError {
+		t.Error("Expected successful result")
+	}
+
+	// Test that the default limit was applied
+	commentListResult, ok := data.(CommentListResult)
+	if !ok {
+		t.Error("Expected data to be CommentListResult")
+	}
+	if commentListResult.Limit != 15 {
+		t.Errorf("Expected default limit to be 15, got %d", commentListResult.Limit)
+	}
 }

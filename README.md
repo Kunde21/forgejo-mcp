@@ -189,27 +189,83 @@ Response:
 }
 ```
 
-Response:
-```json
-{
-  "result": {
-    "content": [
-      {
-        "type": "text",
-        "text": "Comment created successfully. ID: 123, Created: 2025-09-09T10:30:00Z\nComment body: This is a helpful comment on the issue."
-      }
-    ],
-    "structured": {
-      "comment": {
-        "id": 123,
-        "content": "This is a helpful comment on the issue.",
-        "author": "testuser",
-        "created": "2025-09-09T10:30:00Z"
-      }
-    }
-  }
-}
-```
+ Response:
+ ```json
+ {
+   "result": {
+     "content": [
+       {
+         "type": "text",
+         "text": "Comment created successfully. ID: 123, Created: 2025-09-09T10:30:00Z\nComment body: This is a helpful comment on the issue."
+       }
+     ],
+     "structured": {
+       "comment": {
+         "id": 123,
+         "content": "This is a helpful comment on the issue.",
+         "author": "testuser",
+         "created": "2025-09-09T10:30:00Z"
+       }
+     }
+   }
+ }
+ ```
+
+ #### List Issue Comments
+
+ ```json
+ {
+   "method": "tools/call",
+   "params": {
+     "name": "list_issue_comments",
+     "arguments": {
+       "repository": "myorg/myrepo",
+       "issue_number": 42,
+       "limit": 10,
+       "offset": 0
+     }
+   }
+ }
+ ```
+
+ Response:
+ ```json
+ {
+   "result": {
+     "content": [
+       {
+         "type": "text",
+         "text": "Found 3 comments (showing 1-3)"
+       }
+     ],
+     "structured": {
+       "comments": [
+         {
+           "id": 1,
+           "content": "First comment on this issue",
+           "author": "developer1",
+           "created": "2025-09-10T09:15:00Z"
+         },
+         {
+           "id": 2,
+           "content": "Thanks for the update",
+           "author": "manager",
+           "created": "2025-09-10T10:30:00Z"
+         },
+         {
+           "id": 3,
+           "content": "I've implemented the requested changes",
+           "author": "developer1",
+           "created": "2025-09-10T14:45:00Z"
+         }
+       ],
+       "total": 3,
+       "limit": 10,
+       "offset": 0
+     }
+   }
+ }
+ ```
 
 ## Features
 
@@ -237,13 +293,16 @@ Tools List:
 
 Manage issues in your forgejo repository
 
-Tools List:
-- `list_issues`: List issues from a repository with pagination support
-  - Parameters: repository (owner/repo), limit (1-100), offset (0-based)
-  - Returns: Array of issues with number, title, and status
-- `create_issue_comment`: Create a comment on a repository issue
-  - Parameters: repository (owner/repo), issue_number (positive integer), comment (non-empty string)
-  - Returns: Comment creation confirmation with metadata
+ Tools List:
+ - `list_issues`: List issues from a repository with pagination support
+   - Parameters: repository (owner/repo), limit (1-100), offset (0-based)
+   - Returns: Array of issues with number, title, and status
+ - `create_issue_comment`: Create a comment on a repository issue
+   - Parameters: repository (owner/repo), issue_number (positive integer), comment (non-empty string)
+   - Returns: Comment creation confirmation with metadata
+ - `list_issue_comments`: List comments from a repository issue with pagination support
+   - Parameters: repository (owner/repo), issue_number (positive integer), limit (1-100, default 15), offset (0-based, default 0)
+   - Returns: Array of comments with ID, content, author, and creation timestamp
 - List Issues: show all open issues on the current repository
 - Open Issue: create a new issue with details about a feature request or a bug
 - Close Issue: close an issue that has been answered or completed

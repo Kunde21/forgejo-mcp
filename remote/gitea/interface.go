@@ -29,8 +29,30 @@ type IssueCommenter interface {
 	CreateIssueComment(ctx context.Context, repo string, issueNumber int, comment string) (*IssueComment, error)
 }
 
-// GiteaClientInterface combines IssueLister and IssueCommenter for complete Gitea operations
+// IssueCommentList represents a collection of comments with pagination metadata
+type IssueCommentList struct {
+	Comments []IssueComment `json:"comments"`
+	Total    int            `json:"total"`
+	Limit    int            `json:"limit"`
+	Offset   int            `json:"offset"`
+}
+
+// ListIssueCommentsArgs represents the arguments for listing issue comments with validation tags
+type ListIssueCommentsArgs struct {
+	Repository  string `json:"repository" validate:"required,regexp=^[a-zA-Z0-9._-]+/[a-zA-Z0-9._-]+$"`
+	IssueNumber int    `json:"issue_number" validate:"required,min=1"`
+	Limit       int    `json:"limit" validate:"min=1,max=100"`
+	Offset      int    `json:"offset" validate:"min=0"`
+}
+
+// IssueCommentLister defines the interface for listing comments from Git repository issues
+type IssueCommentLister interface {
+	ListIssueComments(ctx context.Context, repo string, issueNumber int, limit, offset int) (*IssueCommentList, error)
+}
+
+// GiteaClientInterface combines IssueLister, IssueCommenter, and IssueCommentLister for complete Gitea operations
 type GiteaClientInterface interface {
 	IssueLister
 	IssueCommenter
+	IssueCommentLister
 }

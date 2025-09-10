@@ -212,3 +212,58 @@ func TestListIssuesInvalidLimit(t *testing.T) {
 		t.Error("Expected error content in result")
 	}
 }
+
+// TestListIssueCommentsAcceptance tests the list_issue_comments tool with mock server
+func TestListIssueCommentsAcceptance(t *testing.T) {
+	// Set up mock Gitea server with comments
+	mock := NewMockGiteaServer(t)
+	mock.AddComments("testuser", "testrepo", []MockComment{
+		{ID: 1, Content: "First comment", Author: "user1", Created: "2025-09-10T09:00:00Z"},
+		{ID: 2, Content: "Second comment", Author: "user2", Created: "2025-09-10T10:00:00Z"},
+		{ID: 3, Content: "Third comment", Author: "user1", Created: "2025-09-10T11:00:00Z"},
+	})
+
+	ts := NewTestServer(t, t.Context(), map[string]string{
+		"FORGEJO_REMOTE_URL": mock.URL(),
+		"FORGEJO_AUTH_TOKEN": "mock-token",
+	})
+	if err := ts.Initialize(); err != nil {
+		t.Fatalf("Failed to initialize test server: %v", err)
+	}
+
+	// Test successful comment listing
+	result, err := ts.Client().CallTool(context.Background(), &mcp.CallToolParams{
+		Name: "list_issue_comments",
+		Arguments: map[string]any{
+			"repository":   "testuser/testrepo",
+			"issue_number": 1,
+			"limit":        10,
+			"offset":       0,
+		},
+	})
+	if err != nil {
+		t.Fatalf("Failed to call list_issue_comments tool: %v", err)
+	}
+
+	if result.Content == nil {
+		t.Error("Expected content in result")
+	}
+
+	// Test with pagination
+	result, err = ts.Client().CallTool(context.Background(), &mcp.CallToolParams{
+		Name: "list_issue_comments",
+		Arguments: map[string]any{
+			"repository":   "testuser/testrepo",
+			"issue_number": 1,
+			"limit":        2,
+			"offset":       1,
+		},
+	})
+	if err != nil {
+		t.Fatalf("Failed to call list_issue_comments tool with pagination: %v", err)
+	}
+
+	if result.Content == nil {
+		t.Error("Expected content in result with pagination")
+	}
+}

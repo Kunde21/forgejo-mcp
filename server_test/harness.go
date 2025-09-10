@@ -44,11 +44,10 @@ type MockIssue struct {
 
 // MockComment represents a mock comment for testing
 type MockComment struct {
-	ID        int             `json:"id"`
-	Body      string          `json:"body"`
-	CreatedAt string          `json:"created_at"`
-	UpdatedAt string          `json:"updated_at"`
-	User      MockCommentUser `json:"user"`
+	ID      int    `json:"id"`
+	Content string `json:"content"`
+	Author  string `json:"author"`
+	Created string `json:"created"`
 }
 
 // MockCommentUser represents the user who created the comment
@@ -150,22 +149,28 @@ func (m *MockGiteaServer) handleRepoRequests(w http.ResponseWriter, r *http.Requ
 			return
 		}
 
-		// Create mock comment
-		comment := MockComment{
-			ID:        m.nextID,
-			Body:      commentReq.Body,
-			CreatedAt: "2025-09-09T10:30:00Z",
-			UpdatedAt: "2025-09-09T10:30:00Z",
-			User: MockCommentUser{
-				ID:       1,
-				Username: "testuser",
+		// Create mock comment response that matches Gitea SDK format
+		comment := map[string]any{
+			"id":      m.nextID,
+			"body":    commentReq.Body,
+			"created": "2025-09-09T10:30:00Z",
+			"user": map[string]any{
+				"login": "testuser",
 			},
 		}
 		m.nextID++
 
+		// Store comment for listing
+		mockComment := MockComment{
+			ID:      m.nextID - 1, // Use the ID we just assigned
+			Content: commentReq.Body,
+			Author:  "testuser",
+			Created: "2025-09-09T10:30:00Z",
+		}
+
 		// Store comment
 		key := repoKey + "/comments"
-		m.comments[key] = append(m.comments[key], comment)
+		m.comments[key] = append(m.comments[key], mockComment)
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusCreated)

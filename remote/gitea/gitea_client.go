@@ -88,3 +88,48 @@ func (c *GiteaClient) CreateIssueComment(ctx context.Context, repo string, issue
 
 	return issueComment, nil
 }
+
+// ListIssueComments retrieves comments from the specified issue
+func (c *GiteaClient) ListIssueComments(ctx context.Context, repo string, issueNumber int, limit, offset int) (*IssueCommentList, error) {
+	// Parse repository string (format: "owner/repo")
+	owner, repoName, ok := strings.Cut(repo, "/")
+	if !ok {
+		return nil, fmt.Errorf("invalid repository format: %s, expected 'owner/repo'", repo)
+	}
+
+	// List comments using Gitea SDK
+	opts := gitea.ListIssueCommentOptions{
+		ListOptions: gitea.ListOptions{
+			PageSize: limit,
+			Page:     offset/limit + 1, // Gitea uses 1-based pagination
+		},
+	}
+
+	giteaComments, _, err := c.client.ListIssueComments(owner, repoName, int64(issueNumber), opts)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list issue comments: %w", err)
+	}
+
+	// Convert to our IssueComment struct
+	comments := make([]IssueComment, len(giteaComments))
+	for i, gc := range giteaComments {
+		comments[i] = IssueComment{
+			ID:      int(gc.ID),
+			Content: gc.Body,
+			Author:  gc.Poster.UserName,
+			Created: gc.Created.Format("2006-01-02T15:04:05Z"),
+		}
+	}
+
+	// Create IssueCommentList with pagination metadata
+	// Note: Gitea SDK doesn't provide total count in ListIssueComments response
+	// We return the actual number of comments returned as total
+	commentList := &IssueCommentList{
+		Comments: comments,
+		Total:    len(comments),
+		Limit:    limit,
+		Offset:   offset,
+	}
+
+	return commentList, nil
+}
