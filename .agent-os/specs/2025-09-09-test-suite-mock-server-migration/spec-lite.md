@@ -1,0 +1,3 @@
+# Spec Summary (Lite)
+
+Modernize the acceptance test suite by migrating from in-memory MockGiteaClient to HTTP-based MockGiteaServer across all test files. This migration will provide more realistic testing by exercising actual HTTP code paths, reduce code duplication by removing deprecated mock client code, and standardize the testing approach throughout the codebase. The deliverables include updated test files, cleaned up harness code, verified mock server functionality, and consistent test setup patterns.
