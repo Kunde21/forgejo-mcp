@@ -27,7 +27,7 @@ func TestCreateIssueCommentToolSuccess(t *testing.T) {
 	client := ts.Client()
 
 	result, err := client.CallTool(ctx, &mcp.CallToolParams{
-		Name: "create_issue_comment",
+		Name: "issue_comment_create",
 		Arguments: map[string]any{
 			"repository":   "testuser/testrepo",
 			"issue_number": 42,
@@ -117,7 +117,7 @@ func TestCreateIssueCommentToolValidationErrors(t *testing.T) {
 				"comment":      "Test comment",
 			},
 			expectError: true,
-			errorMsg:    "issue_number",
+			errorMsg:    "issue number must be positive",
 		},
 		{
 			name: "empty comment",
@@ -143,7 +143,7 @@ func TestCreateIssueCommentToolValidationErrors(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			result, err := client.CallTool(ctx, &mcp.CallToolParams{
-				Name:      "create_issue_comment",
+				Name:      "issue_comment_create",
 				Arguments: tc.arguments,
 			})
 
@@ -186,7 +186,7 @@ func TestCreateIssueCommentToolAPIError(t *testing.T) {
 
 	// Test with repository that doesn't exist (mock will return error)
 	result, err := client.CallTool(ctx, &mcp.CallToolParams{
-		Name: "create_issue_comment",
+		Name: "issue_comment_create",
 		Arguments: map[string]any{
 			"repository":   "nonexistent/repo",
 			"issue_number": 42,
@@ -221,7 +221,7 @@ func TestCreateIssueCommentToolCancelledContext(t *testing.T) {
 	cancelFunc()
 
 	result, err := client.CallTool(cancelledCtx, &mcp.CallToolParams{
-		Name: "create_issue_comment",
+		Name: "issue_comment_create",
 		Arguments: map[string]any{
 			"repository":   "testuser/testrepo",
 			"issue_number": 42,

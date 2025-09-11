@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 	"fmt"
+	"regexp"
 
 	v "github.com/go-ozzo/ozzo-validation/v4"
 	"github.com/kunde21/forgejo-mcp/remote/gitea"
@@ -24,6 +25,8 @@ func TextError(msg string) *mcp.CallToolResult {
 func TextErrorf(format string, args ...any) *mcp.CallToolResult {
 	return &mcp.CallToolResult{Content: []mcp.Content{&mcp.TextContent{Text: fmt.Sprintf(format, args...)}}, IsError: true}
 }
+
+var repoReg = regexp.MustCompile(`^[a-zA-Z0-9._-]+/[a-zA-Z0-9._-]+$`)
 
 // handleHello handles the "hello" tool request.
 // This is a simple demonstration tool that returns a hello world message.
@@ -47,6 +50,12 @@ type IssueList struct {
 	Issues []gitea.Issue `json:"issues"`
 }
 
+type IssueListArgs struct {
+	Repository string `json:"repository"`
+	Limit      int    `json:"limit"`
+	Offset     int    `json:"offset"`
+}
+
 // handleIssueList handles the "issue_list" tool request.
 // It retrieves issues from a specified Forgejo/Gitea repository with optional pagination.
 //
@@ -57,11 +66,7 @@ type IssueList struct {
 //
 // Migration Note: Updated to use the official SDK's handler signature and
 // result construction patterns. Error handling follows the new SDK's conventions.
-func (s *Server) handleIssueList(ctx context.Context, request *mcp.CallToolRequest, args struct {
-	Repository string `json:"repository"`
-	Limit      int    `json:"limit"`
-	Offset     int    `json:"offset"`
-}) (*mcp.CallToolResult, any, error) {
+func (s *Server) handleIssueList(ctx context.Context, request *mcp.CallToolRequest, args IssueListArgs) (*mcp.CallToolResult, *IssueList, error) {
 	// Set default limit if not provided
 	if args.Limit == 0 {
 		args.Limit = 15
@@ -69,7 +74,7 @@ func (s *Server) handleIssueList(ctx context.Context, request *mcp.CallToolReque
 
 	// Validate input arguments using ozzo-validation
 	if err := v.ValidateStruct(&args,
-		v.Field(&args.Repository, v.Required),
+		v.Field(&args.Repository, v.Required, v.Match(repoReg).Error("repository must be in format 'owner/repo'")),
 		v.Field(&args.Limit, v.Min(1), v.Max(100)),
 		v.Field(&args.Offset, v.Min(0)),
 	); err != nil {
@@ -81,12 +86,18 @@ func (s *Server) handleIssueList(ctx context.Context, request *mcp.CallToolReque
 	if err != nil {
 		return TextErrorf("Failed to list issues: %v", err), nil, nil
 	}
-	return TextResultf("Found %d issues", len(issues)), IssueList{Issues: issues}, nil
+	return TextResultf("Found %d issues", len(issues)), &IssueList{Issues: issues}, nil
 }
 
 // CommentResult represents the result data for the create_issue_comment tool.
 type CommentResult struct {
 	Comment gitea.IssueComment `json:"comment"`
+}
+
+type IssueCommentArgs struct {
+	Repository  string `json:"repository"`
+	IssueNumber int    `json:"issue_number"`
+	Comment     string `json:"comment"`
 }
 
 // handleIssueCommentCreate handles the "issue_comment_create" tool request.
@@ -103,11 +114,7 @@ type CommentResult struct {
 //
 // Migration Note: Implements MCP SDK v0.4.0 handler signature with ozzo-validation
 // for parameter validation and structured error responses.
-func (s *Server) handleIssueCommentCreate(ctx context.Context, request *mcp.CallToolRequest, args struct {
-	Repository  string `json:"repository"`
-	IssueNumber int    `json:"issue_number"`
-	Comment     string `json:"comment"`
-}) (*mcp.CallToolResult, any, error) {
+func (s *Server) handleIssueCommentCreate(ctx context.Context, request *mcp.CallToolRequest, args IssueCommentArgs) (*mcp.CallToolResult, *CommentResult, error) {
 	// Validate context - required for proper request handling
 	if ctx == nil {
 		return TextError("Context is required"), nil, nil
@@ -115,7 +122,7 @@ func (s *Server) handleIssueCommentCreate(ctx context.Context, request *mcp.Call
 
 	// Validate input arguments using ozzo-validation
 	if err := v.ValidateStruct(&args,
-		v.Field(&args.Repository, v.Required),
+		v.Field(&args.Repository, v.Required, v.Match(repoReg).Error("repository must be in format 'owner/repo'")),
 		v.Field(&args.IssueNumber, v.Min(1)),
 		v.Field(&args.Comment, v.Required, v.Length(1, 0)), // Non-empty string
 	); err != nil {
@@ -132,7 +139,7 @@ func (s *Server) handleIssueCommentCreate(ctx context.Context, request *mcp.Call
 	responseText := fmt.Sprintf("Comment created successfully. ID: %d, Created: %s\nComment body: %s",
 		comment.ID, comment.Created, comment.Content)
 
-	return TextResult(responseText), CommentResult{Comment: *comment}, nil
+	return TextResult(responseText), &CommentResult{Comment: *comment}, nil
 }
 
 // CommentListResult represents the result data for the list_issue_comments tool.
@@ -141,6 +148,13 @@ type CommentListResult struct {
 	Total    int                  `json:"total"`
 	Limit    int                  `json:"limit"`
 	Offset   int                  `json:"offset"`
+}
+
+type IssueCommentListArgs struct {
+	Repository  string `json:"repository"`
+	IssueNumber int    `json:"issue_number"`
+	Limit       int    `json:"limit"`
+	Offset      int    `json:"offset"`
 }
 
 // handleIssueCommentList handles the "issue_comment_list" tool request.
@@ -158,12 +172,7 @@ type CommentListResult struct {
 //
 // Migration Note: Implements MCP SDK v0.4.0 handler signature with ozzo-validation
 // for parameter validation and structured error responses.
-func (s *Server) handleIssueCommentList(ctx context.Context, request *mcp.CallToolRequest, args struct {
-	Repository  string `json:"repository"`
-	IssueNumber int    `json:"issue_number"`
-	Limit       int    `json:"limit"`
-	Offset      int    `json:"offset"`
-}) (*mcp.CallToolResult, any, error) {
+func (s *Server) handleIssueCommentList(ctx context.Context, request *mcp.CallToolRequest, args IssueCommentListArgs) (*mcp.CallToolResult, *CommentListResult, error) {
 	// Set default limit if not provided
 	if args.Limit == 0 {
 		args.Limit = 15
@@ -171,7 +180,7 @@ func (s *Server) handleIssueCommentList(ctx context.Context, request *mcp.CallTo
 
 	// Validate input arguments using ozzo-validation
 	if err := v.ValidateStruct(&args,
-		v.Field(&args.Repository, v.Required),
+		v.Field(&args.Repository, v.Required, v.Match(repoReg).Error("repository must be in format 'owner/repo'")),
 		v.Field(&args.IssueNumber, v.Min(1)),
 		v.Field(&args.Limit, v.Min(1), v.Max(100)),
 		v.Field(&args.Offset, v.Min(0)),
@@ -186,16 +195,12 @@ func (s *Server) handleIssueCommentList(ctx context.Context, request *mcp.CallTo
 	}
 
 	// Format success response with comment count and pagination info
-	endIndex := args.Offset + len(commentList.Comments)
-	if endIndex > commentList.Total {
-		endIndex = commentList.Total
-	}
 	responseText := fmt.Sprintf("Found %d comments (showing %d-%d)",
 		commentList.Total,
 		args.Offset+1,
-		endIndex)
+		min(args.Offset+len(commentList.Comments), commentList.Total))
 
-	return TextResult(responseText), CommentListResult{
+	return TextResult(responseText), &CommentListResult{
 		Comments: commentList.Comments,
 		Total:    commentList.Total,
 		Limit:    commentList.Limit,

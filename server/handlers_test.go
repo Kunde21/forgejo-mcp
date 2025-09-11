@@ -84,15 +84,11 @@ func TestServer_handleIssueCommentList(t *testing.T) {
 	}
 
 	// Test data structure
-	commentListResult, ok := data.(CommentListResult)
-	if !ok {
-		t.Error("Expected data to be CommentListResult")
+	if len(data.Comments) != 2 {
+		t.Errorf("Expected 2 comments, got %d", len(data.Comments))
 	}
-	if len(commentListResult.Comments) != 2 {
-		t.Errorf("Expected 2 comments, got %d", len(commentListResult.Comments))
-	}
-	if commentListResult.Total != 2 {
-		t.Errorf("Expected total to be 2, got %d", commentListResult.Total)
+	if data.Total != 2 {
+		t.Errorf("Expected total to be 2, got %d", data.Total)
 	}
 }
 
@@ -185,11 +181,7 @@ func TestServer_handleIssueCommentListDefaultLimit(t *testing.T) {
 	}
 
 	// Test that the default limit was applied
-	commentListResult, ok := data.(CommentListResult)
-	if !ok {
-		t.Error("Expected data to be CommentListResult")
-	}
-	if commentListResult.Limit != 15 {
-		t.Errorf("Expected default limit to be 15, got %d", commentListResult.Limit)
+	if data.Limit != 15 {
+		t.Errorf("Expected default limit to be 15, got %d", data.Limit)
 	}
 }
