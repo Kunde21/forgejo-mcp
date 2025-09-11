@@ -102,8 +102,8 @@ func TestGiteaClient_ListPullRequestComments(t *testing.T) {
 // TestGiteaClient_MethodExistence tests that all required methods exist
 func TestGiteaClient_MethodExistence(t *testing.T) {
 	t.Parallel()
-	// Test that the ListPullRequestComments method exists on the GiteaClient type
-	// This is a compile-time check - if the method doesn't exist, this won't compile
+	// Test that the ListPullRequestComments and CreatePullRequestComment methods exist on the GiteaClient type
+	// This is a compile-time check - if the methods don't exist, this won't compile
 
 	var client *GiteaClient
 	if client == nil {
@@ -111,13 +111,63 @@ func TestGiteaClient_MethodExistence(t *testing.T) {
 		client = (*GiteaClient)(nil)
 	}
 
-	// This line will fail to compile if the method doesn't exist
+	// Test ListPullRequestComments method existence
 	_ = func() (*PullRequestCommentList, error) {
 		return client.ListPullRequestComments(nil, "", 0, 0, 0)
 	}
 
-	// If we reach here, the method exists
-	t.Log("ListPullRequestComments method exists on GiteaClient")
+	// Test CreatePullRequestComment method existence
+	_ = func() (*PullRequestComment, error) {
+		return client.CreatePullRequestComment(nil, "", 0, "")
+	}
+
+	// If we reach here, the methods exist
+	t.Log("ListPullRequestComments and CreatePullRequestComment methods exist on GiteaClient")
+}
+
+// TestGiteaClient_CreatePullRequestComment tests the CreatePullRequestComment method
+func TestGiteaClient_CreatePullRequestComment(t *testing.T) {
+	t.Parallel()
+	testCases := []struct {
+		name              string
+		repo              string
+		pullRequestNumber int
+		comment           string
+		expectedError     string
+	}{
+		{
+			name:              "invalid repository format",
+			repo:              "invalid",
+			pullRequestNumber: 1,
+			comment:           "Test comment",
+			expectedError:     "invalid repository format: invalid, expected 'owner/repo'",
+		},
+		{
+			name:              "valid parameters",
+			repo:              "testuser/testrepo",
+			pullRequestNumber: 1,
+			comment:           "This is a test comment",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			if tc.expectedError == "invalid repository format: invalid, expected 'owner/repo'" {
+				client, _ := NewGiteaClient("http://localhost:3000", "token")
+				_, err := client.CreatePullRequestComment(context.Background(), tc.repo, tc.pullRequestNumber, tc.comment)
+				if err == nil {
+					t.Errorf("Expected error for invalid repository format")
+				} else if err.Error() != tc.expectedError {
+					t.Errorf("Expected error %q, got %q", tc.expectedError, err.Error())
+				}
+				return
+			}
+
+			// For successful cases, we can't easily test without a real Gitea server
+			// The method implementation is tested through service layer tests
+			t.Skip("Client method is tested through service layer integration")
+		})
+	}
 }
 
 // TestGiteaClient_ImplementsInterface tests that GiteaClient implements GiteaClientInterface

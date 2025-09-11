@@ -401,6 +401,94 @@ Response:
 }
 ```
 
+#### Create Pull Request Comment
+
+```json
+{
+  "method": "tools/call",
+  "params": {
+    "name": "pr_comment_create",
+    "arguments": {
+      "repository": "myorg/myrepo",
+      "pull_request_number": 42,
+      "comment": "This is a helpful comment on the pull request."
+    }
+  }
+}
+```
+
+Response:
+```json
+{
+  "result": {
+    "content": [
+      {
+        "type": "text",
+        "text": "Pull request comment created successfully. ID: 123, Created: 2025-09-12T14:30:45Z\nComment body: This is a helpful comment on the pull request."
+      }
+    ],
+    "structured": {
+      "comment": {
+        "id": 123,
+        "body": "This is a helpful comment on the pull request.",
+        "user": "reviewer",
+        "created_at": "2025-09-12T14:30:45Z",
+        "updated_at": "2025-09-12T14:30:45Z"
+      }
+    }
+  }
+}
+```
+
+#### List Pull Request Comments
+
+```json
+{
+  "method": "tools/call",
+  "params": {
+    "name": "pr_comment_list",
+    "arguments": {
+      "repository": "myorg/myrepo",
+      "pull_request_number": 42,
+      "limit": 10,
+      "offset": 0
+    }
+  }
+}
+```
+
+Response:
+```json
+{
+  "result": {
+    "content": [
+      {
+        "type": "text",
+        "text": "Found 2 pull request comments"
+      }
+    ],
+    "structured": {
+      "pull_request_comments": [
+        {
+          "id": 1,
+          "body": "This is a great PR!",
+          "user": "reviewer1",
+          "created_at": "2025-09-12T10:30:00Z",
+          "updated_at": "2025-09-12T10:30:00Z"
+        },
+        {
+          "id": 2,
+          "body": "I agree, well done!",
+          "user": "reviewer2",
+          "created_at": "2025-09-12T11:15:00Z",
+          "updated_at": "2025-09-12T11:15:00Z"
+        }
+      ]
+    }
+  }
+}
+```
+
 ## Features
 
 ### SDK Integration
@@ -422,7 +510,12 @@ Tools List:
 - `pr_list`: List pull requests from a repository with pagination and state filtering
   - Parameters: repository (owner/repo), limit (1-100, default 15), offset (0-based, default 0), state (open/closed/all, default "open")
   - Returns: Array of pull requests with ID, number, title, state, user, timestamps, and branch information
-- PR Comment: Add a comment to a given PR
+- `pr_comment_create`: Create a comment on a repository pull request
+  - Parameters: repository (owner/repo), pull_request_number (positive integer), comment (non-empty string)
+  - Returns: Comment creation confirmation with metadata
+- `pr_comment_list`: List comments from a repository pull request with pagination support
+  - Parameters: repository (owner/repo), pull_request_number (positive integer), limit (1-100, default 15), offset (0-based, default 0)
+  - Returns: Array of comments with ID, content, author, and creation timestamp
 - Review PR: approve or request changes
 
 ### Issue interactions

@@ -140,6 +140,12 @@ func (s *Service) ListPullRequestComments(ctx context.Context, repo string, pull
 	return s.client.ListPullRequestComments(ctx, repo, pullRequestNumber, limit, offset)
 }
 
+// CreatePullRequestComment creates a comment on a pull request
+func (s *Service) CreatePullRequestComment(ctx context.Context, repo string, pullRequestNumber int, comment string) (*PullRequestComment, error) {
+	// Call the underlying client directly (no validation)
+	return s.client.CreatePullRequestComment(ctx, repo, pullRequestNumber, comment)
+}
+
 // validateRepository checks if the repository string is in the correct format
 func (s *Service) validateRepository(repo string) error {
 	if repo == "" {

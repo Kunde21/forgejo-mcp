@@ -2,11 +2,14 @@ package gitea
 
 import (
 	"context"
+	"fmt"
+	"strings"
 	"testing"
 )
 
 type mockGiteaClient struct {
-	listPullRequestCommentsFunc func(ctx context.Context, repo string, pullRequestNumber int, limit, offset int) (*PullRequestCommentList, error)
+	listPullRequestCommentsFunc  func(ctx context.Context, repo string, pullRequestNumber int, limit, offset int) (*PullRequestCommentList, error)
+	createPullRequestCommentFunc func(ctx context.Context, repo string, pullRequestNumber int, comment string) (*PullRequestComment, error)
 }
 
 func (m *mockGiteaClient) ListIssues(ctx context.Context, repo string, limit, offset int) ([]Issue, error) {
@@ -34,6 +37,19 @@ func (m *mockGiteaClient) ListPullRequestComments(ctx context.Context, repo stri
 		return m.listPullRequestCommentsFunc(ctx, repo, pullRequestNumber, limit, offset)
 	}
 	return &PullRequestCommentList{}, nil
+}
+
+func (m *mockGiteaClient) CreatePullRequestComment(ctx context.Context, repo string, pullRequestNumber int, comment string) (*PullRequestComment, error) {
+	if m.createPullRequestCommentFunc != nil {
+		return m.createPullRequestCommentFunc(ctx, repo, pullRequestNumber, comment)
+	}
+	return &PullRequestComment{
+		ID:        1,
+		Body:      comment,
+		User:      "testuser",
+		CreatedAt: "2024-01-01T00:00:00Z",
+		UpdatedAt: "2024-01-01T00:00:00Z",
+	}, nil
 }
 
 func TestService_ListPullRequestComments(t *testing.T) {
@@ -217,6 +233,94 @@ func TestService_ListPullRequestComments(t *testing.T) {
 				t.Errorf("Pagination metadata mismatch: expected %+v, got %+v",
 					map[string]int{"total": tc.expectedResult.Total, "limit": tc.expectedResult.Limit, "offset": tc.expectedResult.Offset},
 					map[string]int{"total": result.Total, "limit": result.Limit, "offset": result.Offset})
+			}
+		})
+	}
+}
+
+func TestService_CreatePullRequestComment(t *testing.T) {
+	t.Parallel()
+	testCases := []struct {
+		name              string
+		repo              string
+		pullRequestNumber int
+		comment           string
+		mockResponse      *PullRequestComment
+		mockError         error
+		expectedError     string
+		expectedResult    *PullRequestComment
+	}{
+		{
+			name:              "successful comment creation",
+			repo:              "testuser/testrepo",
+			pullRequestNumber: 1,
+			comment:           "This is a test comment",
+			mockResponse: &PullRequestComment{
+				ID:        123,
+				Body:      "This is a test comment",
+				User:      "testuser",
+				CreatedAt: "2024-01-01T00:00:00Z",
+				UpdatedAt: "2024-01-01T00:00:00Z",
+			},
+			expectedResult: &PullRequestComment{
+				ID:        123,
+				Body:      "This is a test comment",
+				User:      "testuser",
+				CreatedAt: "2024-01-01T00:00:00Z",
+				UpdatedAt: "2024-01-01T00:00:00Z",
+			},
+		},
+		{
+			name:              "client error",
+			repo:              "testuser/testrepo",
+			pullRequestNumber: 1,
+			comment:           "Test comment",
+			mockError:         fmt.Errorf("failed to create pull request comment"),
+			expectedError:     "failed to create pull request comment",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			mockClient := &mockGiteaClient{
+				createPullRequestCommentFunc: func(ctx context.Context, repo string, pullRequestNumber int, comment string) (*PullRequestComment, error) {
+					return tc.mockResponse, tc.mockError
+				},
+			}
+
+			service := NewService(mockClient)
+			result, err := service.CreatePullRequestComment(context.Background(), tc.repo, tc.pullRequestNumber, tc.comment)
+
+			if tc.expectedError != "" {
+				if err == nil {
+					t.Errorf("Expected error containing %q, but got no error", tc.expectedError)
+				} else if !strings.Contains(err.Error(), tc.expectedError) {
+					t.Errorf("Expected error containing %q, got %q", tc.expectedError, err.Error())
+				}
+				return
+			}
+
+			if err != nil {
+				t.Errorf("Unexpected error: %v", err)
+				return
+			}
+
+			if result == nil && tc.expectedResult != nil {
+				t.Errorf("Expected result, got nil")
+				return
+			}
+
+			if result != nil && tc.expectedResult == nil {
+				t.Errorf("Expected nil result, got %v", result)
+				return
+			}
+
+			if result.ID != tc.expectedResult.ID ||
+				result.Body != tc.expectedResult.Body ||
+				result.User != tc.expectedResult.User ||
+				result.CreatedAt != tc.expectedResult.CreatedAt ||
+				result.UpdatedAt != tc.expectedResult.UpdatedAt {
+				t.Errorf("Result mismatch: expected %+v, got %+v", tc.expectedResult, result)
 			}
 		})
 	}

@@ -120,12 +120,24 @@ type ListPullRequestCommentsArgs struct {
 	Offset            int    `json:"offset" validate:"min=0"`
 }
 
+// CreatePullRequestCommentArgs represents the arguments for creating a pull request comment
+type CreatePullRequestCommentArgs struct {
+	Repository        string `json:"repository"`
+	PullRequestNumber int    `json:"pull_request_number"`
+	Comment           string `json:"comment"`
+}
+
 // PullRequestCommentLister defines the interface for listing comments from Git repository pull requests
 type PullRequestCommentLister interface {
 	ListPullRequestComments(ctx context.Context, repo string, pullRequestNumber int, limit, offset int) (*PullRequestCommentList, error)
 }
 
-// GiteaClientInterface combines IssueLister, IssueCommenter, IssueCommentLister, IssueCommentEditor, PullRequestLister, and PullRequestCommentLister for complete Gitea operations
+// PullRequestCommenter defines the interface for creating comments on Git repository pull requests
+type PullRequestCommenter interface {
+	CreatePullRequestComment(ctx context.Context, repo string, pullRequestNumber int, comment string) (*PullRequestComment, error)
+}
+
+// GiteaClientInterface combines IssueLister, IssueCommenter, IssueCommentLister, IssueCommentEditor, PullRequestLister, PullRequestCommentLister, and PullRequestCommenter for complete Gitea operations
 type GiteaClientInterface interface {
 	IssueLister
 	IssueCommenter
@@ -133,4 +145,5 @@ type GiteaClientInterface interface {
 	IssueCommentEditor
 	PullRequestLister
 	PullRequestCommentLister
+	PullRequestCommenter
 }

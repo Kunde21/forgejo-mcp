@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"fmt"
 
 	v "github.com/go-ozzo/ozzo-validation/v4"
 	"github.com/kunde21/forgejo-mcp/remote/gitea"
@@ -60,4 +61,58 @@ func (s *Server) handlePullRequestCommentList(ctx context.Context, request *mcp.
 	}
 
 	return TextResultf("Found %d pull request comments", len(commentList.Comments)), &PullRequestCommentList{PullRequestComments: commentList.Comments}, nil
+}
+
+// PullRequestCommentCreateArgs represents the arguments for creating a pull request comment with validation tags
+type PullRequestCommentCreateArgs struct {
+	Repository        string `json:"repository" validate:"required,regexp=^[a-zA-Z0-9._-]+/[a-zA-Z0-9._-]+$"`
+	PullRequestNumber int    `json:"pull_request_number" validate:"required,min=1"`
+	Comment           string `json:"comment" validate:"required,min=1"`
+}
+
+// PullRequestCommentCreateResult represents the result data for the pr_comment_create tool
+type PullRequestCommentCreateResult struct {
+	Comment gitea.PullRequestComment `json:"comment"`
+}
+
+// handlePullRequestCommentCreate handles the "pr_comment_create" tool request.
+// It creates a new comment on a specified Forgejo/Gitea pull request.
+//
+// Parameters:
+//   - repository: The repository path in "owner/repo" format
+//   - pull_request_number: The pull request number to comment on (must be positive)
+//   - comment: The comment content (cannot be empty)
+//
+// Returns:
+//   - Success: Comment creation confirmation with metadata
+//   - Error: Validation errors or API failures
+//
+// Migration Note: Implements MCP SDK v0.4.0 handler signature with ozzo-validation
+// for parameter validation and structured error responses.
+func (s *Server) handlePullRequestCommentCreate(ctx context.Context, request *mcp.CallToolRequest, args PullRequestCommentCreateArgs) (*mcp.CallToolResult, *PullRequestCommentCreateResult, error) {
+	// Validate context - required for proper request handling
+	if ctx == nil {
+		return TextError("Context is required"), nil, nil
+	}
+
+	// Validate input arguments using ozzo-validation
+	if err := v.ValidateStruct(&args,
+		v.Field(&args.Repository, v.Required, v.Match(repoReg).Error("repository must be in format 'owner/repo'")),
+		v.Field(&args.PullRequestNumber, v.Min(1)),
+		v.Field(&args.Comment, v.Required, v.Length(1, 0)), // Non-empty string
+	); err != nil {
+		return TextErrorf("Invalid request: %v", err), nil, nil
+	}
+
+	// Create the comment using the service layer
+	comment, err := s.giteaService.CreatePullRequestComment(ctx, args.Repository, args.PullRequestNumber, args.Comment)
+	if err != nil {
+		return TextErrorf("Failed to create pull request comment: %v", err), nil, nil
+	}
+
+	// Format success response with comment metadata
+	responseText := fmt.Sprintf("Pull request comment created successfully. ID: %d, Created: %s\nComment body: %s",
+		comment.ID, comment.CreatedAt, comment.Body)
+
+	return TextResult(responseText), &PullRequestCommentCreateResult{Comment: *comment}, nil
 }
