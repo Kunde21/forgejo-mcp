@@ -1,0 +1,3 @@
+# Spec Summary (Lite)
+
+Refactor the 310+ line monolithic `handleRepoRequests` function in the test harness to use modern Go 1.22+ `http.ServeMux` with method-specific path patterns. This will split the handler into 5 focused functions, extract common utilities, and replace manual string parsing with automatic path parameter extraction. The refactoring improves maintainability, testability, and extensibility while preserving all existing functionality without breaking changes to the test harness public API.
