@@ -253,12 +253,14 @@ func TestIssueCommentEditPermissionError(t *testing.T) {
 		},
 	})
 
-	// Should return an error for permission issues
-	if err == nil {
-		t.Error("Expected error for invalid token/permission issue")
+	// Should return an error result for permission issues
+	if err != nil {
+		t.Errorf("Expected successful call with error result, got client error: %v", err)
 	}
-	if result != nil && !result.IsError {
-		t.Error("Expected error result for permission issue")
+	if result == nil {
+		t.Error("Expected result, got nil")
+	} else if !result.IsError {
+		t.Errorf("Expected error result for permission issue, got success result: %+v", result)
 	}
 }
 
@@ -271,6 +273,7 @@ func TestIssueCommentEditAPIError(t *testing.T) {
 		"FORGEJO_REMOTE_URL": mock.URL(),
 		"FORGEJO_AUTH_TOKEN": "mock-token",
 	})
+	mock.SetNotFoundRepo("nonexistent", "repo")
 	if err := ts.Initialize(); err != nil {
 		t.Fatal(err)
 	}
@@ -287,12 +290,14 @@ func TestIssueCommentEditAPIError(t *testing.T) {
 		},
 	})
 
-	// Should return an error for API failure
-	if err == nil {
-		t.Error("Expected error for nonexistent repository")
+	// Should return an error result for API failure
+	if err != nil {
+		t.Errorf("Expected successful call with error result, got client error: %v", err)
 	}
-	if result != nil && !result.IsError {
-		t.Error("Expected error result for API failure")
+	if result == nil {
+		t.Error("Expected result, got nil")
+	} else if !result.IsError {
+		t.Errorf("Expected error result for API failure, got success result: %+v", result)
 	}
 }
 

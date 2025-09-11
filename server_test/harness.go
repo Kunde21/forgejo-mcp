@@ -307,6 +307,11 @@ func (m *MockGiteaServer) handleRepoRequests(w http.ResponseWriter, r *http.Requ
 		repo := pathParts[1]
 		repoKey := owner + "/" + repo
 
+		// Check if repository is marked as not found
+		if m.notFoundRepos[repoKey] {
+			http.NotFound(w, r)
+			return
+		}
 		// Check if repository exists (simulate API error for nonexistent repos)
 		if repoKey == "nonexistent/repo" {
 			http.NotFound(w, r)
@@ -346,10 +351,10 @@ func (m *MockGiteaServer) handleRepoRequests(w http.ResponseWriter, r *http.Requ
 
 		// Extract token value from header
 		var headerToken string
-		if strings.HasPrefix(authHeader, "Bearer ") {
-			headerToken = strings.TrimPrefix(authHeader, "Bearer ")
-		} else if strings.HasPrefix(authHeader, "token ") {
-			headerToken = strings.TrimPrefix(authHeader, "token ")
+		if after, ok := strings.CutPrefix(authHeader, "Bearer "); ok {
+			headerToken = after
+		} else if after0, ok0 := strings.CutPrefix(authHeader, "token "); ok0 {
+			headerToken = after0
 		}
 
 		// Reject invalid-token
@@ -374,6 +379,11 @@ func (m *MockGiteaServer) handleRepoRequests(w http.ResponseWriter, r *http.Requ
 		owner := pathParts[0]
 		repo := pathParts[1]
 		repoKey := owner + "/" + repo
+		// Check if repository is marked as not found
+		if m.notFoundRepos[repoKey] {
+			http.NotFound(w, r)
+			return
+		}
 
 		// Parse comment ID from URL
 		commentIDStr := pathParts[4]
