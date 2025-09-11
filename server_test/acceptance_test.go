@@ -8,7 +8,7 @@ import (
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
-// TestListIssuesAcceptance tests the list_issues tool with mock server
+// TestListIssuesAcceptance tests the issues_list tool with mock server
 func TestListIssuesAcceptance(t *testing.T) {
 	// Set up mock Gitea server
 	mock := NewMockGiteaServer(t)
@@ -26,7 +26,7 @@ func TestListIssuesAcceptance(t *testing.T) {
 	}
 	// Test successful issue listing
 	result, err := ts.Client().CallTool(context.Background(), &mcp.CallToolParams{
-		Name: "list_issues",
+		Name: "issue_list",
 		Arguments: map[string]any{
 			"repository": "testuser/testrepo",
 			"limit":      10,
@@ -34,7 +34,7 @@ func TestListIssuesAcceptance(t *testing.T) {
 		},
 	})
 	if err != nil {
-		t.Fatalf("Failed to call list_issues tool: %v", err)
+		t.Fatalf("Failed to call issue_list tool: %v", err)
 	}
 
 	if result.Content == nil {
@@ -65,7 +65,7 @@ func TestListIssuesPagination(t *testing.T) {
 
 	// Test with limit 10, offset 0
 	result, err := ts.Client().CallTool(context.Background(), &mcp.CallToolParams{
-		Name: "list_issues",
+		Name: "issue_list",
 		Arguments: map[string]any{
 			"repository": "testuser/testrepo",
 			"limit":      10,
@@ -73,7 +73,7 @@ func TestListIssuesPagination(t *testing.T) {
 		},
 	})
 	if err != nil {
-		t.Fatalf("Failed to call list_issues tool: %v", err)
+		t.Fatalf("Failed to call issue_list tool: %v", err)
 	}
 
 	// Verify we get 10 issues
@@ -96,7 +96,7 @@ func TestListIssuesErrorHandling(t *testing.T) {
 
 	// Test with invalid repository format
 	result, err := ts.Client().CallTool(context.Background(), &mcp.CallToolParams{
-		Name: "list_issues",
+		Name: "issue_list",
 		Arguments: map[string]any{
 			"repository": "invalid-repo-format",
 			"limit":      10,
@@ -104,7 +104,7 @@ func TestListIssuesErrorHandling(t *testing.T) {
 		},
 	})
 	if err != nil {
-		t.Fatalf("Failed to call list_issues tool: %v", err)
+		t.Fatalf("Failed to call issue_list tool: %v", err)
 	}
 
 	// Should return error for invalid repository
@@ -126,14 +126,14 @@ func TestListIssuesInputValidation(t *testing.T) {
 
 	// Test with missing repository
 	result, err := ts.Client().CallTool(context.Background(), &mcp.CallToolParams{
-		Name: "list_issues",
+		Name: "issue_list",
 		Arguments: map[string]any{
 			"limit":  10,
 			"offset": 0,
 		},
 	})
 	if err != nil {
-		t.Fatalf("Failed to call list_issues tool: %v", err)
+		t.Fatalf("Failed to call issue_list tool: %v", err)
 	}
 
 	if result.Content == nil {
@@ -161,7 +161,7 @@ func TestListIssuesConcurrent(t *testing.T) {
 	for range numGoroutines {
 		go func() {
 			_, err := ts.Client().CallTool(context.Background(), &mcp.CallToolParams{
-				Name: "list_issues",
+				Name: "issue_list",
 				Arguments: map[string]any{
 					"repository": "testuser/testrepo",
 					"limit":      10,
@@ -196,7 +196,7 @@ func TestListIssuesInvalidLimit(t *testing.T) {
 
 	// Test with limit > 100 (invalid)
 	result, err := ts.Client().CallTool(context.Background(), &mcp.CallToolParams{
-		Name: "list_issues",
+		Name: "issue_list",
 		Arguments: map[string]any{
 			"repository": "testuser/testrepo",
 			"limit":      200, // Invalid: > 100
@@ -204,7 +204,7 @@ func TestListIssuesInvalidLimit(t *testing.T) {
 		},
 	})
 	if err != nil {
-		t.Fatalf("Failed to call list_issues tool: %v", err)
+		t.Fatalf("Failed to call issue_list tool: %v", err)
 	}
 
 	// Should return error for invalid limit
@@ -213,7 +213,7 @@ func TestListIssuesInvalidLimit(t *testing.T) {
 	}
 }
 
-// TestListIssueCommentsAcceptance tests the list_issue_comments tool with mock server
+// TestListIssueCommentsAcceptance tests the issues_list_comments tool with mock server
 func TestListIssueCommentsAcceptance(t *testing.T) {
 	// Set up mock Gitea server with comments
 	mock := NewMockGiteaServer(t)
@@ -233,7 +233,7 @@ func TestListIssueCommentsAcceptance(t *testing.T) {
 
 	// Test successful comment listing
 	result, err := ts.Client().CallTool(context.Background(), &mcp.CallToolParams{
-		Name: "list_issue_comments",
+		Name: "issue_comment_list",
 		Arguments: map[string]any{
 			"repository":   "testuser/testrepo",
 			"issue_number": 1,
@@ -251,7 +251,7 @@ func TestListIssueCommentsAcceptance(t *testing.T) {
 
 	// Test with pagination
 	result, err = ts.Client().CallTool(context.Background(), &mcp.CallToolParams{
-		Name: "list_issue_comments",
+		Name: "issue_comment_list",
 		Arguments: map[string]any{
 			"repository":   "testuser/testrepo",
 			"issue_number": 1,
@@ -260,7 +260,7 @@ func TestListIssueCommentsAcceptance(t *testing.T) {
 		},
 	})
 	if err != nil {
-		t.Fatalf("Failed to call list_issue_comments tool with pagination: %v", err)
+		t.Fatalf("Failed to call issue_comment_list tool with pagination: %v", err)
 	}
 
 	if result.Content == nil {

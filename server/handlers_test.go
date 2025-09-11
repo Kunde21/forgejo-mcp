@@ -46,8 +46,8 @@ func (m *mockGiteaClientForService) ListIssueComments(ctx context.Context, repo 
 	}, nil
 }
 
-func TestServer_handleListIssueComments(t *testing.T) {
-	// Test handleListIssueComments handler function
+func TestServer_handleIssueCommentList(t *testing.T) {
+	// Test handleIssueCommentList handler function
 	ctx := context.Background()
 	mockClient := &mockGiteaClientForService{}
 	mockService := gitea.NewService(mockClient)
@@ -59,7 +59,7 @@ func TestServer_handleListIssueComments(t *testing.T) {
 	request := &mcp.CallToolRequest{}
 
 	// Test successful comment listing
-	result, data, err := server.handleListIssueComments(ctx, request, struct {
+	result, data, err := server.handleIssueCommentList(ctx, request, struct {
 		Repository  string `json:"repository"`
 		IssueNumber int    `json:"issue_number"`
 		Limit       int    `json:"limit"`
@@ -96,8 +96,8 @@ func TestServer_handleListIssueComments(t *testing.T) {
 	}
 }
 
-func TestServer_handleListIssueCommentsValidation(t *testing.T) {
-	// Test validation for handleListIssueComments
+func TestServer_handleIssueCommentListValidation(t *testing.T) {
+	// Test validation for handleIssueCommentList
 	ctx := context.Background()
 	mockClient := &mockGiteaClientForService{}
 	mockService := gitea.NewService(mockClient)
@@ -127,7 +127,7 @@ func TestServer_handleListIssueCommentsValidation(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			result, _, err := server.handleListIssueComments(ctx, request, struct {
+			result, _, err := server.handleIssueCommentList(ctx, request, struct {
 				Repository  string `json:"repository"`
 				IssueNumber int    `json:"issue_number"`
 				Limit       int    `json:"limit"`
@@ -155,7 +155,7 @@ func TestServer_handleListIssueCommentsValidation(t *testing.T) {
 	}
 }
 
-func TestServer_handleListIssueCommentsDefaultLimit(t *testing.T) {
+func TestServer_handleIssueCommentListDefaultLimit(t *testing.T) {
 	// Test that default limit is applied when not provided
 	ctx := context.Background()
 	mockClient := &mockGiteaClientForService{}
@@ -166,7 +166,7 @@ func TestServer_handleListIssueCommentsDefaultLimit(t *testing.T) {
 
 	request := &mcp.CallToolRequest{}
 
-	result, data, err := server.handleListIssueComments(ctx, request, struct {
+	result, data, err := server.handleIssueCommentList(ctx, request, struct {
 		Repository  string `json:"repository"`
 		IssueNumber int    `json:"issue_number"`
 		Limit       int    `json:"limit"`

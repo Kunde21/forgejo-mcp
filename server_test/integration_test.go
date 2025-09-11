@@ -2,6 +2,7 @@ package servertest
 
 import (
 	"context"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -63,11 +64,11 @@ func TestToolDiscovery(t *testing.T) {
 		switch tool.Name {
 		case "hello":
 			helloTool = tool
-		case "list_issues":
+		case "issue_list":
 			listIssuesTool = tool
-		case "create_issue_comment":
+		case "issue_comment_create":
 			createCommentTool = tool
-		case "list_issue_comments":
+		case "issue_comment_list":
 			listCommentsTool = tool
 		}
 	}
@@ -80,29 +81,29 @@ func TestToolDiscovery(t *testing.T) {
 	}
 
 	if listIssuesTool == nil {
-		t.Fatal("list_issues tool not found")
+		t.Fatal("issue_list tool not found")
 	}
 	if listIssuesTool.Description != "List issues from a Gitea/Forgejo repository" {
-		t.Errorf("Expected list_issues tool description 'List issues from a Gitea/Forgejo repository', got '%s'", listIssuesTool.Description)
+		t.Errorf("Expected issue_list tool description 'List issues from a Gitea/Forgejo repository', got '%s'", listIssuesTool.Description)
 	}
 
 	if createCommentTool == nil {
-		t.Fatal("create_issue_comment tool not found")
+		t.Fatal("issue_comment_create tool not found")
 	}
 	if createCommentTool.Description != "Create a comment on a Forgejo/Gitea repository issue" {
-		t.Errorf("Expected create_issue_comment tool description 'Create a comment on a Forgejo/Gitea repository issue', got '%s'", createCommentTool.Description)
+		t.Errorf("Expected issue_comment_create tool description 'Create a comment on a Forgejo/Gitea repository issue', got '%s'", createCommentTool.Description)
 	}
 
 	if listCommentsTool == nil {
-		t.Fatal("list_issue_comments tool not found")
+		t.Fatal("issue_comment_list tool not found")
 	}
 	if listCommentsTool.Description != "List comments from a Forgejo/Gitea repository issue with pagination support" {
-		t.Errorf("Expected list_issue_comments tool description 'List comments from a Forgejo/Gitea repository issue with pagination support', got '%s'", listCommentsTool.Description)
+		t.Errorf("Expected issue_comment_list tool description 'List comments from a Forgejo/Gitea repository issue with pagination support', got '%s'", listCommentsTool.Description)
 	}
 
 	// Verify tool has input schema
 	if createCommentTool.InputSchema == nil {
-		t.Error("create_issue_comment tool should have input schema")
+		t.Error("issue_comment_create tool should have input schema")
 	}
 }
 
@@ -264,5 +265,237 @@ func TestConcurrentRequests(t *testing.T) {
 		if results[i] != "Hello, World!" {
 			t.Errorf("Concurrent request %d got unexpected result: %s", i, results[i])
 		}
+	}
+}
+
+// TestCreateIssueCommentToolSuccess tests successful comment creation
+func TestCreateIssueCommentToolSuccess(t *testing.T) {
+	ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
+	t.Cleanup(cancel)
+
+	// Create mock client
+	mockClient := NewMockGiteaClient()
+
+	ts := NewTestServerWithClient(t, ctx, map[string]string{
+		"FORGEJO_REMOTE_URL": "http://mock.localhost",
+		"FORGEJO_AUTH_TOKEN": "mock-token",
+	}, mockClient)
+
+	if err := ts.Initialize(); err != nil {
+		t.Fatal(err)
+	}
+	client := ts.Client()
+
+	result, err := client.CallTool(ctx, &mcp.CallToolParams{
+		Name: "issue_comment_create",
+		Arguments: map[string]any{
+			"repository":   "testuser/testrepo",
+			"issue_number": 42,
+			"comment":      "This is a test comment",
+		},
+	})
+	if err != nil {
+		t.Fatalf("Failed to call issue_comment_create tool: %v", err)
+	}
+
+	// Verify the result structure
+	if len(result.Content) == 0 {
+		t.Fatal("Expected content in result")
+	}
+
+	textContent, ok := result.Content[0].(*mcp.TextContent)
+	if !ok {
+		t.Fatal("Expected text content")
+	}
+
+	// Check that the response contains expected information
+	expectedParts := []string{"Comment created successfully", "ID:", "Created:"}
+	for _, part := range expectedParts {
+		if !strings.Contains(textContent.Text, part) {
+			t.Errorf("Expected response to contain '%s', got: %s", part, textContent.Text)
+		}
+	}
+}
+
+// TestCreateIssueCommentToolValidationErrors tests parameter validation
+func TestCreateIssueCommentToolValidationErrors(t *testing.T) {
+	ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
+	t.Cleanup(cancel)
+
+	// Create mock client
+	mockClient := NewMockGiteaClient()
+
+	ts := NewTestServerWithClient(t, ctx, map[string]string{
+		"FORGEJO_REMOTE_URL": "http://mock.localhost",
+		"FORGEJO_AUTH_TOKEN": "mock-token",
+	}, mockClient)
+
+	if err := ts.Initialize(); err != nil {
+		t.Fatal(err)
+	}
+	client := ts.Client()
+
+	testCases := []struct {
+		name        string
+		arguments   map[string]any
+		expectError bool
+		errorMsg    string
+	}{
+		{
+			name: "missing repository",
+			arguments: map[string]any{
+				"issue_number": 42,
+				"comment":      "Test comment",
+			},
+			expectError: true,
+			errorMsg:    "repository",
+		},
+		{
+			name: "invalid repository format",
+			arguments: map[string]any{
+				"repository":   "invalid-format",
+				"issue_number": 42,
+				"comment":      "Test comment",
+			},
+			expectError: true,
+			errorMsg:    "repository",
+		},
+		{
+			name: "negative issue number",
+			arguments: map[string]any{
+				"repository":   "testuser/testrepo",
+				"issue_number": -1,
+				"comment":      "Test comment",
+			},
+			expectError: true,
+			errorMsg:    "issue_number",
+		},
+		{
+			name: "zero issue number",
+			arguments: map[string]any{
+				"repository":   "testuser/testrepo",
+				"issue_number": 0,
+				"comment":      "Test comment",
+			},
+			expectError: true,
+			errorMsg:    "issue number",
+		},
+		{
+			name: "empty comment",
+			arguments: map[string]any{
+				"repository":   "testuser/testrepo",
+				"issue_number": 42,
+				"comment":      "",
+			},
+			expectError: true,
+			errorMsg:    "comment",
+		},
+		{
+			name: "missing comment",
+			arguments: map[string]any{
+				"repository":   "testuser/testrepo",
+				"issue_number": 42,
+			},
+			expectError: true,
+			errorMsg:    "comment",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			result, err := client.CallTool(ctx, &mcp.CallToolParams{
+				Name:      "issue_comment_create",
+				Arguments: tc.arguments,
+			})
+
+			if tc.expectError {
+				if err == nil && (result == nil || !result.IsError) {
+					t.Errorf("Expected error for test case '%s', but got success", tc.name)
+				}
+				if result != nil && len(result.Content) > 0 {
+					if textContent, ok := result.Content[0].(*mcp.TextContent); ok {
+						if !strings.Contains(textContent.Text, tc.errorMsg) {
+							t.Errorf("Expected error message to contain '%s', got: %s", tc.errorMsg, textContent.Text)
+						}
+					}
+				}
+			} else {
+				if err != nil {
+					t.Errorf("Expected success for test case '%s', but got error: %v", tc.name, err)
+				}
+			}
+		})
+	}
+}
+
+// TestCreateIssueCommentToolAPIError tests API error scenarios
+func TestCreateIssueCommentToolAPIError(t *testing.T) {
+	ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
+	t.Cleanup(cancel)
+
+	// Create mock client that returns errors
+	mockClient := NewMockGiteaClient()
+
+	ts := NewTestServerWithClient(t, ctx, map[string]string{
+		"FORGEJO_REMOTE_URL": "http://mock.localhost",
+		"FORGEJO_AUTH_TOKEN": "mock-token",
+	}, mockClient)
+
+	if err := ts.Initialize(); err != nil {
+		t.Fatal(err)
+	}
+	client := ts.Client()
+
+	// Test with repository that doesn't exist (mock will return error)
+	result, err := client.CallTool(ctx, &mcp.CallToolParams{
+		Name: "issue_comment_create",
+		Arguments: map[string]any{
+			"repository":   "nonexistent/repo",
+			"issue_number": 42,
+			"comment":      "Test comment",
+		},
+	})
+
+	if err == nil && (result == nil || !result.IsError) {
+		t.Error("Expected error for nonexistent repository")
+	}
+}
+
+// TestCreateIssueCommentToolCancelledContext tests context cancellation
+func TestCreateIssueCommentToolCancelledContext(t *testing.T) {
+	ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
+	t.Cleanup(cancel)
+
+	// Create mock client
+	mockClient := NewMockGiteaClient()
+
+	ts := NewTestServerWithClient(t, ctx, map[string]string{
+		"FORGEJO_REMOTE_URL": "http://mock.localhost",
+		"FORGEJO_AUTH_TOKEN": "mock-token",
+	}, mockClient)
+
+	if err := ts.Initialize(); err != nil {
+		t.Fatal(err)
+	}
+	client := ts.Client()
+
+	// Cancel context immediately
+	cancelledCtx, cancelFunc := context.WithCancel(ctx)
+	cancelFunc()
+
+	result, err := client.CallTool(cancelledCtx, &mcp.CallToolParams{
+		Name: "issue_comment_create",
+		Arguments: map[string]any{
+			"repository":   "testuser/testrepo",
+			"issue_number": 42,
+			"comment":      "Test comment",
+		},
+	})
+
+	if err == nil {
+		t.Error("Expected error when calling tool with cancelled context")
+	}
+	if result != nil && !result.IsError {
+		t.Error("Expected error result for cancelled context")
 	}
 }

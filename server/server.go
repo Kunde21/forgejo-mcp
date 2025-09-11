@@ -76,19 +76,19 @@ func NewFromService(service *gitea.Service, cfg *config.Config) (*Server, error)
 	}, s.handleHello)
 
 	mcp.AddTool(mcpServer, &mcp.Tool{
-		Name:        "list_issues",
+		Name:        "issue_list",
 		Description: "List issues from a Gitea/Forgejo repository",
-	}, s.handleListIssues)
+	}, s.handleIssueList)
 
 	mcp.AddTool(mcpServer, &mcp.Tool{
-		Name:        "create_issue_comment",
+		Name:        "issue_comment_create",
 		Description: "Create a comment on a Forgejo/Gitea repository issue",
-	}, s.handleCreateIssueComment)
+	}, s.handleIssueCommentCreate)
 
 	mcp.AddTool(mcpServer, &mcp.Tool{
-		Name:        "list_issue_comments",
+		Name:        "issue_comment_list",
 		Description: "List comments from a Forgejo/Gitea repository issue with pagination support",
-	}, s.handleListIssueComments)
+	}, s.handleIssueCommentList)
 
 	s.mcpServer = mcpServer
 	return s, nil

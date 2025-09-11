@@ -132,7 +132,7 @@ Example usage:
 {
   "method": "tools/call",
   "params": {
-    "name": "list_issues",
+    "name": "issue_list",
     "arguments": {
       "repository": "myorg/myrepo",
       "limit": 10,
@@ -179,7 +179,7 @@ Response:
 {
   "method": "tools/call",
   "params": {
-    "name": "create_issue_comment",
+    "name": "issue_comment_create",
     "arguments": {
       "repository": "myorg/myrepo",
       "issue_number": 42,
@@ -217,7 +217,7 @@ Response:
  {
    "method": "tools/call",
    "params": {
-     "name": "list_issue_comments",
+     "name": "issue_comment_list",
      "arguments": {
        "repository": "myorg/myrepo",
        "issue_number": 42,
@@ -294,13 +294,13 @@ Tools List:
 Manage issues in your forgejo repository
 
  Tools List:
- - `list_issues`: List issues from a repository with pagination support
+ - `issue_list`: List issues from a repository with pagination support
    - Parameters: repository (owner/repo), limit (1-100), offset (0-based)
    - Returns: Array of issues with number, title, and status
- - `create_issue_comment`: Create a comment on a repository issue
+ - `issue_comment_create`: Create a comment on a repository issue
    - Parameters: repository (owner/repo), issue_number (positive integer), comment (non-empty string)
    - Returns: Comment creation confirmation with metadata
- - `list_issue_comments`: List comments from a repository issue with pagination support
+ - `issue_comment_list`: List comments from a repository issue with pagination support
    - Parameters: repository (owner/repo), issue_number (positive integer), limit (1-100, default 15), offset (0-based, default 0)
    - Returns: Array of comments with ID, content, author, and creation timestamp
 - List Issues: show all open issues on the current repository

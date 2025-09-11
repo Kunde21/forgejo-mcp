@@ -2,7 +2,7 @@
 
 ### Overview
 
-Add a list_issue_comments tool to complement the existing create_issue_comment functionality, enabling users to retrieve all comments from a specific issue in Forgejo/Gitea repositories.
+Add a issue_comment_list tool to complement the existing issue_comment_create functionality, enabling users to retrieve all comments from a specific issue in Forgejo/Gitea repositories.
 
 ### Technical Architecture
 
@@ -28,19 +28,19 @@ Add a list_issue_comments tool to complement the existing create_issue_comment f
 
 #### 4. MCP Handler (server/handlers.go)
 
-• Create handleListIssueComments handler function
+• Create handleIssueCommentList handler function
 • Implement input parameter validation using ozzo-validation
 • Return structured response with comment list metadata
 • Follow existing error handling patterns
 
 #### 5. Tool Registration (server/server.go)
 
-• Register list_issue_comments tool with proper schema
+• Register issue_comment_list tool with proper schema
 • Add comprehensive tool description and parameter documentation
 
 ### Tool Specification
 
-Tool Name: list_issue_comments
+Tool Name: issue_comment_list
 
 Parameters:
 
@@ -127,7 +127,7 @@ No new external dependencies required - will leverage existing Gitea SDK, MCP SD
 ### Integration Points
 
 • Extends existing comment functionality
-• Follows established patterns from list_issues and create_issue_comment
+• Follows established patterns from issue_list and issue_comment_create
 • Maintains clean architecture with interface-based design
 • Preserves backward compatibility
 
