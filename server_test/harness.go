@@ -7,8 +7,6 @@ import (
 	"maps"
 	"net/http"
 	"net/http/httptest"
-	"strconv"
-	"strings"
 	"sync"
 	"testing"
 
@@ -77,10 +75,16 @@ func NewMockGiteaServer(t *testing.T) *MockGiteaServer {
 		nextID:        1,
 	}
 
-	// Create HTTP handler for mock API
+	// Create HTTP handler for mock API with modern routing
 	handler := http.NewServeMux()
 	handler.HandleFunc("/api/v1/version", mock.handleVersion)
-	handler.HandleFunc("/api/v1/repos/", mock.handleRepoRequests)
+
+	// Register individual handlers with method + path patterns
+	handler.HandleFunc("GET /api/v1/repos/{owner}/{repo}/pulls", mock.handlePullRequests)
+	handler.HandleFunc("GET /api/v1/repos/{owner}/{repo}/issues", mock.handleIssues)
+	handler.HandleFunc("POST /api/v1/repos/{owner}/{repo}/issues/{number}/comments", mock.handleCreateComment)
+	handler.HandleFunc("GET /api/v1/repos/{owner}/{repo}/issues/{number}/comments", mock.handleListComments)
+	handler.HandleFunc("PATCH /api/v1/repos/{owner}/{repo}/issues/comments/{id}", mock.handleEditComment)
 
 	mock.server = httptest.NewServer(handler)
 	t.Cleanup(mock.server.Close)
@@ -122,317 +126,287 @@ func (m *MockGiteaServer) handleVersion(w http.ResponseWriter, r *http.Request) 
 	json.NewEncoder(w).Encode(map[string]string{"version": "1.20.0"})
 }
 
-// handleRepoRequests handles repository issues and comments endpoints
-func (m *MockGiteaServer) handleRepoRequests(w http.ResponseWriter, r *http.Request) {
-	path := r.URL.Path
-
-	// Handle pull requests endpoint
-	if strings.Contains(path, "/pulls") && r.Method == "GET" {
-		parts := strings.Split(strings.TrimPrefix(path, "/api/v1/repos/"), "/pulls")
-		if len(parts) != 2 || parts[0] == "" || strings.Contains(parts[0], "/") == false {
-			http.NotFound(w, r)
-			return
-		}
-		repoKey := parts[0]
-
-		// Check if repository is marked as not found
-		if m.notFoundRepos[repoKey] {
-			http.NotFound(w, r)
-			return
-		}
-
-		pullRequests, exists := m.pullRequests[repoKey]
-		if !exists {
-			pullRequests = []MockPullRequest{}
-		}
-
-		// Filter by state if provided in query parameters
-		state := r.URL.Query().Get("state")
-		if state != "" {
-			var filtered []MockPullRequest
-			for _, pr := range pullRequests {
-				if state == "all" || pr.State == state {
-					filtered = append(filtered, pr)
-				}
-			}
-			pullRequests = filtered
-		}
-
-		// Handle pagination
-		limitStr := r.URL.Query().Get("limit")
-		offsetStr := r.URL.Query().Get("offset")
-
-		limit := len(pullRequests) // Default to all items
-		offset := 0                // Default to start from beginning
-
-		if limitStr != "" {
-			if parsedLimit, err := strconv.Atoi(limitStr); err == nil && parsedLimit > 0 {
-				limit = parsedLimit
-			}
-		}
-
-		if offsetStr != "" {
-			if parsedOffset, err := strconv.Atoi(offsetStr); err == nil && parsedOffset >= 0 {
-				offset = parsedOffset
-			}
-		}
-
-		// Apply pagination
-		if offset >= len(pullRequests) {
-			pullRequests = []MockPullRequest{}
-		} else {
-			end := offset + limit
-			if end > len(pullRequests) {
-				end = len(pullRequests)
-			}
-			pullRequests = pullRequests[offset:end]
-		}
-
-		// Convert to Gitea SDK format
-		giteaPRs := make([]map[string]any, len(pullRequests))
-		for i, pr := range pullRequests {
-			giteaPRs[i] = map[string]any{
-				"id":     pr.ID,
-				"number": pr.Number,
-				"title":  pr.Title,
-				"body":   "",
-				"state":  pr.State,
-				"user": map[string]any{
-					"login": "testuser",
-				},
-				"created_at": "2025-09-11T10:30:00Z",
-				"updated_at": "2025-09-11T10:30:00Z",
-				"head": map[string]any{
-					"ref": "feature-branch",
-					"sha": "abc123",
-				},
-				"base": map[string]any{
-					"ref": "main",
-					"sha": "def456",
-				},
-			}
-		}
-
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(giteaPRs)
+// handlePullRequests handles pull requests endpoint
+func (m *MockGiteaServer) handlePullRequests(w http.ResponseWriter, r *http.Request) {
+	// Check method
+	if r.Method != "GET" {
+		http.NotFound(w, r)
 		return
 	}
 
-	// Handle issues endpoint
-	if strings.Contains(path, "/issues") && !strings.Contains(path, "/comments") && r.Method == "GET" {
-		parts := strings.Split(strings.TrimPrefix(path, "/api/v1/repos/"), "/issues")
-		if len(parts) != 2 {
-			http.NotFound(w, r)
-			return
-		}
-		repoKey := parts[0]
-
-		issues, exists := m.issues[repoKey]
-		if !exists {
-			http.NotFound(w, r)
-			return
-		}
-
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(issues)
+	// Extract repository key from path values
+	repoKey, err := getRepoKeyFromRequest(r)
+	if err != nil {
+		http.NotFound(w, r)
 		return
 	}
 
-	// Handle comment creation endpoint
-	if strings.Contains(path, "/comments") && r.Method == "POST" {
-		// Parse path: /api/v1/repos/{owner}/{repo}/issues/{number}/comments
-		pathParts := strings.Split(strings.TrimPrefix(path, "/api/v1/repos/"), "/")
-		if len(pathParts) < 5 {
-			http.NotFound(w, r)
-			return
-		}
+	// Check if repository is marked as not found
+	if m.notFoundRepos[repoKey] {
+		http.NotFound(w, r)
+		return
+	}
 
-		owner := pathParts[0]
-		repo := pathParts[1]
-		repoKey := owner + "/" + repo
+	pullRequests, exists := m.pullRequests[repoKey]
+	if !exists {
+		pullRequests = []MockPullRequest{}
+	}
 
-		// Check if repository exists (simulate API error for nonexistent repos)
-		if repoKey == "nonexistent/repo" {
-			http.NotFound(w, r)
-			return
+	// Filter by state if provided in query parameters
+	state := r.URL.Query().Get("state")
+	if state != "" {
+		var filtered []MockPullRequest
+		for _, pr := range pullRequests {
+			if state == "all" || pr.State == state {
+				filtered = append(filtered, pr)
+			}
 		}
+		pullRequests = filtered
+	}
 
-		// Parse comment from request body
-		var commentReq struct {
-			Body string `json:"body"`
-		}
-		if err := json.NewDecoder(r.Body).Decode(&commentReq); err != nil {
-			http.Error(w, "Invalid JSON", http.StatusBadRequest)
-			return
-		}
+	// Handle pagination
+	limit, offset := parsePagination(r)
 
-		// Create mock comment response that matches Gitea SDK format
-		comment := map[string]any{
-			"id":      m.nextID,
-			"body":    commentReq.Body,
-			"created": "2025-09-09T10:30:00Z",
+	// Apply pagination
+	if offset >= len(pullRequests) {
+		pullRequests = []MockPullRequest{}
+	} else {
+		end := offset + limit
+		if end > len(pullRequests) || limit == 0 {
+			end = len(pullRequests)
+		}
+		pullRequests = pullRequests[offset:end]
+	}
+
+	// Convert to Gitea SDK format
+	giteaPRs := make([]map[string]any, len(pullRequests))
+	for i, pr := range pullRequests {
+		giteaPRs[i] = map[string]any{
+			"id":     pr.ID,
+			"number": pr.Number,
+			"title":  pr.Title,
+			"body":   "",
+			"state":  pr.State,
 			"user": map[string]any{
 				"login": "testuser",
 			},
-		}
-		m.nextID++
-
-		// Store comment for listing
-		mockComment := MockComment{
-			ID:      m.nextID - 1, // Use the ID we just assigned
-			Content: commentReq.Body,
-			Author:  "testuser",
-			Created: "2025-09-09T10:30:00Z",
-		}
-
-		// Store comment
-		key := repoKey + "/comments"
-		m.comments[key] = append(m.comments[key], mockComment)
-
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusCreated)
-		json.NewEncoder(w).Encode(comment)
-		return
-	}
-	// Handle comment listing endpoint
-	if strings.Contains(path, "/comments") && r.Method == "GET" {
-		// Parse path: /api/v1/repos/{owner}/{repo}/issues/{number}/comments
-		pathParts := strings.Split(strings.TrimPrefix(path, "/api/v1/repos/"), "/")
-		if len(pathParts) < 5 {
-			http.NotFound(w, r)
-			return
-		}
-
-		owner := pathParts[0]
-		repo := pathParts[1]
-		repoKey := owner + "/" + repo
-
-		// Check if repository is marked as not found
-		if m.notFoundRepos[repoKey] {
-			http.NotFound(w, r)
-			return
-		}
-		// Check if repository exists (simulate API error for nonexistent repos)
-		if repoKey == "nonexistent/repo" {
-			http.NotFound(w, r)
-			return
-		}
-
-		// Get stored comments for this repository
-		key := repoKey + "/comments"
-		storedComments, exists := m.comments[key]
-		if !exists {
-			storedComments = []MockComment{}
-		}
-
-		// Convert to Gitea SDK format
-		comments := make([]map[string]any, len(storedComments))
-		for i, mc := range storedComments {
-			comments[i] = map[string]any{
-				"id":      mc.ID,
-				"body":    mc.Content,
-				"created": mc.Created,
-				"user": map[string]any{
-					"login": mc.Author,
-				},
-			}
-		}
-
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(comments)
-		return
-	}
-
-	// Handle comment editing endpoint
-	if strings.Contains(path, "/comments/") && r.Method == "PATCH" {
-		// Check authentication token
-		authHeader := r.Header.Get("Authorization")
-		token := r.URL.Query().Get("token")
-
-		// Extract token value from header
-		var headerToken string
-		if after, ok := strings.CutPrefix(authHeader, "Bearer "); ok {
-			headerToken = after
-		} else if after0, ok0 := strings.CutPrefix(authHeader, "token "); ok0 {
-			headerToken = after0
-		}
-
-		// Reject invalid-token
-		if headerToken == "invalid-token" || token == "invalid-token" {
-			http.Error(w, "Unauthorized", http.StatusUnauthorized)
-			return
-		}
-
-		// Accept valid tokens or no token (for backward compatibility)
-		if headerToken != "" && headerToken != "mock-token" && headerToken != "test-token" {
-			http.Error(w, "Unauthorized", http.StatusUnauthorized)
-			return
-		}
-
-		// Parse path: /api/v1/repos/{owner}/{repo}/issues/comments/{id}
-		pathParts := strings.Split(strings.TrimPrefix(path, "/api/v1/repos/"), "/")
-		if len(pathParts) < 5 {
-			http.NotFound(w, r)
-			return
-		}
-
-		owner := pathParts[0]
-		repo := pathParts[1]
-		repoKey := owner + "/" + repo
-		// Check if repository is marked as not found
-		if m.notFoundRepos[repoKey] {
-			http.NotFound(w, r)
-			return
-		}
-
-		// Parse comment ID from URL
-		commentIDStr := pathParts[4]
-		if commentIDStr == "" {
-			http.NotFound(w, r)
-			return
-		}
-
-		// Parse comment from request body
-		var commentReq struct {
-			Body string `json:"body"`
-		}
-		if err := json.NewDecoder(r.Body).Decode(&commentReq); err != nil {
-			http.Error(w, "Invalid JSON", http.StatusBadRequest)
-			return
-		}
-
-		// Check if repository exists (simulate API error for nonexistent repos)
-		if repoKey == "nonexistent/repo" {
-			http.NotFound(w, r)
-			return
-		}
-		// Update stored comment
-		key := repoKey + "/comments"
-		if storedComments, exists := m.comments[key]; exists {
-			for i := range storedComments {
-				if storedComments[i].ID == 1 { // Use fixed ID for testing
-					storedComments[i].Content = commentReq.Body
-					break
-				}
-			}
-		}
-
-		// Create mock comment response that matches Gitea SDK format
-		comment := map[string]any{
-			"id":      123, // Use fixed ID for testing
-			"body":    commentReq.Body,
-			"created": "2025-09-10T10:00:00Z",
-			"user": map[string]any{
-				"login": "testuser",
+			"created_at": "2025-09-11T10:30:00Z",
+			"updated_at": "2025-09-11T10:30:00Z",
+			"head": map[string]any{
+				"ref": "feature-branch",
+				"sha": "abc123",
+			},
+			"base": map[string]any{
+				"ref": "main",
+				"sha": "def456",
 			},
 		}
+	}
 
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(comment)
+	writeJSONResponse(w, giteaPRs, http.StatusOK)
+}
+
+// handleIssues handles issues endpoint
+func (m *MockGiteaServer) handleIssues(w http.ResponseWriter, r *http.Request) {
+	// Check method
+	if r.Method != "GET" {
+		http.NotFound(w, r)
 		return
 	}
 
-	http.NotFound(w, r)
+	// Extract repository key from path values
+	repoKey, err := getRepoKeyFromRequest(r)
+	if err != nil {
+		http.NotFound(w, r)
+		return
+	}
+
+	issues, exists := m.issues[repoKey]
+	if !exists {
+		http.NotFound(w, r)
+		return
+	}
+
+	writeJSONResponse(w, issues, http.StatusOK)
+}
+
+// handleCreateComment handles comment creation endpoint
+func (m *MockGiteaServer) handleCreateComment(w http.ResponseWriter, r *http.Request) {
+	// Check method
+	if r.Method != "POST" {
+		http.NotFound(w, r)
+		return
+	}
+
+	// Extract repository key from path values
+	repoKey, err := getRepoKeyFromRequest(r)
+	if err != nil {
+		http.NotFound(w, r)
+		return
+	}
+
+	// Check if repository exists (simulate API error for nonexistent repos)
+	if repoKey == "nonexistent/repo" {
+		http.NotFound(w, r)
+		return
+	}
+
+	// Parse comment from request body
+	var commentReq struct {
+		Body string `json:"body"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&commentReq); err != nil {
+		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		return
+	}
+
+	// Create mock comment response that matches Gitea SDK format
+	comment := map[string]any{
+		"id":      m.nextID,
+		"body":    commentReq.Body,
+		"created": "2025-09-09T10:30:00Z",
+		"user": map[string]any{
+			"login": "testuser",
+		},
+	}
+	m.nextID++
+
+	// Store comment for listing
+	mockComment := MockComment{
+		ID:      m.nextID - 1, // Use the ID we just assigned
+		Content: commentReq.Body,
+		Author:  "testuser",
+		Created: "2025-09-09T10:30:00Z",
+	}
+
+	// Store comment
+	key := repoKey + "/comments"
+	m.comments[key] = append(m.comments[key], mockComment)
+
+	writeJSONResponse(w, comment, http.StatusCreated)
+}
+
+// handleListComments handles comment listing endpoint
+func (m *MockGiteaServer) handleListComments(w http.ResponseWriter, r *http.Request) {
+	// Check method
+	if r.Method != "GET" {
+		http.NotFound(w, r)
+		return
+	}
+
+	// Extract repository key from path values
+	repoKey, err := getRepoKeyFromRequest(r)
+	if err != nil {
+		http.NotFound(w, r)
+		return
+	}
+
+	// Check if repository is marked as not found
+	if m.notFoundRepos[repoKey] {
+		http.NotFound(w, r)
+		return
+	}
+
+	// Check if repository exists (simulate API error for nonexistent repos)
+	if repoKey == "nonexistent/repo" {
+		http.NotFound(w, r)
+		return
+	}
+
+	// Get stored comments for this repository
+	key := repoKey + "/comments"
+	storedComments, exists := m.comments[key]
+	if !exists {
+		storedComments = []MockComment{}
+	}
+
+	// Convert to Gitea SDK format
+	comments := make([]map[string]any, len(storedComments))
+	for i, mc := range storedComments {
+		comments[i] = map[string]any{
+			"id":      mc.ID,
+			"body":    mc.Content,
+			"created": mc.Created,
+			"user": map[string]any{
+				"login": mc.Author,
+			},
+		}
+	}
+
+	writeJSONResponse(w, comments, http.StatusOK)
+}
+
+// handleEditComment handles comment editing endpoint
+func (m *MockGiteaServer) handleEditComment(w http.ResponseWriter, r *http.Request) {
+	// Check method
+	if r.Method != "PATCH" {
+		http.NotFound(w, r)
+		return
+	}
+
+	// Check authentication token
+	if !validateAuthToken(r) {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	// Extract repository key from path values
+	repoKey, err := getRepoKeyFromRequest(r)
+	if err != nil {
+		http.NotFound(w, r)
+		return
+	}
+
+	// Check if repository is marked as not found
+	if m.notFoundRepos[repoKey] {
+		http.NotFound(w, r)
+		return
+	}
+
+	// Parse comment ID from URL
+	commentIDStr := r.PathValue("id")
+	if commentIDStr == "" {
+		http.NotFound(w, r)
+		return
+	}
+
+	// Parse comment from request body
+	var commentReq struct {
+		Body string `json:"body"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&commentReq); err != nil {
+		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		return
+	}
+
+	// Check if repository exists (simulate API error for nonexistent repos)
+	if repoKey == "nonexistent/repo" {
+		http.NotFound(w, r)
+		return
+	}
+
+	// Update stored comment
+	key := repoKey + "/comments"
+	if storedComments, exists := m.comments[key]; exists {
+		for i := range storedComments {
+			if storedComments[i].ID == 1 { // Use fixed ID for testing
+				storedComments[i].Content = commentReq.Body
+				break
+			}
+		}
+	}
+
+	// Create mock comment response that matches Gitea SDK format
+	comment := map[string]any{
+		"id":      123, // Use fixed ID for testing
+		"body":    commentReq.Body,
+		"created": "2025-09-10T10:00:00Z",
+		"user": map[string]any{
+			"login": "testuser",
+		},
+	}
+
+	writeJSONResponse(w, comment, http.StatusOK)
 }
 
 // NewTestServer creates a new TestServer instance
@@ -452,7 +426,6 @@ func NewTestServer(t *testing.T, ctx context.Context, env map[string]string) *Te
 		RemoteURL: defaults["FORGEJO_REMOTE_URL"],
 		AuthToken: defaults["FORGEJO_AUTH_TOKEN"],
 	})
-
 	if err != nil {
 		t.Fatal(err)
 	}
