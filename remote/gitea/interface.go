@@ -63,10 +63,43 @@ type IssueCommentEditor interface {
 	EditIssueComment(ctx context.Context, args EditIssueCommentArgs) (*IssueComment, error)
 }
 
-// GiteaClientInterface combines IssueLister, IssueCommenter, IssueCommentLister, and IssueCommentEditor for complete Gitea operations
+// PullRequestBranch represents a branch reference in a pull request
+type PullRequestBranch struct {
+	Ref string `json:"ref"`
+	Sha string `json:"sha"`
+}
+
+// PullRequest represents a Git repository pull request
+type PullRequest struct {
+	ID        int               `json:"id"`
+	Number    int               `json:"number"`
+	Title     string            `json:"title"`
+	Body      string            `json:"body"`
+	State     string            `json:"state"`
+	User      string            `json:"user"`
+	CreatedAt string            `json:"created_at"`
+	UpdatedAt string            `json:"updated_at"`
+	Head      PullRequestBranch `json:"head"`
+	Base      PullRequestBranch `json:"base"`
+}
+
+// ListPullRequestsOptions represents the options for listing pull requests with validation tags
+type ListPullRequestsOptions struct {
+	State  string `json:"state" validate:"oneof=open closed all"`
+	Limit  int    `json:"limit" validate:"min=1,max=100"`
+	Offset int    `json:"offset" validate:"min=0"`
+}
+
+// PullRequestLister defines the interface for listing pull requests from a Git repository
+type PullRequestLister interface {
+	ListPullRequests(ctx context.Context, repo string, options ListPullRequestsOptions) ([]PullRequest, error)
+}
+
+// GiteaClientInterface combines IssueLister, IssueCommenter, IssueCommentLister, IssueCommentEditor, and PullRequestLister for complete Gitea operations
 type GiteaClientInterface interface {
 	IssueLister
 	IssueCommenter
 	IssueCommentLister
 	IssueCommentEditor
+	PullRequestLister
 }

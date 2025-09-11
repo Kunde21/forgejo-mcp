@@ -162,3 +162,64 @@ func (c *GiteaClient) EditIssueComment(ctx context.Context, args EditIssueCommen
 
 	return issueComment, nil
 }
+
+// ListPullRequests retrieves pull requests from the specified repository
+func (c *GiteaClient) ListPullRequests(ctx context.Context, repo string, options ListPullRequestsOptions) ([]PullRequest, error) {
+	// Parse repository string (format: "owner/repo")
+	owner, repoName, ok := strings.Cut(repo, "/")
+	if !ok {
+		return nil, fmt.Errorf("invalid repository format: %s, expected 'owner/repo'", repo)
+	}
+
+	// Convert state to Gitea SDK format
+	var state gitea.StateType
+	switch options.State {
+	case "open":
+		state = gitea.StateOpen
+	case "closed":
+		state = gitea.StateClosed
+	case "all":
+		state = gitea.StateAll
+	default:
+		state = gitea.StateOpen // Default to open if invalid state
+	}
+
+	// List pull requests using Gitea SDK
+	opts := gitea.ListPullRequestsOptions{
+		ListOptions: gitea.ListOptions{
+			PageSize: options.Limit,
+			Page:     options.Offset/options.Limit + 1, // Gitea uses 1-based pagination
+		},
+		State: state,
+	}
+
+	giteaPRs, _, err := c.client.ListRepoPullRequests(owner, repoName, opts)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list pull requests: %w", err)
+	}
+
+	// Convert to our PullRequest struct
+	prs := make([]PullRequest, len(giteaPRs))
+	for i, gpr := range giteaPRs {
+		prs[i] = PullRequest{
+			ID:        int(gpr.ID),
+			Number:    int(gpr.Index),
+			Title:     gpr.Title,
+			Body:      gpr.Body,
+			State:     string(gpr.State),
+			User:      gpr.Poster.UserName,
+			CreatedAt: gpr.Created.Format("2006-01-02T15:04:05Z"),
+			UpdatedAt: gpr.Updated.Format("2006-01-02T15:04:05Z"),
+			Head: PullRequestBranch{
+				Ref: gpr.Head.Ref,
+				Sha: gpr.Head.Sha,
+			},
+			Base: PullRequestBranch{
+				Ref: gpr.Base.Ref,
+				Sha: gpr.Base.Sha,
+			},
+		}
+	}
+
+	return prs, nil
+}

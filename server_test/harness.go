@@ -7,6 +7,7 @@ import (
 	"maps"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"strings"
 	"sync"
 	"testing"
@@ -29,10 +30,12 @@ type TestServer struct {
 
 // MockGiteaServer represents a mock Gitea API server for testing
 type MockGiteaServer struct {
-	server   *httptest.Server
-	issues   map[string][]MockIssue
-	comments map[string][]MockComment
-	nextID   int
+	server        *httptest.Server
+	issues        map[string][]MockIssue
+	comments      map[string][]MockComment
+	pullRequests  map[string][]MockPullRequest
+	notFoundRepos map[string]bool // Repositories that should return 404
+	nextID        int
 }
 
 // MockIssue represents a mock issue for testing
@@ -56,12 +59,22 @@ type MockCommentUser struct {
 	Username string `json:"username"`
 }
 
+// MockPullRequest represents a mock pull request for testing
+type MockPullRequest struct {
+	ID     int    `json:"id"`
+	Number int    `json:"number"`
+	Title  string `json:"title"`
+	State  string `json:"state"`
+}
+
 // NewMockGiteaServer creates a new mock Gitea server
 func NewMockGiteaServer(t *testing.T) *MockGiteaServer {
 	mock := &MockGiteaServer{
-		issues:   make(map[string][]MockIssue),
-		comments: make(map[string][]MockComment),
-		nextID:   1,
+		issues:        make(map[string][]MockIssue),
+		comments:      make(map[string][]MockComment),
+		pullRequests:  make(map[string][]MockPullRequest),
+		notFoundRepos: make(map[string]bool),
+		nextID:        1,
 	}
 
 	// Create HTTP handler for mock API
@@ -91,6 +104,18 @@ func (m *MockGiteaServer) AddComments(owner, repo string, comments []MockComment
 	m.comments[key] = comments
 }
 
+// AddPullRequests adds mock pull requests for a repository
+func (m *MockGiteaServer) AddPullRequests(owner, repo string, pullRequests []MockPullRequest) {
+	key := owner + "/" + repo
+	m.pullRequests[key] = pullRequests
+}
+
+// SetNotFoundRepo marks a repository as not found (will return 404)
+func (m *MockGiteaServer) SetNotFoundRepo(owner, repo string) {
+	key := owner + "/" + repo
+	m.notFoundRepos[key] = true
+}
+
 // handleVersion handles the version endpoint
 func (m *MockGiteaServer) handleVersion(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
@@ -100,6 +125,98 @@ func (m *MockGiteaServer) handleVersion(w http.ResponseWriter, r *http.Request) 
 // handleRepoRequests handles repository issues and comments endpoints
 func (m *MockGiteaServer) handleRepoRequests(w http.ResponseWriter, r *http.Request) {
 	path := r.URL.Path
+
+	// Handle pull requests endpoint
+	if strings.Contains(path, "/pulls") && r.Method == "GET" {
+		parts := strings.Split(strings.TrimPrefix(path, "/api/v1/repos/"), "/pulls")
+		if len(parts) != 2 || parts[0] == "" || strings.Contains(parts[0], "/") == false {
+			http.NotFound(w, r)
+			return
+		}
+		repoKey := parts[0]
+
+		// Check if repository is marked as not found
+		if m.notFoundRepos[repoKey] {
+			http.NotFound(w, r)
+			return
+		}
+
+		pullRequests, exists := m.pullRequests[repoKey]
+		if !exists {
+			pullRequests = []MockPullRequest{}
+		}
+
+		// Filter by state if provided in query parameters
+		state := r.URL.Query().Get("state")
+		if state != "" {
+			var filtered []MockPullRequest
+			for _, pr := range pullRequests {
+				if state == "all" || pr.State == state {
+					filtered = append(filtered, pr)
+				}
+			}
+			pullRequests = filtered
+		}
+
+		// Handle pagination
+		limitStr := r.URL.Query().Get("limit")
+		offsetStr := r.URL.Query().Get("offset")
+
+		limit := len(pullRequests) // Default to all items
+		offset := 0                // Default to start from beginning
+
+		if limitStr != "" {
+			if parsedLimit, err := strconv.Atoi(limitStr); err == nil && parsedLimit > 0 {
+				limit = parsedLimit
+			}
+		}
+
+		if offsetStr != "" {
+			if parsedOffset, err := strconv.Atoi(offsetStr); err == nil && parsedOffset >= 0 {
+				offset = parsedOffset
+			}
+		}
+
+		// Apply pagination
+		if offset >= len(pullRequests) {
+			pullRequests = []MockPullRequest{}
+		} else {
+			end := offset + limit
+			if end > len(pullRequests) {
+				end = len(pullRequests)
+			}
+			pullRequests = pullRequests[offset:end]
+		}
+
+		// Convert to Gitea SDK format
+		giteaPRs := make([]map[string]any, len(pullRequests))
+		for i, pr := range pullRequests {
+			giteaPRs[i] = map[string]any{
+				"id":     pr.ID,
+				"number": pr.Number,
+				"title":  pr.Title,
+				"body":   "",
+				"state":  pr.State,
+				"user": map[string]any{
+					"login": "testuser",
+				},
+				"created_at": "2025-09-11T10:30:00Z",
+				"updated_at": "2025-09-11T10:30:00Z",
+				"head": map[string]any{
+					"ref": "feature-branch",
+					"sha": "abc123",
+				},
+				"base": map[string]any{
+					"ref": "main",
+					"sha": "def456",
+				},
+			}
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(giteaPRs)
+		return
+	}
 
 	// Handle issues endpoint
 	if strings.Contains(path, "/issues") && !strings.Contains(path, "/comments") && r.Method == "GET" {

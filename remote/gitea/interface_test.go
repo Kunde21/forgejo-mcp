@@ -170,3 +170,111 @@ func TestIssueCommentEditorEditIssueComment(t *testing.T) {
 	// We don't call the method to avoid nil pointer panic
 	// The interface compliance is tested in TestIssueCommentEditorInterface
 }
+
+func TestPullRequestStruct(t *testing.T) {
+	// Test PullRequest struct definition and JSON serialization
+	pr := PullRequest{
+		ID:        123,
+		Number:    42,
+		Title:     "Test Pull Request",
+		Body:      "This is a test pull request",
+		State:     "open",
+		User:      "testuser",
+		CreatedAt: "2025-09-11T10:00:00Z",
+		UpdatedAt: "2025-09-11T11:00:00Z",
+		Head: PullRequestBranch{
+			Ref: "feature-branch",
+			Sha: "abc123def456",
+		},
+		Base: PullRequestBranch{
+			Ref: "main",
+			Sha: "def456abc123",
+		},
+	}
+
+	// Test struct fields are accessible
+	if pr.ID != 123 {
+		t.Errorf("Expected ID to be 123, got %d", pr.ID)
+	}
+	if pr.Number != 42 {
+		t.Errorf("Expected Number to be 42, got %d", pr.Number)
+	}
+	if pr.Title != "Test Pull Request" {
+		t.Errorf("Expected Title to be 'Test Pull Request', got %s", pr.Title)
+	}
+	if pr.Body != "This is a test pull request" {
+		t.Errorf("Expected Body to be 'This is a test pull request', got %s", pr.Body)
+	}
+	if pr.State != "open" {
+		t.Errorf("Expected State to be 'open', got %s", pr.State)
+	}
+	if pr.User != "testuser" {
+		t.Errorf("Expected User to be 'testuser', got %s", pr.User)
+	}
+	if pr.CreatedAt != "2025-09-11T10:00:00Z" {
+		t.Errorf("Expected CreatedAt to be '2025-09-11T10:00:00Z', got %s", pr.CreatedAt)
+	}
+	if pr.UpdatedAt != "2025-09-11T11:00:00Z" {
+		t.Errorf("Expected UpdatedAt to be '2025-09-11T11:00:00Z', got %s", pr.UpdatedAt)
+	}
+	if pr.Head.Ref != "feature-branch" {
+		t.Errorf("Expected Head.Ref to be 'feature-branch', got %s", pr.Head.Ref)
+	}
+	if pr.Head.Sha != "abc123def456" {
+		t.Errorf("Expected Head.Sha to be 'abc123def456', got %s", pr.Head.Sha)
+	}
+	if pr.Base.Ref != "main" {
+		t.Errorf("Expected Base.Ref to be 'main', got %s", pr.Base.Ref)
+	}
+	if pr.Base.Sha != "def456abc123" {
+		t.Errorf("Expected Base.Sha to be 'def456abc123', got %s", pr.Base.Sha)
+	}
+}
+
+func TestPullRequestBranchStruct(t *testing.T) {
+	// Test PullRequestBranch struct definition
+	branch := PullRequestBranch{
+		Ref: "main",
+		Sha: "abc123def456",
+	}
+
+	// Test struct fields are accessible
+	if branch.Ref != "main" {
+		t.Errorf("Expected Ref to be 'main', got %s", branch.Ref)
+	}
+	if branch.Sha != "abc123def456" {
+		t.Errorf("Expected Sha to be 'abc123def456', got %s", branch.Sha)
+	}
+}
+
+func TestListPullRequestsOptionsStruct(t *testing.T) {
+	// Test ListPullRequestsOptions struct definition and validation tags
+	options := ListPullRequestsOptions{
+		State:  "open",
+		Limit:  15,
+		Offset: 0,
+	}
+
+	// Test struct fields are accessible
+	if options.State != "open" {
+		t.Errorf("Expected State to be 'open', got %s", options.State)
+	}
+	if options.Limit != 15 {
+		t.Errorf("Expected Limit to be 15, got %d", options.Limit)
+	}
+	if options.Offset != 0 {
+		t.Errorf("Expected Offset to be 0, got %d", options.Offset)
+	}
+}
+
+func TestPullRequestListerInterface(t *testing.T) {
+	// Test that PullRequestLister interface is properly defined
+	var _ PullRequestLister = (*GiteaClient)(nil)
+}
+
+func TestPullRequestListerListPullRequests(t *testing.T) {
+	// Test the ListPullRequests method signature
+	// This is a compile-time test to ensure the interface is correct
+	// We don't call the method to avoid nil pointer panic
+	// The interface compliance is tested in TestPullRequestListerInterface
+}

@@ -30,8 +30,8 @@ func TestIssueCommentEditToolDiscovery(t *testing.T) {
 	}
 
 	// Check that we have the expected tools (should now be 5 including issue_comment_edit)
-	if len(tools.Tools) != 5 {
-		t.Fatalf("Expected 5 tools, got %d", len(tools.Tools))
+	if len(tools.Tools) != 6 {
+		t.Fatalf("Expected 6 tools, got %d", len(tools.Tools))
 	}
 
 	// Find the issue_comment_edit tool

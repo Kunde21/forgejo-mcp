@@ -95,6 +95,11 @@ func NewFromService(service *gitea.Service, cfg *config.Config) (*Server, error)
 		Description: "Edit an existing comment on a Forgejo/Gitea repository issue",
 	}, s.handleIssueCommentEdit)
 
+	mcp.AddTool(mcpServer, &mcp.Tool{
+		Name:        "pr_list",
+		Description: "List pull requests from a Forgejo/Gitea repository with pagination and state filtering",
+	}, s.handlePullRequestList)
+
 	s.mcpServer = mcpServer
 	return s, nil
 }

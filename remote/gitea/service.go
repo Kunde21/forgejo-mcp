@@ -103,6 +103,22 @@ func (s *Service) EditIssueComment(ctx context.Context, args EditIssueCommentArg
 	return s.client.EditIssueComment(ctx, args)
 }
 
+// ListPullRequests lists pull requests for a repository with validation
+func (s *Service) ListPullRequests(ctx context.Context, repo string, options ListPullRequestsOptions) ([]PullRequest, error) {
+	// Validate repository format
+	if err := s.validateRepository(repo); err != nil {
+		return nil, fmt.Errorf("repository validation failed: %w", err)
+	}
+
+	// Validate pull request options
+	if err := s.validatePullRequestOptions(options); err != nil {
+		return nil, fmt.Errorf("pull request options validation failed: %w", err)
+	}
+
+	// Call the underlying client
+	return s.client.ListPullRequests(ctx, repo, options)
+}
+
 // validateRepository checks if the repository string is in the correct format
 func (s *Service) validateRepository(repo string) error {
 	if repo == "" {
@@ -155,4 +171,34 @@ func (s *Service) validateCommentID(commentID int) error {
 		return fmt.Errorf("comment ID must be positive")
 	}
 	return nil
+}
+
+// validatePullRequestOptions checks if the pull request options are valid
+func (s *Service) validatePullRequestOptions(options ListPullRequestsOptions) error {
+	// Validate pagination parameters
+	if err := s.validatePagination(options.Limit, options.Offset); err != nil {
+		return err
+	}
+
+	// Validate state parameter
+	if err := s.validatePullRequestState(options.State); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// validatePullRequestState checks if the pull request state is valid
+func (s *Service) validatePullRequestState(state string) error {
+	if state == "" {
+		return fmt.Errorf("state cannot be empty")
+	}
+
+	// Valid states are "open", "closed", "all"
+	switch state {
+	case "open", "closed", "all":
+		return nil
+	default:
+		return fmt.Errorf("state must be one of: open, closed, all")
+	}
 }

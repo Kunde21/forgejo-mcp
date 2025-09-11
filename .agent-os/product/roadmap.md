@@ -32,7 +32,7 @@
 
 ### Must-Have Features
 
-- Pull Request listing functionality
+- [x] Pull Request listing functionality
 - [x] Issue comment viewing
 - PR comment viewing
 

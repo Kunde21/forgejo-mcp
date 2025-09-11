@@ -138,6 +138,48 @@ func (m *mockGiteaClient) EditIssueComment(ctx context.Context, args EditIssueCo
 	}, nil
 }
 
+func (m *mockGiteaClient) ListPullRequests(ctx context.Context, repo string, options ListPullRequestsOptions) ([]PullRequest, error) {
+	// Mock implementation for testing - returns sample pull requests
+	return []PullRequest{
+		{
+			ID:        1,
+			Number:    42,
+			Title:     "Test Pull Request 1",
+			Body:      "This is a test pull request",
+			State:     "open",
+			User:      "test-user",
+			CreatedAt: "2025-09-11T10:00:00Z",
+			UpdatedAt: "2025-09-11T11:00:00Z",
+			Head: PullRequestBranch{
+				Ref: "feature-branch",
+				Sha: "abc123def456",
+			},
+			Base: PullRequestBranch{
+				Ref: "main",
+				Sha: "def456abc123",
+			},
+		},
+		{
+			ID:        2,
+			Number:    43,
+			Title:     "Test Pull Request 2",
+			Body:      "Another test pull request",
+			State:     "closed",
+			User:      "another-user",
+			CreatedAt: "2025-09-11T09:00:00Z",
+			UpdatedAt: "2025-09-11T12:00:00Z",
+			Head: PullRequestBranch{
+				Ref: "bugfix-branch",
+				Sha: "ghi789jkl012",
+			},
+			Base: PullRequestBranch{
+				Ref: "main",
+				Sha: "def456abc123",
+			},
+		},
+	}, nil
+}
+
 func TestServiceEditIssueComment(t *testing.T) {
 	// Test EditIssueComment method with mock client
 	ctx := context.Background()
@@ -346,6 +388,184 @@ func TestServiceListIssueCommentsValidation(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			_, err := service.ListIssueComments(ctx, tc.repo, tc.issueNumber, tc.limit, tc.offset)
+			if tc.expectError && err == nil {
+				t.Error("Expected error but got none")
+			}
+			if !tc.expectError && err != nil {
+				t.Errorf("Expected no error but got %v", err)
+			}
+		})
+	}
+}
+
+func TestServiceListPullRequests(t *testing.T) {
+	// Test ListPullRequests method with mock client
+	ctx := context.Background()
+
+	// Create a mock client that implements GiteaClientInterface
+	mockClient := &mockGiteaClient{}
+
+	// Create service with mock client
+	service := NewService(mockClient)
+
+	// Test successful pull request listing with valid options
+	options := ListPullRequestsOptions{
+		State:  "open",
+		Limit:  10,
+		Offset: 0,
+	}
+	prs, err := service.ListPullRequests(ctx, "owner/repo", options)
+	if err != nil {
+		t.Errorf("Expected no error, got %v", err)
+	}
+	if prs == nil {
+		t.Error("Expected pull requests to be returned")
+	}
+	if len(prs) != 2 {
+		t.Errorf("Expected 2 pull requests, got %d", len(prs))
+	}
+	// Verify the first pull request details
+	if prs[0].ID != 1 {
+		t.Errorf("Expected first PR ID to be 1, got %d", prs[0].ID)
+	}
+	if prs[0].Number != 42 {
+		t.Errorf("Expected first PR number to be 42, got %d", prs[0].Number)
+	}
+	if prs[0].Title != "Test Pull Request 1" {
+		t.Errorf("Expected first PR title to be 'Test Pull Request 1', got %s", prs[0].Title)
+	}
+	if prs[0].State != "open" {
+		t.Errorf("Expected first PR state to be 'open', got %s", prs[0].State)
+	}
+}
+
+func TestServiceListPullRequestsValidation(t *testing.T) {
+	// Test validation for ListPullRequests
+	ctx := context.Background()
+	mockClient := &mockGiteaClient{}
+	service := NewService(mockClient)
+
+	testCases := []struct {
+		name        string
+		repo        string
+		options     ListPullRequestsOptions
+		expectError bool
+	}{
+		{
+			name: "valid input with open state",
+			repo: "owner/repo",
+			options: ListPullRequestsOptions{
+				State:  "open",
+				Limit:  15,
+				Offset: 0,
+			},
+			expectError: false,
+		},
+		{
+			name: "valid input with closed state",
+			repo: "owner/repo",
+			options: ListPullRequestsOptions{
+				State:  "closed",
+				Limit:  25,
+				Offset: 5,
+			},
+			expectError: false,
+		},
+		{
+			name: "valid input with all state",
+			repo: "owner/repo",
+			options: ListPullRequestsOptions{
+				State:  "all",
+				Limit:  50,
+				Offset: 10,
+			},
+			expectError: false,
+		},
+		{
+			name: "empty repository",
+			repo: "",
+			options: ListPullRequestsOptions{
+				State:  "open",
+				Limit:  15,
+				Offset: 0,
+			},
+			expectError: true,
+		},
+		{
+			name: "invalid repository format",
+			repo: "invalid-format",
+			options: ListPullRequestsOptions{
+				State:  "open",
+				Limit:  15,
+				Offset: 0,
+			},
+			expectError: true,
+		},
+		{
+			name: "zero limit",
+			repo: "owner/repo",
+			options: ListPullRequestsOptions{
+				State:  "open",
+				Limit:  0,
+				Offset: 0,
+			},
+			expectError: true,
+		},
+		{
+			name: "negative limit",
+			repo: "owner/repo",
+			options: ListPullRequestsOptions{
+				State:  "open",
+				Limit:  -1,
+				Offset: 0,
+			},
+			expectError: true,
+		},
+		{
+			name: "excessive limit",
+			repo: "owner/repo",
+			options: ListPullRequestsOptions{
+				State:  "open",
+				Limit:  101,
+				Offset: 0,
+			},
+			expectError: true,
+		},
+		{
+			name: "negative offset",
+			repo: "owner/repo",
+			options: ListPullRequestsOptions{
+				State:  "open",
+				Limit:  15,
+				Offset: -1,
+			},
+			expectError: true,
+		},
+		{
+			name: "invalid state",
+			repo: "owner/repo",
+			options: ListPullRequestsOptions{
+				State:  "invalid-state",
+				Limit:  15,
+				Offset: 0,
+			},
+			expectError: true,
+		},
+		{
+			name: "empty state",
+			repo: "owner/repo",
+			options: ListPullRequestsOptions{
+				State:  "",
+				Limit:  15,
+				Offset: 0,
+			},
+			expectError: true,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			_, err := service.ListPullRequests(ctx, tc.repo, tc.options)
 			if tc.expectError && err == nil {
 				t.Error("Expected error but got none")
 			}

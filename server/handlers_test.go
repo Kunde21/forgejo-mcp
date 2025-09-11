@@ -55,6 +55,215 @@ func (m *mockGiteaClientForService) EditIssueComment(ctx context.Context, args g
 	}, nil
 }
 
+func (m *mockGiteaClientForService) ListPullRequests(ctx context.Context, repo string, options gitea.ListPullRequestsOptions) ([]gitea.PullRequest, error) {
+	return []gitea.PullRequest{
+		{
+			ID:        1,
+			Number:    1,
+			Title:     "Test Pull Request",
+			Body:      "This is a test pull request",
+			State:     "open",
+			User:      "testuser",
+			CreatedAt: "2025-09-11T10:30:00Z",
+			UpdatedAt: "2025-09-11T10:30:00Z",
+			Head: gitea.PullRequestBranch{
+				Ref: "feature-branch",
+				Sha: "abc123",
+			},
+			Base: gitea.PullRequestBranch{
+				Ref: "main",
+				Sha: "def456",
+			},
+		},
+	}, nil
+}
+
+func TestServer_handlePullRequestList(t *testing.T) {
+	// Test handlePullRequestList handler function
+	ctx := context.Background()
+	mockClient := &mockGiteaClientForService{}
+	mockService := gitea.NewService(mockClient)
+
+	server := &Server{
+		giteaService: mockService,
+	}
+
+	request := &mcp.CallToolRequest{}
+
+	// Test successful pull request listing
+	result, data, err := server.handlePullRequestList(ctx, request, struct {
+		Repository string `json:"repository"`
+		Limit      int    `json:"limit"`
+		Offset     int    `json:"offset"`
+		State      string `json:"state"`
+	}{
+		Repository: "owner/repo",
+		Limit:      15,
+		Offset:     0,
+		State:      "open",
+	})
+	if err != nil {
+		t.Errorf("Expected no error, got %v", err)
+	}
+	if result == nil {
+		t.Error("Expected result to be returned")
+	}
+	if result.IsError {
+		t.Error("Expected result to not be an error")
+	}
+	if data == nil {
+		t.Error("Expected data to be returned")
+	}
+
+	// Test data structure
+	if len(data.PullRequests) != 1 {
+		t.Errorf("Expected 1 pull request, got %d", len(data.PullRequests))
+	}
+	if data.PullRequests[0].Title != "Test Pull Request" {
+		t.Errorf("Expected pull request title 'Test Pull Request', got '%s'", data.PullRequests[0].Title)
+	}
+}
+
+func TestServer_handlePullRequestListValidation(t *testing.T) {
+	// Test validation for handlePullRequestList
+	ctx := context.Background()
+	mockClient := &mockGiteaClientForService{}
+	mockService := gitea.NewService(mockClient)
+	server := &Server{
+		giteaService: mockService,
+	}
+
+	request := &mcp.CallToolRequest{}
+
+	// Test with invalid repository format
+	result, _, err := server.handlePullRequestList(ctx, request, struct {
+		Repository string `json:"repository"`
+		Limit      int    `json:"limit"`
+		Offset     int    `json:"offset"`
+		State      string `json:"state"`
+	}{
+		Repository: "invalid-repo-format",
+		Limit:      15,
+		Offset:     0,
+		State:      "open",
+	})
+	if err != nil {
+		t.Errorf("Expected no error, got %v", err)
+	}
+	if result == nil {
+		t.Error("Expected result to be returned")
+	}
+	if !result.IsError {
+		t.Error("Expected result to be an error")
+	}
+
+	// Test with invalid limit
+	result, _, err = server.handlePullRequestList(ctx, request, struct {
+		Repository string `json:"repository"`
+		Limit      int    `json:"limit"`
+		Offset     int    `json:"offset"`
+		State      string `json:"state"`
+	}{
+		Repository: "owner/repo",
+		Limit:      200, // Invalid: > 100
+		Offset:     0,
+		State:      "open",
+	})
+	if err != nil {
+		t.Errorf("Expected no error, got %v", err)
+	}
+	if result == nil {
+		t.Error("Expected result to be returned")
+	}
+	if !result.IsError {
+		t.Error("Expected result to be an error")
+	}
+
+	// Test with invalid state
+	result, _, err = server.handlePullRequestList(ctx, request, struct {
+		Repository string `json:"repository"`
+		Limit      int    `json:"limit"`
+		Offset     int    `json:"offset"`
+		State      string `json:"state"`
+	}{
+		Repository: "owner/repo",
+		Limit:      15,
+		Offset:     0,
+		State:      "invalid-state",
+	})
+	if err != nil {
+		t.Errorf("Expected no error, got %v", err)
+	}
+	if result == nil {
+		t.Error("Expected result to be returned")
+	}
+	if !result.IsError {
+		t.Error("Expected result to be an error")
+	}
+
+	// Test with invalid offset
+	result, _, err = server.handlePullRequestList(ctx, request, struct {
+		Repository string `json:"repository"`
+		Limit      int    `json:"limit"`
+		Offset     int    `json:"offset"`
+		State      string `json:"state"`
+	}{
+		Repository: "owner/repo",
+		Limit:      15,
+		Offset:     -1, // Invalid: negative
+		State:      "open",
+	})
+	if err != nil {
+		t.Errorf("Expected no error, got %v", err)
+	}
+	if result == nil {
+		t.Error("Expected result to be returned")
+	}
+	if !result.IsError {
+		t.Error("Expected result to be an error")
+	}
+}
+
+func TestServer_handlePullRequestListDefaultValues(t *testing.T) {
+	// Test default value handling for handlePullRequestList
+	ctx := context.Background()
+	mockClient := &mockGiteaClientForService{}
+	mockService := gitea.NewService(mockClient)
+	server := &Server{
+		giteaService: mockService,
+	}
+
+	request := &mcp.CallToolRequest{}
+
+	// Test with only required parameter (repository)
+	result, data, err := server.handlePullRequestList(ctx, request, struct {
+		Repository string `json:"repository"`
+		Limit      int    `json:"limit"`
+		Offset     int    `json:"offset"`
+		State      string `json:"state"`
+	}{
+		Repository: "owner/repo",
+		// Limit, Offset, and State should get default values
+	})
+	if err != nil {
+		t.Errorf("Expected no error, got %v", err)
+	}
+	if result == nil {
+		t.Error("Expected result to be returned")
+	}
+	if result.IsError {
+		t.Error("Expected result to not be an error")
+	}
+	if data == nil {
+		t.Error("Expected data to be returned")
+	}
+
+	// Verify default values were applied
+	if len(data.PullRequests) != 1 {
+		t.Errorf("Expected 1 pull request, got %d", len(data.PullRequests))
+	}
+}
+
 func TestServer_handleIssueCommentList(t *testing.T) {
 	// Test handleIssueCommentList handler function
 	ctx := context.Background()

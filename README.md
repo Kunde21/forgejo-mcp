@@ -291,6 +291,101 @@ Response:
     "content": [
       {
         "type": "text",
+        "text": "Comment edited successfully. ID: 123, Updated: 2025-09-10T10:30:00Z\nComment body: Updated comment with additional information and corrections."
+      }
+    ],
+    "structured": {
+      "comment": {
+        "id": 123,
+        "content": "Updated comment with additional information and corrections.",
+        "author": "testuser",
+        "created": "2025-09-10T10:30:00Z"
+      }
+    }
+  }
+}
+```
+
+#### List Pull Requests
+
+```json
+{
+  "method": "tools/call",
+  "params": {
+    "name": "pr_list",
+    "arguments": {
+      "repository": "myorg/myrepo",
+      "limit": 10,
+      "offset": 0,
+      "state": "open"
+    }
+  }
+}
+```
+
+Response:
+```json
+{
+  "result": {
+    "content": [
+      {
+        "type": "text",
+        "text": "Found 2 pull requests"
+      }
+    ],
+    "structured": {
+      "pull_requests": [
+        {
+          "id": 1,
+          "number": 1,
+          "title": "Feature: Add dark mode",
+          "state": "open",
+          "user": {
+            "login": "developer1"
+          },
+          "created_at": "2025-09-10T09:15:00Z",
+          "updated_at": "2025-09-10T09:15:00Z",
+          "head": {
+            "ref": "feature/dark-mode",
+            "sha": "abc123def456"
+          },
+          "base": {
+            "ref": "main",
+            "sha": "def456abc123"
+          }
+        },
+        {
+          "id": 2,
+          "number": 2,
+          "title": "Fix: Memory leak",
+          "state": "open",
+          "user": {
+            "login": "developer2"
+          },
+          "created_at": "2025-09-10T10:30:00Z",
+          "updated_at": "2025-09-10T10:30:00Z",
+          "head": {
+            "ref": "fix/memory-leak",
+            "sha": "ghi789jkl012"
+          },
+          "base": {
+            "ref": "main",
+            "sha": "def456abc123"
+          }
+        }
+      ]
+    }
+  }
+}
+```
+
+Response:
+```json
+{
+  "result": {
+    "content": [
+      {
+        "type": "text",
         "text": "Comment edited successfully. ID: 123, Updated: 2025-09-10T10:00:00Z\nComment body: Updated comment with additional information and corrections."
       }
     ],
@@ -324,7 +419,9 @@ Authentication is handled through API tokens configured at startup. All operatio
 Manage Pull Requests opened on your gitea repository
 
 Tools List:
-- PR list: show all open PRs on the current repository
+- `pr_list`: List pull requests from a repository with pagination and state filtering
+  - Parameters: repository (owner/repo), limit (1-100, default 15), offset (0-based, default 0), state (open/closed/all, default "open")
+  - Returns: Array of pull requests with ID, number, title, state, user, timestamps, and branch information
 - PR Comment: Add a comment to a given PR
 - Review PR: approve or request changes
 
