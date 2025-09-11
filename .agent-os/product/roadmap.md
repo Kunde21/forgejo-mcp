@@ -34,7 +34,7 @@
 
 - [x] Pull Request listing functionality
 - [x] Issue comment viewing
-- PR comment viewing
+- [x] PR comment viewing
 
 ## Phase 4: Comment Management (Q2 2026)
 
