@@ -2,14 +2,14 @@
 
 ## Tasks
 
-- [ ] 1. Extract Common Helper Functions
-  - [ ] 1.1 Write tests for helper functions (getRepoKeyFromRequest, validateRepository, parsePagination, validateAuthToken, writeJSONResponse)
-  - [ ] 1.2 Implement getRepoKeyFromRequest function to extract repository key from path values
-  - [ ] 1.3 Implement validateRepository function to check repository existence and accessibility
-  - [ ] 1.4 Implement parsePagination function to extract limit and offset from query parameters
-  - [ ] 1.5 Implement validateAuthToken function to validate authentication token from request headers
-  - [ ] 1.6 Implement writeJSONResponse function to standardize JSON response writing
-  - [ ] 1.7 Verify all helper function tests pass
+- [x] 1. Extract Common Helper Functions
+  - [x] 1.1 Write tests for helper functions (getRepoKeyFromRequest, validateRepository, parsePagination, validateAuthToken, writeJSONResponse)
+  - [x] 1.2 Implement getRepoKeyFromRequest function to extract repository key from path values
+  - [x] 1.3 Implement validateRepository function to check repository existence and accessibility
+  - [x] 1.4 Implement parsePagination function to extract limit and offset from query parameters
+  - [x] 1.5 Implement validateAuthToken function to validate authentication token from request headers
+  - [x] 1.6 Implement writeJSONResponse function to standardize JSON response writing
+  - [x] 1.7 Verify all helper function tests pass
 
 - [ ] 2. Create Individual Handler Functions
   - [ ] 2.1 Write tests for handlePullRequests function
