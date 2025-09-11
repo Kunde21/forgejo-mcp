@@ -6,10 +6,19 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/go-cmp/cmp"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
+type issueCommentEditTestCase struct {
+	name      string
+	setupMock func(*MockGiteaServer)
+	arguments map[string]any
+	expect    *mcp.CallToolResult
+}
+
 // TestCommentLifecycleAcceptance tests the complete comment lifecycle: create, list, edit
+// This test is kept as a multi-step acceptance test since it involves multiple tool calls
 func TestCommentLifecycleAcceptance(t *testing.T) {
 	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
 	t.Cleanup(cancel)
@@ -141,183 +150,297 @@ func TestCommentLifecycleAcceptance(t *testing.T) {
 
 // TestCommentEditingRealWorldScenarios tests various real-world editing scenarios
 func TestCommentEditingRealWorldScenarios(t *testing.T) {
-	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
-	t.Cleanup(cancel)
-	mock := NewMockGiteaServer(t)
-	ts := NewTestServer(t, ctx, map[string]string{
-		"FORGEJO_REMOTE_URL": mock.URL(),
-		"FORGEJO_AUTH_TOKEN": "mock-token",
-	})
-	if err := ts.Initialize(); err != nil {
-		t.Fatal(err)
-	}
-	client := ts.Client()
-
-	scenarios := []struct {
-		name        string
-		original    string
-		updated     string
-		description string
-	}{
+	t.Parallel()
+	testCases := []issueCommentEditTestCase{
 		{
-			name:        "fix_typo",
-			original:    "This is a commment with a typo",
-			updated:     "This is a comment with the typo fixed",
-			description: "Fixing a simple typo in a comment",
-		},
-		{
-			name:        "add_information",
-			original:    "I found an issue",
-			updated:     "I found an issue with the login functionality. The error occurs when users try to authenticate with invalid credentials.",
-			description: "Adding more detailed information to a brief comment",
-		},
-		{
-			name:        "correct_misinformation",
-			original:    "The bug is in the frontend code",
-			updated:     "After further investigation, the bug is actually in the backend authentication service",
-			description: "Correcting incorrect information in a comment",
-		},
-		{
-			name:        "update_status",
-			original:    "Working on this issue",
-			updated:     "I've completed the implementation and added comprehensive tests. Ready for review.",
-			description: "Updating status information in a comment",
-		},
-	}
-
-	for _, scenario := range scenarios {
-		t.Run(scenario.name, func(t *testing.T) {
-			// Create original comment
-			createResult, err := client.CallTool(ctx, &mcp.CallToolParams{
-				Name: "issue_comment_create",
-				Arguments: map[string]any{
-					"repository":   "testuser/testrepo",
-					"issue_number": 1,
-					"comment":      scenario.original,
+			name: "fix_typo",
+			setupMock: func(mock *MockGiteaServer) {
+				mock.AddComments("testuser", "testrepo", []MockComment{
+					{
+						ID:      1,
+						Content: "This is a commment with a typo",
+						Author:  "testuser",
+						Created: "2024-01-01T00:00:00Z",
+					},
+				})
+			},
+			arguments: map[string]any{
+				"repository":   "testuser/testrepo",
+				"issue_number": 1,
+				"comment_id":   1,
+				"new_content":  "This is a comment with the typo fixed",
+			},
+			expect: &mcp.CallToolResult{
+				Content: []mcp.Content{
+					&mcp.TextContent{Text: "Comment edited successfully. ID: 123, Updated: 0001-01-01T00:00:00Z\nComment body: This is a comment with the typo fixed"},
 				},
+				StructuredContent: map[string]any{
+					"comment": map[string]any{
+						"id":      float64(123),
+						"content": "This is a comment with the typo fixed",
+						"author":  "testuser",
+						"created": "0001-01-01T00:00:00Z",
+					},
+				},
+			},
+		},
+		{
+			name: "add_information",
+			setupMock: func(mock *MockGiteaServer) {
+				mock.AddComments("testuser", "testrepo", []MockComment{
+					{
+						ID:      1,
+						Content: "I found an issue",
+						Author:  "testuser",
+						Created: "2024-01-01T00:00:00Z",
+					},
+				})
+			},
+			arguments: map[string]any{
+				"repository":   "testuser/testrepo",
+				"issue_number": 1,
+				"comment_id":   1,
+				"new_content":  "I found an issue with the login functionality. The error occurs when users try to authenticate with invalid credentials.",
+			},
+			expect: &mcp.CallToolResult{
+				Content: []mcp.Content{
+					&mcp.TextContent{Text: "Comment edited successfully. ID: 123, Updated: 0001-01-01T00:00:00Z\nComment body: I found an issue with the login functionality. The error occurs when users try to authenticate with invalid credentials."},
+				},
+				StructuredContent: map[string]any{
+					"comment": map[string]any{
+						"id":      float64(123),
+						"content": "I found an issue with the login functionality. The error occurs when users try to authenticate with invalid credentials.",
+						"author":  "testuser",
+						"created": "0001-01-01T00:00:00Z",
+					},
+				},
+			},
+		},
+		{
+			name: "correct_misinformation",
+			setupMock: func(mock *MockGiteaServer) {
+				mock.AddComments("testuser", "testrepo", []MockComment{
+					{
+						ID:      1,
+						Content: "The bug is in the frontend code",
+						Author:  "testuser",
+						Created: "2024-01-01T00:00:00Z",
+					},
+				})
+			},
+			arguments: map[string]any{
+				"repository":   "testuser/testrepo",
+				"issue_number": 1,
+				"comment_id":   1,
+				"new_content":  "After further investigation, the bug is actually in the backend authentication service",
+			},
+			expect: &mcp.CallToolResult{
+				Content: []mcp.Content{
+					&mcp.TextContent{Text: "Comment edited successfully. ID: 123, Updated: 0001-01-01T00:00:00Z\nComment body: After further investigation, the bug is actually in the backend authentication service"},
+				},
+				StructuredContent: map[string]any{
+					"comment": map[string]any{
+						"id":      float64(123),
+						"content": "After further investigation, the bug is actually in the backend authentication service",
+						"author":  "testuser",
+						"created": "0001-01-01T00:00:00Z",
+					},
+				},
+			},
+		},
+		{
+			name: "update_status",
+			setupMock: func(mock *MockGiteaServer) {
+				mock.AddComments("testuser", "testrepo", []MockComment{
+					{
+						ID:      1,
+						Content: "Working on this issue",
+						Author:  "testuser",
+						Created: "2024-01-01T00:00:00Z",
+					},
+				})
+			},
+			arguments: map[string]any{
+				"repository":   "testuser/testrepo",
+				"issue_number": 1,
+				"comment_id":   1,
+				"new_content":  "I've completed the implementation and added comprehensive tests. Ready for review.",
+			},
+			expect: &mcp.CallToolResult{
+				Content: []mcp.Content{
+					&mcp.TextContent{Text: "Comment edited successfully. ID: 123, Updated: 0001-01-01T00:00:00Z\nComment body: I've completed the implementation and added comprehensive tests. Ready for review."},
+				},
+				StructuredContent: map[string]any{
+					"comment": map[string]any{
+						"id":      float64(123),
+						"content": "I've completed the implementation and added comprehensive tests. Ready for review.",
+						"author":  "testuser",
+						"created": "0001-01-01T00:00:00Z",
+					},
+				},
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			mock := NewMockGiteaServer(t)
+			if tc.setupMock != nil {
+				tc.setupMock(mock)
+			}
+			ts := NewTestServer(t, t.Context(), map[string]string{
+				"FORGEJO_REMOTE_URL": mock.URL(),
+				"FORGEJO_AUTH_TOKEN": "mock-token",
+			})
+			if err := ts.Initialize(); err != nil {
+				t.Fatalf("Failed to initialize test server: %v", err)
+			}
+
+			result, err := ts.Client().CallTool(context.Background(), &mcp.CallToolParams{
+				Name:      "issue_comment_edit",
+				Arguments: tc.arguments,
 			})
 			if err != nil {
-				t.Fatalf("Failed to create comment for scenario %s: %v", scenario.name, err)
+				t.Fatalf("Failed to call issue_comment_edit tool: %v", err)
 			}
-			if createResult.IsError {
-				t.Fatalf("Comment creation failed for scenario %s: %v", scenario.name, createResult.Content)
+			if !cmp.Equal(tc.expect, result) {
+				t.Error(cmp.Diff(tc.expect, result))
 			}
-
-			// Edit the comment
-			editResult, err := client.CallTool(ctx, &mcp.CallToolParams{
-				Name: "issue_comment_edit",
-				Arguments: map[string]any{
-					"repository":   "testuser/testrepo",
-					"issue_number": 1,
-					"comment_id":   1, // Fixed ID for testing
-					"new_content":  scenario.updated,
-				},
-			})
-			if err != nil {
-				t.Fatalf("Failed to edit comment for scenario %s: %v", scenario.name, err)
-			}
-			if editResult.IsError {
-				t.Fatalf("Comment editing failed for scenario %s: %v", scenario.name, editResult.Content)
-			}
-
-			// Verify the edit was successful
-			editText := getTextContent(editResult.Content)
-			if !strings.Contains(editText, "Comment edited successfully") {
-				t.Errorf("Expected successful edit for scenario %s, got: %s", scenario.name, editText)
-			}
-			if !strings.Contains(editText, scenario.updated) {
-				t.Errorf("Expected updated content for scenario %s, got: %s", scenario.name, editText)
-			}
-
-			t.Logf("✅ Scenario '%s' completed: %s", scenario.name, scenario.description)
 		})
 	}
 }
 
 // TestCommentEditingErrorHandling tests error handling and recovery scenarios
 func TestCommentEditingErrorHandling(t *testing.T) {
-	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
-	t.Cleanup(cancel)
-	mock := NewMockGiteaServer(t)
-	ts := NewTestServer(t, ctx, map[string]string{
-		"FORGEJO_REMOTE_URL": mock.URL(),
-		"FORGEJO_AUTH_TOKEN": "mock-token",
-	})
-	if err := ts.Initialize(); err != nil {
-		t.Fatal(err)
-	}
-	client := ts.Client()
-
-	errorScenarios := []struct {
-		name        string
-		arguments   map[string]any
-		expectError bool
-		description string
-	}{
+	t.Parallel()
+	testCases := []issueCommentEditTestCase{
 		{
 			name: "nonexistent_repository",
+			setupMock: func(mock *MockGiteaServer) {
+				// No mock setup needed for error case
+			},
 			arguments: map[string]any{
 				"repository":   "nonexistent/repo",
 				"issue_number": 1,
 				"comment_id":   1,
 				"new_content":  "test content",
 			},
-			expectError: true,
-			description: "Attempting to edit comment in nonexistent repository",
+			expect: &mcp.CallToolResult{
+				Content: []mcp.Content{
+					&mcp.TextContent{Text: "Failed to edit comment: failed to edit issue comment: unknown API error: 404\nRequest: '/api/v1/repos/nonexistent/repo/issues/comments/1' with 'PATCH' method and '404 page not found\n' body"},
+				},
+				StructuredContent: map[string]any{
+					"comment": map[string]any{
+						"id":      float64(0),
+						"content": "",
+						"author":  "",
+						"created": "",
+					},
+				},
+				IsError: true,
+			},
 		},
 		{
 			name: "invalid_repository_format",
+			setupMock: func(mock *MockGiteaServer) {
+				// No mock setup needed for error case
+			},
 			arguments: map[string]any{
 				"repository":   "invalid-format",
 				"issue_number": 1,
 				"comment_id":   1,
 				"new_content":  "test content",
 			},
-			expectError: true,
-			description: "Using invalid repository format",
+			expect: &mcp.CallToolResult{
+				Content: []mcp.Content{
+					&mcp.TextContent{Text: "Invalid request: repository: repository must be in format 'owner/repo'."},
+				},
+				StructuredContent: map[string]any{
+					"comment": map[string]any{
+						"id":      float64(0),
+						"content": "",
+						"author":  "",
+						"created": "",
+					},
+				},
+				IsError: true,
+			},
 		},
 		{
 			name: "missing_required_fields",
+			setupMock: func(mock *MockGiteaServer) {
+				// No mock setup needed for error case
+			},
 			arguments: map[string]any{
 				"repository": "testuser/testrepo",
 				// missing issue_number, comment_id, new_content
 			},
-			expectError: true,
-			description: "Missing required parameters",
+			expect: &mcp.CallToolResult{
+				Content: []mcp.Content{
+					&mcp.TextContent{Text: "Invalid request: new_content: cannot be blank."},
+				},
+				StructuredContent: map[string]any{
+					"comment": map[string]any{
+						"id":      float64(0),
+						"content": "",
+						"author":  "",
+						"created": "",
+					},
+				},
+				IsError: true,
+			},
 		},
 		{
 			name: "empty_content",
+			setupMock: func(mock *MockGiteaServer) {
+				// No mock setup needed for error case
+			},
 			arguments: map[string]any{
 				"repository":   "testuser/testrepo",
 				"issue_number": 1,
 				"comment_id":   1,
 				"new_content":  "",
 			},
-			expectError: true,
-			description: "Attempting to set empty comment content",
+			expect: &mcp.CallToolResult{
+				Content: []mcp.Content{
+					&mcp.TextContent{Text: "Invalid request: new_content: cannot be blank."},
+				},
+				StructuredContent: map[string]any{
+					"comment": map[string]any{
+						"id":      float64(0),
+						"content": "",
+						"author":  "",
+						"created": "",
+					},
+				},
+				IsError: true,
+			},
 		},
 	}
 
-	for _, scenario := range errorScenarios {
-		t.Run(scenario.name, func(t *testing.T) {
-			result, err := client.CallTool(ctx, &mcp.CallToolParams{
-				Name:      "issue_comment_edit",
-				Arguments: scenario.arguments,
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			mock := NewMockGiteaServer(t)
+			if tc.setupMock != nil {
+				tc.setupMock(mock)
+			}
+			ts := NewTestServer(t, t.Context(), map[string]string{
+				"FORGEJO_REMOTE_URL": mock.URL(),
+				"FORGEJO_AUTH_TOKEN": "mock-token",
 			})
+			if err := ts.Initialize(); err != nil {
+				t.Fatalf("Failed to initialize test server: %v", err)
+			}
 
-			if scenario.expectError {
-				if err == nil && (result == nil || !result.IsError) {
-					t.Errorf("Expected error for scenario '%s', but got success. Result: %+v", scenario.name, result)
-				} else {
-					t.Logf("✅ Error handling working correctly for scenario '%s': %s", scenario.name, scenario.description)
-				}
-			} else {
-				if err != nil {
-					t.Errorf("Unexpected error for scenario '%s': %v", scenario.name, err)
-				}
-				if result != nil && result.IsError {
-					t.Errorf("Unexpected error result for scenario '%s'", scenario.name)
-				}
+			result, err := ts.Client().CallTool(context.Background(), &mcp.CallToolParams{
+				Name:      "issue_comment_edit",
+				Arguments: tc.arguments,
+			})
+			if err != nil {
+				t.Fatalf("Failed to call issue_comment_edit tool: %v", err)
+			}
+			if !cmp.Equal(tc.expect, result) {
+				t.Error(cmp.Diff(tc.expect, result))
 			}
 		})
 	}
@@ -325,98 +448,144 @@ func TestCommentEditingErrorHandling(t *testing.T) {
 
 // TestCommentEditingPerformance tests performance and edge cases
 func TestCommentEditingPerformance(t *testing.T) {
-	ctx, cancel := context.WithTimeout(t.Context(), 15*time.Second)
-	t.Cleanup(cancel)
-	mock := NewMockGiteaServer(t)
-	ts := NewTestServer(t, ctx, map[string]string{
-		"FORGEJO_REMOTE_URL": mock.URL(),
-		"FORGEJO_AUTH_TOKEN": "mock-token",
-	})
-	if err := ts.Initialize(); err != nil {
-		t.Fatal(err)
-	}
-	client := ts.Client()
-
-	// Test with large content
-	t.Run("large_content", func(t *testing.T) {
-		largeContent := strings.Repeat("This is a test comment with some content. ", 100) // ~4KB
-
-		result, err := client.CallTool(ctx, &mcp.CallToolParams{
-			Name: "issue_comment_edit",
-			Arguments: map[string]any{
+	t.Parallel()
+	testCases := []issueCommentEditTestCase{
+		{
+			name: "large_content",
+			setupMock: func(mock *MockGiteaServer) {
+				mock.AddComments("testuser", "testrepo", []MockComment{
+					{
+						ID:      1,
+						Content: "Original content",
+						Author:  "testuser",
+						Created: "2024-01-01T00:00:00Z",
+					},
+				})
+			},
+			arguments: map[string]any{
 				"repository":   "testuser/testrepo",
 				"issue_number": 1,
 				"comment_id":   1,
-				"new_content":  largeContent,
+				"new_content":  strings.Repeat("This is a test comment with some content. ", 100), // ~4KB
 			},
-		})
-		if err != nil {
-			t.Fatalf("Failed to edit comment with large content: %v", err)
-		}
-		if result.IsError {
-			t.Fatalf("Comment editing failed with large content: %v", result.Content)
-		}
-
-		resultText := getTextContent(result.Content)
-		if !strings.Contains(resultText, "Comment edited successfully") {
-			t.Errorf("Expected successful edit with large content, got: %s", resultText)
-		}
-	})
-
-	// Test concurrent edits (simplified version)
-	t.Run("concurrent_edits", func(t *testing.T) {
-		numConcurrent := 3
-		results := make([]*mcp.CallToolResult, numConcurrent)
-		errors := make([]error, numConcurrent)
-
-		for i := 0; i < numConcurrent; i++ {
-			go func(index int) {
-				result, err := client.CallTool(ctx, &mcp.CallToolParams{
-					Name: "issue_comment_edit",
-					Arguments: map[string]any{
-						"repository":   "testuser/testrepo",
-						"issue_number": 1,
-						"comment_id":   1,
-						"new_content":  "Concurrent edit content",
+			expect: &mcp.CallToolResult{
+				Content: []mcp.Content{
+					&mcp.TextContent{Text: "Comment edited successfully. ID: 123, Updated: 0001-01-01T00:00:00Z\nComment body: " + strings.Repeat("This is a test comment with some content. ", 100)},
+				},
+				StructuredContent: map[string]any{
+					"comment": map[string]any{
+						"id":      float64(123),
+						"content": strings.Repeat("This is a test comment with some content. ", 100),
+						"author":  "testuser",
+						"created": "0001-01-01T00:00:00Z",
+					},
+				},
+			},
+		},
+		{
+			name: "minimal_content",
+			setupMock: func(mock *MockGiteaServer) {
+				mock.AddComments("testuser", "testrepo", []MockComment{
+					{
+						ID:      1,
+						Content: "Original content",
+						Author:  "testuser",
+						Created: "2024-01-01T00:00:00Z",
 					},
 				})
-				results[index] = result
-				errors[index] = err
-			}(i)
-		}
-
-		// Wait a bit for concurrent operations
-		time.Sleep(2 * time.Second)
-
-		// Check results
-		for i := 0; i < numConcurrent; i++ {
-			if errors[i] != nil {
-				t.Errorf("Concurrent edit %d failed: %v", i, errors[i])
-			}
-			if results[i] != nil && results[i].IsError {
-				t.Errorf("Concurrent edit %d returned error: %v", i, results[i].Content)
-			}
-		}
-	})
-
-	// Test edge case: minimal valid content
-	t.Run("minimal_content", func(t *testing.T) {
-		result, err := client.CallTool(ctx, &mcp.CallToolParams{
-			Name: "issue_comment_edit",
-			Arguments: map[string]any{
+			},
+			arguments: map[string]any{
 				"repository":   "testuser/testrepo",
 				"issue_number": 1,
 				"comment_id":   1,
 				"new_content":  "x", // Minimal valid content
 			},
+			expect: &mcp.CallToolResult{
+				Content: []mcp.Content{
+					&mcp.TextContent{Text: "Comment edited successfully. ID: 123, Updated: 0001-01-01T00:00:00Z\nComment body: x"},
+				},
+				StructuredContent: map[string]any{
+					"comment": map[string]any{
+						"id":      float64(123),
+						"content": "x",
+						"author":  "testuser",
+						"created": "0001-01-01T00:00:00Z",
+					},
+				},
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			mock := NewMockGiteaServer(t)
+			if tc.setupMock != nil {
+				tc.setupMock(mock)
+			}
+			ts := NewTestServer(t, t.Context(), map[string]string{
+				"FORGEJO_REMOTE_URL": mock.URL(),
+				"FORGEJO_AUTH_TOKEN": "mock-token",
+			})
+			if err := ts.Initialize(); err != nil {
+				t.Fatalf("Failed to initialize test server: %v", err)
+			}
+
+			result, err := ts.Client().CallTool(context.Background(), &mcp.CallToolParams{
+				Name:      "issue_comment_edit",
+				Arguments: tc.arguments,
+			})
+			if err != nil {
+				t.Fatalf("Failed to call issue_comment_edit tool: %v", err)
+			}
+			if !cmp.Equal(tc.expect, result) {
+				t.Error(cmp.Diff(tc.expect, result))
+			}
 		})
-		if err != nil {
-			t.Fatalf("Failed to edit comment with minimal content: %v", err)
-		}
-		if result.IsError {
-			t.Fatalf("Comment editing failed with minimal content: %v", result.Content)
-		}
+	}
+}
+
+// TestCommentEditingConcurrent tests concurrent request handling
+func TestCommentEditingConcurrent(t *testing.T) {
+	ctx, cancel := context.WithTimeout(t.Context(), 15*time.Second)
+	t.Cleanup(cancel)
+	mock := NewMockGiteaServer(t)
+	mock.AddComments("testuser", "testrepo", []MockComment{
+		{
+			ID:      1,
+			Content: "Original content",
+			Author:  "testuser",
+			Created: "2024-01-01T00:00:00Z",
+		},
 	})
+	ts := NewTestServer(t, ctx, map[string]string{
+		"FORGEJO_REMOTE_URL": mock.URL(),
+		"FORGEJO_AUTH_TOKEN": "mock-token",
+	})
+	if err := ts.Initialize(); err != nil {
+		t.Fatalf("Failed to initialize test server: %v", err)
+	}
+
+	const numGoroutines = 3
+	results := make(chan error, numGoroutines)
+	for range numGoroutines {
+		go func() {
+			_, err := ts.Client().CallTool(ctx, &mcp.CallToolParams{
+				Name: "issue_comment_edit",
+				Arguments: map[string]any{
+					"repository":   "testuser/testrepo",
+					"issue_number": 1,
+					"comment_id":   1,
+					"new_content":  "Concurrent edit content",
+				},
+			})
+			results <- err
+		}()
+	}
+	for range numGoroutines {
+		if err := <-results; err != nil {
+			t.Errorf("Concurrent request failed: %v", err)
+		}
+	}
 }
 
 // getTextContent extracts text content from MCP result

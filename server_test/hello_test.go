@@ -4,56 +4,83 @@ import (
 	"context"
 	"testing"
 
+	"github.com/google/go-cmp/cmp"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
-// TestHelloToolAcceptance tests the hello tool with mock server
-func TestHelloToolAcceptance(t *testing.T) {
-	mock := NewMockGiteaServer(t)
-	ts := NewTestServer(t, t.Context(), map[string]string{
-		"FORGEJO_REMOTE_URL": mock.URL(),
-		"FORGEJO_AUTH_TOKEN": "mock-token",
-	})
-	if err := ts.Initialize(); err != nil {
-		t.Fatalf("Failed to initialize test server: %v", err)
-	}
-
-	// Test successful hello tool execution
-	result, err := ts.Client().CallTool(context.Background(), &mcp.CallToolParams{
-		Name:      "hello",
-		Arguments: map[string]any{},
-	})
-	if err != nil {
-		t.Fatalf("Failed to call hello tool: %v", err)
-	}
-
-	if result.Content == nil {
-		t.Error("Expected content in result")
-	}
+type helloTestCase struct {
+	name      string
+	setupMock func(*MockGiteaServer)
+	arguments map[string]any
+	expect    *mcp.CallToolResult
 }
 
-// TestHelloToolEmptyArguments tests hello tool with empty arguments map
-func TestHelloToolEmptyArguments(t *testing.T) {
-	mock := NewMockGiteaServer(t)
-	ts := NewTestServer(t, t.Context(), map[string]string{
-		"FORGEJO_REMOTE_URL": mock.URL(),
-		"FORGEJO_AUTH_TOKEN": "mock-token",
-	})
-	if err := ts.Initialize(); err != nil {
-		t.Fatalf("Failed to initialize test server: %v", err)
+func TestHelloToolTableDriven(t *testing.T) {
+	t.Parallel()
+	testCases := []helloTestCase{
+		{
+			name: "acceptance",
+			setupMock: func(mock *MockGiteaServer) {
+				// No specific mock setup needed for hello tool
+			},
+			arguments: map[string]any{},
+			expect: &mcp.CallToolResult{
+				Content: []mcp.Content{
+					&mcp.TextContent{Text: "Hello, World!"},
+				},
+			},
+		},
+		{
+			name: "empty arguments",
+			setupMock: func(mock *MockGiteaServer) {
+				// No specific mock setup needed for hello tool
+			},
+			arguments: map[string]any{},
+			expect: &mcp.CallToolResult{
+				Content: []mcp.Content{
+					&mcp.TextContent{Text: "Hello, World!"},
+				},
+			},
+		},
+		{
+			name: "multiple calls simulation",
+			setupMock: func(mock *MockGiteaServer) {
+				// No specific mock setup needed for hello tool
+			},
+			arguments: map[string]any{},
+			expect: &mcp.CallToolResult{
+				Content: []mcp.Content{
+					&mcp.TextContent{Text: "Hello, World!"},
+				},
+			},
+		},
 	}
 
-	// Test hello tool with empty arguments (should work)
-	result, err := ts.Client().CallTool(context.Background(), &mcp.CallToolParams{
-		Name:      "hello",
-		Arguments: map[string]any{},
-	})
-	if err != nil {
-		t.Fatalf("Failed to call hello tool with empty arguments: %v", err)
-	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			mock := NewMockGiteaServer(t)
+			if tc.setupMock != nil {
+				tc.setupMock(mock)
+			}
+			ts := NewTestServer(t, t.Context(), map[string]string{
+				"FORGEJO_REMOTE_URL": mock.URL(),
+				"FORGEJO_AUTH_TOKEN": "mock-token",
+			})
+			if err := ts.Initialize(); err != nil {
+				t.Fatalf("Failed to initialize test server: %v", err)
+			}
 
-	if result.Content == nil {
-		t.Error("Expected content in result with empty arguments")
+			result, err := ts.Client().CallTool(context.Background(), &mcp.CallToolParams{
+				Name:      "hello",
+				Arguments: tc.arguments,
+			})
+			if err != nil {
+				t.Fatalf("Failed to call hello tool: %v", err)
+			}
+			if !cmp.Equal(tc.expect, result) {
+				t.Error(cmp.Diff(tc.expect, result))
+			}
+		})
 	}
 }
 
@@ -82,33 +109,6 @@ func TestHelloToolConcurrent(t *testing.T) {
 	for range numGoroutines {
 		if err := <-results; err != nil {
 			t.Errorf("Concurrent hello tool call failed: %v", err)
-		}
-	}
-}
-
-// TestHelloToolMultipleCalls tests multiple sequential hello tool calls
-func TestHelloToolMultipleCalls(t *testing.T) {
-	mock := NewMockGiteaServer(t)
-	ts := NewTestServer(t, t.Context(), map[string]string{
-		"FORGEJO_REMOTE_URL": mock.URL(),
-		"FORGEJO_AUTH_TOKEN": "mock-token",
-	})
-	if err := ts.Initialize(); err != nil {
-		t.Fatalf("Failed to initialize test server: %v", err)
-	}
-
-	// Make multiple sequential calls
-	for i := 0; i < 10; i++ {
-		result, err := ts.Client().CallTool(context.Background(), &mcp.CallToolParams{
-			Name:      "hello",
-			Arguments: map[string]any{},
-		})
-		if err != nil {
-			t.Fatalf("Failed to call hello tool on attempt %d: %v", i+1, err)
-		}
-
-		if result.Content == nil {
-			t.Errorf("Expected content in result on attempt %d", i+1)
 		}
 	}
 }

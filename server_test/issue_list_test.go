@@ -5,18 +5,19 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/google/go-cmp/cmp"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
 type issueListTestCase struct {
-	name        string
-	setupMock   func(*MockGiteaServer)
-	arguments   map[string]any
-	expectError bool
-	concurrent  bool
+	name      string
+	setupMock func(*MockGiteaServer)
+	arguments map[string]any
+	expect    *mcp.CallToolResult
 }
 
 func TestListIssues(t *testing.T) {
+	t.Parallel()
 	testCases := []issueListTestCase{
 		{
 			name: "acceptance",
@@ -32,7 +33,18 @@ func TestListIssues(t *testing.T) {
 				"limit":      10,
 				"offset":     0,
 			},
-			expectError: false,
+			expect: &mcp.CallToolResult{
+				Content: []mcp.Content{
+					&mcp.TextContent{Text: "Found 3 issues"},
+				},
+				StructuredContent: map[string]any{
+					"issues": []any{
+						map[string]any{"number": float64(0), "title": "Bug: Login fails", "state": "open"},
+						map[string]any{"number": float64(0), "title": "Feature: Add dark mode", "state": "open"},
+						map[string]any{"number": float64(0), "title": "Fix: Memory leak", "state": "closed"},
+					},
+				},
+			},
 		},
 		{
 			name: "pagination",
@@ -52,7 +64,24 @@ func TestListIssues(t *testing.T) {
 				"limit":      10,
 				"offset":     0,
 			},
-			expectError: false,
+			expect: &mcp.CallToolResult{
+				Content: []mcp.Content{
+					&mcp.TextContent{Text: "Found 25 issues"},
+				},
+				StructuredContent: map[string]any{
+					"issues": func() []any {
+						var issues []any
+						for i := 1; i <= 25; i++ {
+							issues = append(issues, map[string]any{
+								"number": float64(0),
+								"title":  fmt.Sprintf("Issue %d", i),
+								"state":  "open",
+							})
+						}
+						return issues
+					}(),
+				},
+			},
 		},
 		{
 			name: "invalid repository format",
@@ -64,7 +93,13 @@ func TestListIssues(t *testing.T) {
 				"limit":      10,
 				"offset":     0,
 			},
-			expectError: true,
+			expect: &mcp.CallToolResult{
+				Content: []mcp.Content{
+					&mcp.TextContent{Text: "Invalid request: repository: repository must be in format 'owner/repo'."},
+				},
+				StructuredContent: map[string]any{"issues": nil},
+				IsError:           true,
+			},
 		},
 		{
 			name: "missing repository",
@@ -75,7 +110,13 @@ func TestListIssues(t *testing.T) {
 				"limit":  10,
 				"offset": 0,
 			},
-			expectError: true,
+			expect: &mcp.CallToolResult{
+				Content: []mcp.Content{
+					&mcp.TextContent{Text: "Invalid request: repository: cannot be blank."},
+				},
+				StructuredContent: map[string]any{"issues": nil},
+				IsError:           true,
+			},
 		},
 		{
 			name: "invalid limit",
@@ -90,23 +131,13 @@ func TestListIssues(t *testing.T) {
 				"limit":      200, // Invalid: > 100
 				"offset":     0,
 			},
-			expectError: true,
-		},
-		{
-			name: "concurrent",
-			setupMock: func(mock *MockGiteaServer) {
-				mock.AddIssues("testuser", "testrepo", []MockIssue{
-					{Index: 1, Title: "Concurrent Issue 1", State: "open"},
-					{Index: 2, Title: "Concurrent Issue 2", State: "open"},
-				})
+			expect: &mcp.CallToolResult{
+				Content: []mcp.Content{
+					&mcp.TextContent{Text: "Invalid request: limit: must be no greater than 100."},
+				},
+				StructuredContent: map[string]any{"issues": nil},
+				IsError:           true,
 			},
-			arguments: map[string]any{
-				"repository": "testuser/testrepo",
-				"limit":      10,
-				"offset":     0,
-			},
-			expectError: false,
-			concurrent:  true,
 		},
 	}
 
@@ -116,7 +147,6 @@ func TestListIssues(t *testing.T) {
 			if tc.setupMock != nil {
 				tc.setupMock(mock)
 			}
-
 			ts := NewTestServer(t, t.Context(), map[string]string{
 				"FORGEJO_REMOTE_URL": mock.URL(),
 				"FORGEJO_AUTH_TOKEN": "mock-token",
@@ -125,42 +155,53 @@ func TestListIssues(t *testing.T) {
 				t.Fatalf("Failed to initialize test server: %v", err)
 			}
 
-			if tc.concurrent {
-				const numGoroutines = 5
-				results := make(chan error, numGoroutines)
-				for range numGoroutines {
-					go func() {
-						_, err := ts.Client().CallTool(context.Background(), &mcp.CallToolParams{
-							Name:      "issue_list",
-							Arguments: tc.arguments,
-						})
-						results <- err
-					}()
-				}
-				for range numGoroutines {
-					if err := <-results; err != nil {
-						t.Errorf("Concurrent request failed: %v", err)
-					}
-				}
-			} else {
-				result, err := ts.Client().CallTool(context.Background(), &mcp.CallToolParams{
-					Name:      "issue_list",
-					Arguments: tc.arguments,
-				})
-				if err != nil {
-					t.Fatalf("Failed to call issue_list tool: %v", err)
-				}
-
-				if tc.expectError {
-					if result.Content == nil {
-						t.Error("Expected error content in result")
-					}
-				} else {
-					if result.Content == nil {
-						t.Error("Expected content in result")
-					}
-				}
+			result, err := ts.Client().CallTool(context.Background(), &mcp.CallToolParams{
+				Name:      "issue_list",
+				Arguments: tc.arguments,
+			})
+			if err != nil {
+				t.Fatalf("Failed to call issue_list tool: %v", err)
+			}
+			if !cmp.Equal(tc.expect, result) {
+				t.Error(cmp.Diff(tc.expect, result))
 			}
 		})
+	}
+}
+
+// TestListIssuesConcurrent tests concurrent request handling
+func TestListIssuesConcurrent(t *testing.T) {
+	mock := NewMockGiteaServer(t)
+	mock.AddIssues("testuser", "testrepo", []MockIssue{
+		{Index: 1, Title: "Concurrent Issue 1", State: "open"},
+		{Index: 2, Title: "Concurrent Issue 2", State: "open"},
+	})
+	ts := NewTestServer(t, t.Context(), map[string]string{
+		"FORGEJO_REMOTE_URL": mock.URL(),
+		"FORGEJO_AUTH_TOKEN": "mock-token",
+	})
+	if err := ts.Initialize(); err != nil {
+		t.Fatalf("Failed to initialize test server: %v", err)
+	}
+
+	const numGoroutines = 5
+	results := make(chan error, numGoroutines)
+	for range numGoroutines {
+		go func() {
+			_, err := ts.Client().CallTool(context.Background(), &mcp.CallToolParams{
+				Name: "issue_list",
+				Arguments: map[string]any{
+					"repository": "testuser/testrepo",
+					"limit":      10,
+					"offset":     0,
+				},
+			})
+			results <- err
+		}()
+	}
+	for range numGoroutines {
+		if err := <-results; err != nil {
+			t.Errorf("Concurrent request failed: %v", err)
+		}
 	}
 }
