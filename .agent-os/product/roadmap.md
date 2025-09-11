@@ -1,6 +1,6 @@
 # Product Roadmap
 
-> Last Updated: 2025-09-09
+> Last Updated: 2025-09-11
 > Version: 1.0.0
 > Status: Active Development
 
@@ -45,6 +45,7 @@
 
 - PR comment functionality
 - [x] Issue comment functionality
+- [x] Issue comment editing functionality
 
 ## Phase 5: Advanced Operations (Q2 2026)
 
