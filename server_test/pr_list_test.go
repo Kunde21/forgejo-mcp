@@ -303,7 +303,6 @@ func TestListPullRequests(t *testing.T) {
 	}
 }
 
-// TestListPullRequestsConcurrent tests concurrent request handling
 func TestListPullRequestsConcurrent(t *testing.T) {
 	mock := NewMockGiteaServer(t)
 	mock.AddPullRequests("testuser", "testrepo", []MockPullRequest{

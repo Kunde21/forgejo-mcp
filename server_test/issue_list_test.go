@@ -169,7 +169,6 @@ func TestListIssues(t *testing.T) {
 	}
 }
 
-// TestListIssuesConcurrent tests concurrent request handling
 func TestListIssuesConcurrent(t *testing.T) {
 	mock := NewMockGiteaServer(t)
 	mock.AddIssues("testuser", "testrepo", []MockIssue{

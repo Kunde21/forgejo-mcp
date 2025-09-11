@@ -6,7 +6,6 @@ import (
 )
 
 func TestLoadConfig_WithNewFields(t *testing.T) {
-	// Set up environment variables
 	os.Setenv("FORGEJO_REMOTE_URL", "https://forgejo.example.com")
 	os.Setenv("FORGEJO_AUTH_TOKEN", "test-token-123")
 	defer func() {
@@ -29,7 +28,6 @@ func TestLoadConfig_WithNewFields(t *testing.T) {
 }
 
 func TestLoadConfig_DefaultValues(t *testing.T) {
-	// Ensure environment variables are not set
 	os.Unsetenv("FORGEJO_REMOTE_URL")
 	os.Unsetenv("FORGEJO_AUTH_TOKEN")
 
@@ -38,7 +36,6 @@ func TestLoadConfig_DefaultValues(t *testing.T) {
 		t.Fatalf("LoadConfig failed: %v", err)
 	}
 
-	// Assuming defaults: RemoteURL empty or some default, AuthToken empty
 	if config.RemoteURL != "" {
 		t.Errorf("Expected default RemoteURL to be empty, got '%s'", config.RemoteURL)
 	}
@@ -49,7 +46,6 @@ func TestLoadConfig_DefaultValues(t *testing.T) {
 }
 
 func TestLoadConfig_Validation(t *testing.T) {
-	// Test missing required fields
 	os.Unsetenv("FORGEJO_REMOTE_URL")
 	os.Setenv("FORGEJO_AUTH_TOKEN", "token")
 	defer os.Unsetenv("FORGEJO_AUTH_TOKEN")
@@ -59,7 +55,6 @@ func TestLoadConfig_Validation(t *testing.T) {
 		t.Fatalf("LoadConfig failed: %v", err)
 	}
 
-	// This should fail validation if RemoteURL is required
 	err = config.Validate()
 	if err == nil {
 		t.Error("Expected validation error for missing RemoteURL")

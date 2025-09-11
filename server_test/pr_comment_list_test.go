@@ -265,7 +265,6 @@ func TestListPullRequestComments(t *testing.T) {
 	}
 }
 
-// TestListPullRequestCommentsConcurrent tests concurrent request handling
 func TestListPullRequestCommentsConcurrent(t *testing.T) {
 	mock := NewMockGiteaServer(t)
 	mock.AddComments("testuser", "testrepo", []MockComment{

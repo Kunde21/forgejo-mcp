@@ -27,13 +27,11 @@ func TestNewServeCmd(t *testing.T) {
 func TestServeCmd_Flags(t *testing.T) {
 	cmd := NewServeCmd()
 
-	// Check if --host flag exists
 	hostFlag := cmd.Flags().Lookup("host")
 	if hostFlag == nil {
 		t.Error("Expected --host flag to be defined")
 	}
 
-	// Check if --port flag exists
 	portFlag := cmd.Flags().Lookup("port")
 	if portFlag == nil {
 		t.Error("Expected --port flag to be defined")
@@ -43,13 +41,11 @@ func TestServeCmd_Flags(t *testing.T) {
 func TestServeCmd_HostFlag(t *testing.T) {
 	cmd := NewServeCmd()
 
-	// Test setting host flag
 	err := cmd.Flags().Set("host", "127.0.0.1")
 	if err != nil {
 		t.Fatalf("Failed to set host flag: %v", err)
 	}
 
-	// Verify the flag value
 	hostFlag := cmd.Flags().Lookup("host")
 	if hostFlag.Value.String() != "127.0.0.1" {
 		t.Errorf("Expected host flag value to be '127.0.0.1', got '%s'", hostFlag.Value.String())

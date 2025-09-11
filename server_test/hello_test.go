@@ -10,7 +10,6 @@ import (
 
 type helloTestCase struct {
 	name      string
-	setupMock func(*MockGiteaServer)
 	arguments map[string]any
 	expect    *mcp.CallToolResult
 }
@@ -19,10 +18,7 @@ func TestHelloToolTableDriven(t *testing.T) {
 	t.Parallel()
 	testCases := []helloTestCase{
 		{
-			name: "acceptance",
-			setupMock: func(mock *MockGiteaServer) {
-				// No specific mock setup needed for hello tool
-			},
+			name:      "acceptance",
 			arguments: map[string]any{},
 			expect: &mcp.CallToolResult{
 				Content: []mcp.Content{
@@ -31,10 +27,7 @@ func TestHelloToolTableDriven(t *testing.T) {
 			},
 		},
 		{
-			name: "empty arguments",
-			setupMock: func(mock *MockGiteaServer) {
-				// No specific mock setup needed for hello tool
-			},
+			name:      "empty arguments",
 			arguments: map[string]any{},
 			expect: &mcp.CallToolResult{
 				Content: []mcp.Content{
@@ -43,10 +36,7 @@ func TestHelloToolTableDriven(t *testing.T) {
 			},
 		},
 		{
-			name: "multiple calls simulation",
-			setupMock: func(mock *MockGiteaServer) {
-				// No specific mock setup needed for hello tool
-			},
+			name:      "multiple calls simulation",
 			arguments: map[string]any{},
 			expect: &mcp.CallToolResult{
 				Content: []mcp.Content{
@@ -59,9 +49,6 @@ func TestHelloToolTableDriven(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			mock := NewMockGiteaServer(t)
-			if tc.setupMock != nil {
-				tc.setupMock(mock)
-			}
 			ts := NewTestServer(t, t.Context(), map[string]string{
 				"FORGEJO_REMOTE_URL": mock.URL(),
 				"FORGEJO_AUTH_TOKEN": "mock-token",

@@ -27,7 +27,6 @@ func TestNewConfigCmd(t *testing.T) {
 }
 
 func TestConfigCmd_Run(t *testing.T) {
-	// Set up minimal environment for testing
 	originalURL := os.Getenv("FORGEJO_REMOTE_URL")
 	originalToken := os.Getenv("FORGEJO_AUTH_TOKEN")
 	defer func() {
@@ -35,24 +34,20 @@ func TestConfigCmd_Run(t *testing.T) {
 		os.Setenv("FORGEJO_AUTH_TOKEN", originalToken)
 	}()
 
-	// Set test values
 	os.Setenv("FORGEJO_REMOTE_URL", "https://example.com")
 	os.Setenv("FORGEJO_AUTH_TOKEN", "test-token")
 
 	cmd := NewConfigCmd()
 
-	// Capture output
 	buf := &bytes.Buffer{}
 	cmd.SetOut(buf)
 	cmd.SetErr(buf)
 
-	// Run the command
 	err := cmd.RunE(cmd, []string{})
 	if err != nil {
 		t.Fatalf("Config command failed: %v", err)
 	}
 
-	// Check that output contains expected information
 	output := buf.String()
 	if output == "" {
 		t.Error("Config command should produce output")
@@ -60,7 +55,6 @@ func TestConfigCmd_Run(t *testing.T) {
 }
 
 func TestConfigCmd_Validation(t *testing.T) {
-	// Set up minimal environment for testing
 	originalURL := os.Getenv("FORGEJO_REMOTE_URL")
 	originalToken := os.Getenv("FORGEJO_AUTH_TOKEN")
 	defer func() {
@@ -68,18 +62,15 @@ func TestConfigCmd_Validation(t *testing.T) {
 		os.Setenv("FORGEJO_AUTH_TOKEN", originalToken)
 	}()
 
-	// Set test values
 	os.Setenv("FORGEJO_REMOTE_URL", "https://example.com")
 	os.Setenv("FORGEJO_AUTH_TOKEN", "test-token")
 
 	cmd := NewConfigCmd()
 
-	// Capture output
 	buf := &bytes.Buffer{}
 	cmd.SetOut(buf)
 	cmd.SetErr(buf)
 
-	// Run the command
 	err := cmd.RunE(cmd, []string{})
 	if err != nil {
 		t.Fatalf("Config command failed: %v", err)
@@ -87,7 +78,6 @@ func TestConfigCmd_Validation(t *testing.T) {
 
 	output := buf.String()
 
-	// Check that output contains validation information
 	expectedStrings := []string{
 		"Configuration",
 		"Remote URL",
@@ -102,7 +92,6 @@ func TestConfigCmd_Validation(t *testing.T) {
 }
 
 func TestConfigCmd_ConnectivityTest(t *testing.T) {
-	// Set up minimal environment for testing
 	originalURL := os.Getenv("FORGEJO_REMOTE_URL")
 	originalToken := os.Getenv("FORGEJO_AUTH_TOKEN")
 	defer func() {
@@ -110,18 +99,15 @@ func TestConfigCmd_ConnectivityTest(t *testing.T) {
 		os.Setenv("FORGEJO_AUTH_TOKEN", originalToken)
 	}()
 
-	// Set test values
 	os.Setenv("FORGEJO_REMOTE_URL", "https://example.com")
 	os.Setenv("FORGEJO_AUTH_TOKEN", "test-token")
 
 	cmd := NewConfigCmd()
 
-	// Capture output
 	buf := &bytes.Buffer{}
 	cmd.SetOut(buf)
 	cmd.SetErr(buf)
 
-	// Run the command
 	err := cmd.RunE(cmd, []string{})
 	if err != nil {
 		t.Fatalf("Config command failed: %v", err)
@@ -129,8 +115,6 @@ func TestConfigCmd_ConnectivityTest(t *testing.T) {
 
 	output := buf.String()
 
-	// Check that output contains connectivity information
-	// Since we're using example.com, it should skip connectivity testing
 	connectivityIndicators := []string{
 		"Skipping connectivity test",
 		"Configuration is valid",

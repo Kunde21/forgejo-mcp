@@ -506,11 +506,9 @@ func TestListPullRequestCommentsArgs_JSONMarshaling(t *testing.T) {
 
 func TestPullRequestCommentLister_Interface(t *testing.T) {
 	t.Parallel()
-	// This test verifies that the interface is properly defined by checking that it can be assigned
 	var _ PullRequestCommentLister = (*mockPullRequestCommentLister)(nil)
 }
 
-// mockPullRequestCommentLister is a mock implementation for testing the interface
 type mockPullRequestCommentLister struct{}
 
 func (m *mockPullRequestCommentLister) ListPullRequestComments(ctx context.Context, repo string, pullRequestNumber int, limit, offset int) (*PullRequestCommentList, error) {
