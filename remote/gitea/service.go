@@ -77,6 +77,32 @@ func (s *Service) ListIssueComments(ctx context.Context, repo string, issueNumbe
 	return s.client.ListIssueComments(ctx, repo, issueNumber, limit, offset)
 }
 
+// EditIssueComment edits an existing comment with validation
+func (s *Service) EditIssueComment(ctx context.Context, args EditIssueCommentArgs) (*IssueComment, error) {
+	// Validate repository format
+	if err := s.validateRepository(args.Repository); err != nil {
+		return nil, fmt.Errorf("repository validation failed: %w", err)
+	}
+
+	// Validate issue number
+	if err := s.validateIssueNumber(args.IssueNumber); err != nil {
+		return nil, fmt.Errorf("issue number validation failed: %w", err)
+	}
+
+	// Validate comment ID
+	if err := s.validateCommentID(args.CommentID); err != nil {
+		return nil, fmt.Errorf("comment ID validation failed: %w", err)
+	}
+
+	// Validate new content
+	if err := s.validateCommentContent(args.NewContent); err != nil {
+		return nil, fmt.Errorf("new content validation failed: %w", err)
+	}
+
+	// Call the underlying client
+	return s.client.EditIssueComment(ctx, args)
+}
+
 // validateRepository checks if the repository string is in the correct format
 func (s *Service) validateRepository(repo string) error {
 	if repo == "" {
@@ -119,6 +145,14 @@ func (s *Service) validateCommentContent(comment string) error {
 	// Trim whitespace and check again
 	if len(strings.TrimSpace(comment)) == 0 {
 		return fmt.Errorf("comment content cannot be only whitespace")
+	}
+	return nil
+}
+
+// validateCommentID checks if the comment ID is valid
+func (s *Service) validateCommentID(commentID int) error {
+	if commentID < 1 {
+		return fmt.Errorf("comment ID must be positive")
 	}
 	return nil
 }

@@ -178,6 +178,56 @@ func (m *MockGiteaServer) handleRepoRequests(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
+	// Handle comment editing endpoint
+	if strings.Contains(path, "/comments/") && r.Method == "PATCH" {
+		// Parse path: /api/v1/repos/{owner}/{repo}/issues/comments/{id}
+		pathParts := strings.Split(strings.TrimPrefix(path, "/api/v1/repos/"), "/")
+		if len(pathParts) < 5 {
+			http.NotFound(w, r)
+			return
+		}
+
+		owner := pathParts[0]
+		repo := pathParts[1]
+		repoKey := owner + "/" + repo
+
+		// Parse comment ID from URL
+		commentIDStr := strings.TrimPrefix(pathParts[4], "comments/")
+		if commentIDStr == "" {
+			http.NotFound(w, r)
+			return
+		}
+
+		// Parse comment from request body
+		var commentReq struct {
+			Body string `json:"body"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&commentReq); err != nil {
+			http.Error(w, "Invalid JSON", http.StatusBadRequest)
+			return
+		}
+
+		// Check if repository exists (simulate API error for nonexistent repos)
+		if repoKey == "nonexistent/repo" {
+			http.NotFound(w, r)
+			return
+		}
+
+		// Create mock comment response that matches Gitea SDK format
+		comment := map[string]any{
+			"id":      123, // Use fixed ID for testing
+			"body":    commentReq.Body,
+			"created": "2025-09-10T10:00:00Z",
+			"user": map[string]any{
+				"login": "testuser",
+			},
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(comment)
+		return
+	}
+
 	http.NotFound(w, r)
 }
 

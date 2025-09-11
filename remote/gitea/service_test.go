@@ -121,6 +121,164 @@ func (m *mockGiteaClient) ListIssueComments(ctx context.Context, repo string, is
 	}, nil
 }
 
+func (m *mockGiteaClient) EditIssueComment(ctx context.Context, args EditIssueCommentArgs) (*IssueComment, error) {
+	// Mock implementation for testing - returns updated comment
+	return &IssueComment{
+		ID:      args.CommentID,
+		Content: args.NewContent,
+		Author:  "test-user",
+		Created: "2025-09-10T10:00:00Z",
+	}, nil
+}
+
+func TestServiceEditIssueComment(t *testing.T) {
+	// Test EditIssueComment method with mock client
+	ctx := context.Background()
+
+	// Create a mock client that implements GiteaClientInterface
+	mockClient := &mockGiteaClient{}
+
+	// Create service with mock client
+	service := NewService(mockClient)
+
+	// Test successful comment editing
+	args := EditIssueCommentArgs{
+		Repository:  "owner/repo",
+		IssueNumber: 42,
+		CommentID:   123,
+		NewContent:  "Updated comment content",
+	}
+	comment, err := service.EditIssueComment(ctx, args)
+	if err != nil {
+		t.Errorf("Expected no error, got %v", err)
+	}
+	if comment == nil {
+		t.Error("Expected comment to be returned")
+	}
+	if comment.Content != "Updated comment content" {
+		t.Errorf("Expected comment content 'Updated comment content', got %s", comment.Content)
+	}
+	if comment.ID != 123 {
+		t.Errorf("Expected comment ID 123, got %d", comment.ID)
+	}
+}
+
+func TestServiceEditIssueCommentValidation(t *testing.T) {
+	// Test validation for EditIssueComment
+	ctx := context.Background()
+	mockClient := &mockGiteaClient{}
+	service := NewService(mockClient)
+
+	testCases := []struct {
+		name        string
+		args        EditIssueCommentArgs
+		expectError bool
+	}{
+		{
+			name: "valid args",
+			args: EditIssueCommentArgs{
+				Repository:  "owner/repo",
+				IssueNumber: 42,
+				CommentID:   123,
+				NewContent:  "Updated comment content",
+			},
+			expectError: false,
+		},
+		{
+			name: "empty repository",
+			args: EditIssueCommentArgs{
+				Repository:  "",
+				IssueNumber: 42,
+				CommentID:   123,
+				NewContent:  "Updated comment content",
+			},
+			expectError: true,
+		},
+		{
+			name: "invalid repository format",
+			args: EditIssueCommentArgs{
+				Repository:  "invalid-format",
+				IssueNumber: 42,
+				CommentID:   123,
+				NewContent:  "Updated comment content",
+			},
+			expectError: true,
+		},
+		{
+			name: "zero issue number",
+			args: EditIssueCommentArgs{
+				Repository:  "owner/repo",
+				IssueNumber: 0,
+				CommentID:   123,
+				NewContent:  "Updated comment content",
+			},
+			expectError: true,
+		},
+		{
+			name: "negative issue number",
+			args: EditIssueCommentArgs{
+				Repository:  "owner/repo",
+				IssueNumber: -1,
+				CommentID:   123,
+				NewContent:  "Updated comment content",
+			},
+			expectError: true,
+		},
+		{
+			name: "zero comment ID",
+			args: EditIssueCommentArgs{
+				Repository:  "owner/repo",
+				IssueNumber: 42,
+				CommentID:   0,
+				NewContent:  "Updated comment content",
+			},
+			expectError: true,
+		},
+		{
+			name: "negative comment ID",
+			args: EditIssueCommentArgs{
+				Repository:  "owner/repo",
+				IssueNumber: 42,
+				CommentID:   -1,
+				NewContent:  "Updated comment content",
+			},
+			expectError: true,
+		},
+		{
+			name: "empty new content",
+			args: EditIssueCommentArgs{
+				Repository:  "owner/repo",
+				IssueNumber: 42,
+				CommentID:   123,
+				NewContent:  "",
+			},
+			expectError: true,
+		},
+		{
+			name: "whitespace new content",
+			args: EditIssueCommentArgs{
+				Repository:  "owner/repo",
+				IssueNumber: 42,
+				CommentID:   123,
+				NewContent:  "   ",
+			},
+			expectError: true,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			_, err := service.EditIssueComment(ctx, tc.args)
+			if tc.expectError && err == nil {
+				t.Error("Expected error but got none")
+			}
+			if !tc.expectError && err != nil {
+				t.Errorf("Expected no error but got %v", err)
+			}
+		})
+	}
+}
+
 func TestServiceListIssueComments(t *testing.T) {
 	// Test ListIssueComments method with mock client
 	ctx := context.Background()

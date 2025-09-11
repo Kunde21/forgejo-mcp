@@ -46,6 +46,15 @@ func (m *mockGiteaClientForService) ListIssueComments(ctx context.Context, repo 
 	}, nil
 }
 
+func (m *mockGiteaClientForService) EditIssueComment(ctx context.Context, args gitea.EditIssueCommentArgs) (*gitea.IssueComment, error) {
+	return &gitea.IssueComment{
+		ID:      args.CommentID,
+		Content: args.NewContent,
+		Author:  "test-user",
+		Created: "2025-09-10T10:00:00Z",
+	}, nil
+}
+
 func TestServer_handleIssueCommentList(t *testing.T) {
 	// Test handleIssueCommentList handler function
 	ctx := context.Background()
@@ -183,5 +192,121 @@ func TestServer_handleIssueCommentListDefaultLimit(t *testing.T) {
 	// Test that the default limit was applied
 	if data.Limit != 15 {
 		t.Errorf("Expected default limit to be 15, got %d", data.Limit)
+	}
+}
+
+func TestServer_handleIssueCommentEdit(t *testing.T) {
+	// Test handleIssueCommentEdit handler function
+	ctx := context.Background()
+	mockClient := &mockGiteaClientForService{}
+	mockService := gitea.NewService(mockClient)
+	server := &Server{
+		giteaService: mockService,
+	}
+
+	request := &mcp.CallToolRequest{}
+
+	// Test successful comment editing
+	result, data, err := server.handleIssueCommentEdit(ctx, request, IssueCommentEditArgs{
+		Repository:  "owner/repo",
+		IssueNumber: 42,
+		CommentID:   123,
+		NewContent:  "Updated comment content",
+	})
+
+	if err != nil {
+		t.Errorf("Expected no error, got %v", err)
+	}
+	if result == nil || result.IsError {
+		t.Error("Expected successful result")
+	}
+	if data == nil {
+		t.Error("Expected data to be returned")
+	}
+	if data.Comment.Content != "Updated comment content" {
+		t.Errorf("Expected comment content 'Updated comment content', got %s", data.Comment.Content)
+	}
+	if data.Comment.ID != 123 {
+		t.Errorf("Expected comment ID 123, got %d", data.Comment.ID)
+	}
+}
+
+func TestServer_handleIssueCommentEditValidation(t *testing.T) {
+	// Test validation for handleIssueCommentEdit
+	ctx := context.Background()
+	mockClient := &mockGiteaClientForService{}
+	mockService := gitea.NewService(mockClient)
+	server := &Server{
+		giteaService: mockService,
+	}
+
+	request := &mcp.CallToolRequest{}
+
+	testCases := []struct {
+		name        string
+		repository  string
+		issueNumber int
+		commentID   int
+		newContent  string
+		expectError bool
+	}{
+		{"valid input", "owner/repo", 42, 123, "Updated content", false},
+		{"empty repository", "", 42, 123, "Updated content", true},
+		{"invalid repository format", "invalid-format", 42, 123, "Updated content", true},
+		{"zero issue number", "owner/repo", 0, 123, "Updated content", true},
+		{"negative issue number", "owner/repo", -1, 123, "Updated content", true},
+		{"zero comment ID", "owner/repo", 42, 0, "Updated content", true},
+		{"negative comment ID", "owner/repo", 42, -1, "Updated content", true},
+		{"empty new content", "owner/repo", 42, 123, "", true},
+		{"whitespace new content", "owner/repo", 42, 123, "   ", true},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			result, _, err := server.handleIssueCommentEdit(ctx, request, IssueCommentEditArgs{
+				Repository:  tc.repository,
+				IssueNumber: tc.issueNumber,
+				CommentID:   tc.commentID,
+				NewContent:  tc.newContent,
+			})
+
+			if tc.expectError {
+				if err == nil && (result == nil || !result.IsError) {
+					t.Error("Expected error but got none")
+				}
+			} else {
+				if err != nil {
+					t.Errorf("Expected no error but got %v", err)
+				}
+				if result != nil && result.IsError {
+					t.Error("Expected result to not be an error")
+				}
+			}
+		})
+	}
+}
+
+func TestServer_handleIssueCommentEditNilContext(t *testing.T) {
+	// Test handleIssueCommentEdit with nil context
+	mockClient := &mockGiteaClientForService{}
+	mockService := gitea.NewService(mockClient)
+	server := &Server{
+		giteaService: mockService,
+	}
+
+	request := &mcp.CallToolRequest{}
+
+	result, _, err := server.handleIssueCommentEdit(nil, request, IssueCommentEditArgs{
+		Repository:  "owner/repo",
+		IssueNumber: 42,
+		CommentID:   123,
+		NewContent:  "Updated content",
+	})
+
+	if err != nil {
+		t.Errorf("Expected no error for nil context check, got %v", err)
+	}
+	if result == nil || !result.IsError {
+		t.Error("Expected error result for nil context")
 	}
 }

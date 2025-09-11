@@ -127,3 +127,67 @@ func (s *Server) handleIssueCommentList(ctx context.Context, request *mcp.CallTo
 		Offset:   commentList.Offset,
 	}, nil
 }
+
+// CommentEditResult represents the result data for the issue_comment_edit tool.
+type CommentEditResult struct {
+	Comment gitea.IssueComment `json:"comment"`
+}
+
+type IssueCommentEditArgs struct {
+	Repository  string `json:"repository"`
+	IssueNumber int    `json:"issue_number"`
+	CommentID   int    `json:"comment_id"`
+	NewContent  string `json:"new_content"`
+}
+
+// handleIssueCommentEdit handles the "issue_comment_edit" tool request.
+// It edits an existing comment on a specified Forgejo/Gitea issue.
+//
+// Parameters:
+//   - repository: The repository path in "owner/repo" format
+//   - issue_number: The issue number containing the comment (must be positive)
+//   - comment_id: The ID of the comment to edit (must be positive)
+//   - new_content: The updated comment content (cannot be empty)
+//
+// Returns:
+//   - Success: Comment edit confirmation with updated metadata
+//   - Error: Validation errors or API failures
+//
+// Migration Note: Implements MCP SDK v0.4.0 handler signature with ozzo-validation
+// for parameter validation and structured error responses.
+func (s *Server) handleIssueCommentEdit(ctx context.Context, request *mcp.CallToolRequest, args IssueCommentEditArgs) (*mcp.CallToolResult, *CommentEditResult, error) {
+	// Validate context - required for proper request handling
+	if ctx == nil {
+		return TextError("Context is required"), nil, nil
+	}
+
+	// Validate input arguments using ozzo-validation
+	if err := v.ValidateStruct(&args,
+		v.Field(&args.Repository, v.Required, v.Match(repoReg).Error("repository must be in format 'owner/repo'")),
+		v.Field(&args.IssueNumber, v.Min(1)),
+		v.Field(&args.CommentID, v.Min(1)),
+		v.Field(&args.NewContent, v.Required, v.Length(1, 0)), // Non-empty string
+	); err != nil {
+		return TextErrorf("Invalid request: %v", err), nil, nil
+	}
+
+	// Prepare arguments for service layer
+	serviceArgs := gitea.EditIssueCommentArgs{
+		Repository:  args.Repository,
+		IssueNumber: args.IssueNumber,
+		CommentID:   args.CommentID,
+		NewContent:  args.NewContent,
+	}
+
+	// Edit the comment using the service layer
+	comment, err := s.giteaService.EditIssueComment(ctx, serviceArgs)
+	if err != nil {
+		return TextErrorf("Failed to edit comment: %v", err), nil, nil
+	}
+
+	// Format success response with updated comment metadata
+	responseText := fmt.Sprintf("Comment edited successfully. ID: %d, Updated: %s\nComment body: %s",
+		comment.ID, comment.Created, comment.Content)
+
+	return TextResult(responseText), &CommentEditResult{Comment: *comment}, nil
+}

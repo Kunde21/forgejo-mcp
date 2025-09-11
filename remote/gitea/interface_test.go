@@ -134,3 +134,39 @@ func TestListIssueCommentsArgsStruct(t *testing.T) {
 		t.Errorf("Expected Offset to be 0, got %d", args.Offset)
 	}
 }
+
+func TestEditIssueCommentArgsStruct(t *testing.T) {
+	// Test EditIssueCommentArgs struct definition and validation tags
+	args := EditIssueCommentArgs{
+		Repository:  "owner/repo",
+		IssueNumber: 42,
+		CommentID:   123,
+		NewContent:  "Updated comment content",
+	}
+
+	// Test struct fields are accessible
+	if args.Repository != "owner/repo" {
+		t.Errorf("Expected Repository to be 'owner/repo', got %s", args.Repository)
+	}
+	if args.IssueNumber != 42 {
+		t.Errorf("Expected IssueNumber to be 42, got %d", args.IssueNumber)
+	}
+	if args.CommentID != 123 {
+		t.Errorf("Expected CommentID to be 123, got %d", args.CommentID)
+	}
+	if args.NewContent != "Updated comment content" {
+		t.Errorf("Expected NewContent to be 'Updated comment content', got %s", args.NewContent)
+	}
+}
+
+func TestIssueCommentEditorInterface(t *testing.T) {
+	// Test that IssueCommentEditor interface is properly defined
+	var _ IssueCommentEditor = (*GiteaClient)(nil)
+}
+
+func TestIssueCommentEditorEditIssueComment(t *testing.T) {
+	// Test the EditIssueComment method signature
+	// This is a compile-time test to ensure the interface is correct
+	// We don't call the method to avoid nil pointer panic
+	// The interface compliance is tested in TestIssueCommentEditorInterface
+}

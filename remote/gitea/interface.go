@@ -50,9 +50,23 @@ type IssueCommentLister interface {
 	ListIssueComments(ctx context.Context, repo string, issueNumber int, limit, offset int) (*IssueCommentList, error)
 }
 
-// GiteaClientInterface combines IssueLister, IssueCommenter, and IssueCommentLister for complete Gitea operations
+// EditIssueCommentArgs represents the arguments for editing an issue comment with validation tags
+type EditIssueCommentArgs struct {
+	Repository  string `json:"repository" validate:"required,regexp=^[a-zA-Z0-9._-]+/[a-zA-Z0-9._-]+$"`
+	IssueNumber int    `json:"issue_number" validate:"required,min=1"`
+	CommentID   int    `json:"comment_id" validate:"required,min=1"`
+	NewContent  string `json:"new_content" validate:"required,min=1"`
+}
+
+// IssueCommentEditor defines the interface for editing comments on Git repository issues
+type IssueCommentEditor interface {
+	EditIssueComment(ctx context.Context, args EditIssueCommentArgs) (*IssueComment, error)
+}
+
+// GiteaClientInterface combines IssueLister, IssueCommenter, IssueCommentLister, and IssueCommentEditor for complete Gitea operations
 type GiteaClientInterface interface {
 	IssueLister
 	IssueCommenter
 	IssueCommentLister
+	IssueCommentEditor
 }

@@ -133,3 +133,32 @@ func (c *GiteaClient) ListIssueComments(ctx context.Context, repo string, issueN
 
 	return commentList, nil
 }
+
+// EditIssueComment edits an existing comment on the specified issue
+func (c *GiteaClient) EditIssueComment(ctx context.Context, args EditIssueCommentArgs) (*IssueComment, error) {
+	// Parse repository string (format: "owner/repo")
+	owner, repoName, ok := strings.Cut(args.Repository, "/")
+	if !ok {
+		return nil, fmt.Errorf("invalid repository format: %s, expected 'owner/repo'", args.Repository)
+	}
+
+	// Edit comment using Gitea SDK
+	opts := gitea.EditIssueCommentOption{
+		Body: args.NewContent,
+	}
+
+	giteaComment, _, err := c.client.EditIssueComment(owner, repoName, int64(args.CommentID), opts)
+	if err != nil {
+		return nil, fmt.Errorf("failed to edit issue comment: %w", err)
+	}
+
+	// Convert to our IssueComment struct
+	issueComment := &IssueComment{
+		ID:      int(giteaComment.ID),
+		Content: giteaComment.Body,
+		Author:  giteaComment.Poster.UserName,
+		Created: giteaComment.Created.Format("2006-01-02T15:04:05Z"),
+	}
+
+	return issueComment, nil
+}

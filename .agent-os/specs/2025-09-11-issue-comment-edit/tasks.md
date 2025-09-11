@@ -7,42 +7,42 @@ These are the tasks to be completed for the spec detailed in @.agent-os/specs/20
 
 ## Tasks
 
-- [ ] 1. Implement Issue Comment Edit Interface Layer
-  - [ ] 1.1 Write tests for EditIssueComment interface method and EditIssueCommentArgs struct
-  - [ ] 1.2 Add EditIssueComment method to GiteaClientInterface in interface.go
-  - [ ] 1.3 Create EditIssueCommentArgs struct with validation tags for repository, issue_number, comment_id, and new_content
-  - [ ] 1.4 Verify all interface layer tests pass
+- [x] 1. Implement Issue Comment Edit Interface Layer
+  - [x] 1.1 Write tests for EditIssueComment interface method and EditIssueCommentArgs struct
+  - [x] 1.2 Add EditIssueComment method to GiteaClientInterface in interface.go
+  - [x] 1.3 Create EditIssueCommentArgs struct with validation tags for repository, issue_number, comment_id, and new_content
+  - [x] 1.4 Verify all interface layer tests pass
 
-- [ ] 2. Implement Issue Comment Edit Client Layer
-  - [ ] 2.1 Write tests for EditIssueComment method in gitea_client.go
-  - [ ] 2.2 Implement EditIssueComment method using Gitea SDK's EditIssueComment function
-  - [ ] 2.3 Add repository parsing logic (owner/repo format)
-  - [ ] 2.4 Convert Gitea SDK response to our IssueComment struct
-  - [ ] 2.5 Add proper error handling with context
-  - [ ] 2.6 Verify all client layer tests pass
+- [x] 2. Implement Issue Comment Edit Client Layer
+  - [x] 2.1 Write tests for EditIssueComment method in gitea_client.go
+  - [x] 2.2 Implement EditIssueComment method using Gitea SDK's EditIssueComment function
+  - [x] 2.3 Add repository parsing logic (owner/repo format)
+  - [x] 2.4 Convert Gitea SDK response to our IssueComment struct
+  - [x] 2.5 Add proper error handling with context
+  - [x] 2.6 Verify all client layer tests pass
 
-- [ ] 3. Implement Issue Comment Edit Service Layer
-  - [ ] 3.1 Write tests for EditIssueComment method in service.go
-  - [ ] 3.2 Add EditIssueComment method to Service struct with validation
-  - [ ] 3.3 Implement validation for comment_id parameter
-  - [ ] 3.4 Add validation for new_content parameter
-  - [ ] 3.5 Integrate with client layer method
-  - [ ] 3.6 Verify all service layer tests pass
+- [x] 3. Implement Issue Comment Edit Service Layer
+  - [x] 3.1 Write tests for EditIssueComment method in service.go
+  - [x] 3.2 Add EditIssueComment method to Service struct with validation
+  - [x] 3.3 Implement validation for comment_id parameter
+  - [x] 3.4 Add validation for new_content parameter
+  - [x] 3.5 Integrate with client layer method
+  - [x] 3.6 Verify all service layer tests pass
 
-- [ ] 4. Implement Issue Comment Edit Handler Layer
-  - [ ] 4.1 Write tests for handleIssueCommentEdit function
-  - [ ] 4.2 Create IssueCommentEditArgs struct for handler parameters
-  - [ ] 4.3 Implement handleIssueCommentEdit function with input validation using ozzo-validation
-  - [ ] 4.4 Add CommentEditResult struct for response formatting
-  - [ ] 4.5 Implement structured success/error responses
-  - [ ] 4.6 Verify all handler layer tests pass
+- [x] 4. Implement Issue Comment Edit Handler Layer
+  - [x] 4.1 Write tests for handleIssueCommentEdit function
+  - [x] 4.2 Create IssueCommentEditArgs struct for handler parameters
+  - [x] 4.3 Implement handleIssueCommentEdit function with input validation using ozzo-validation
+  - [x] 4.4 Add CommentEditResult struct for response formatting
+  - [x] 4.5 Implement structured success/error responses
+  - [x] 4.6 Verify all handler layer tests pass
 
-- [ ] 5. Register Issue Comment Edit Tool with MCP Server
-  - [ ] 5.1 Write tests for tool registration and server integration
-  - [ ] 5.2 Add issue_comment_edit tool registration in server.go
-  - [ ] 5.3 Include tool description and metadata
-  - [ ] 5.4 Wire handler function to tool registration
-  - [ ] 5.5 Verify all server registration tests pass
+- [x] 5. Register Issue Comment Edit Tool with MCP Server
+  - [x] 5.1 Write tests for tool registration and server integration
+  - [x] 5.2 Add issue_comment_edit tool registration in server.go
+  - [x] 5.3 Include tool description and metadata
+  - [x] 5.4 Wire handler function to tool registration
+  - [x] 5.5 Verify all server registration tests pass
 
 - [ ] 6. Implement Integration Tests
   - [ ] 6.1 Write integration tests for complete issue comment edit workflow
