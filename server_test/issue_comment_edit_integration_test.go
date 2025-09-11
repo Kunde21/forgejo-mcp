@@ -5,6 +5,7 @@ import (
 	"strings"
 	"testing"
 	"time"
+	"sync"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
@@ -317,13 +318,17 @@ func TestIssueCommentEditConcurrentRequests(t *testing.T) {
 
 	// Number of concurrent requests
 	numRequests := 5
+	var wg sync.WaitGroup
 	results := make([]*mcp.CallToolResult, numRequests)
 	errors := make([]error, numRequests)
+	var mu sync.Mutex
 
 	// Run concurrent requests
 	for i := range numRequests {
 		index := i
+		wg.Add(1)
 		go func() {
+			defer wg.Done()
 			result, err := client.CallTool(ctx, &mcp.CallToolParams{
 				Name: "issue_comment_edit",
 				Arguments: map[string]any{
@@ -333,13 +338,15 @@ func TestIssueCommentEditConcurrentRequests(t *testing.T) {
 					"new_content":  "Concurrent update content",
 				},
 			})
+			mu.Lock()
 			results[index] = result
 			errors[index] = err
+			mu.Unlock()
 		}()
 	}
 
-	// Wait a bit for all requests to complete
-	time.Sleep(2 * time.Second)
+	// Wait for all requests to complete
+	wg.Wait()
 
 	// Check results
 	for i := range numRequests {

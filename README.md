@@ -462,6 +462,18 @@ go build ./...
 
 ### Testing
 
+The project includes comprehensive test coverage with both unit and integration tests. The test suite uses a mock Gitea server built with `httptest.Server` for reliable, fast testing without external dependencies.
+
+#### Mock Server Architecture
+
+The test harness provides:
+- **Individual Handler Functions**: Each API endpoint has a dedicated handler function for better testability and maintainability
+- **Modern Routing**: Uses Go 1.22+ `http.ServeMux` with method + path patterns for precise routing
+- **Helper Functions**: Reusable utilities for path parameter extraction, validation, pagination, and authentication
+- **Extensible Design**: New endpoints can be easily added by registering additional handlers
+
+#### Running Tests
+
 Run the complete test suite:
 
 ```bash
@@ -491,6 +503,13 @@ Run tests with coverage:
 ```bash
 go test -cover ./...
 ```
+
+#### Test Structure
+
+- **Unit Tests**: Test individual functions and handlers in isolation
+- **Integration Tests**: Test end-to-end functionality with the mock server
+- **Acceptance Tests**: Test complete workflows and user scenarios
+- **Performance Tests**: Validate response times and resource usage
 
 ### Linting
 

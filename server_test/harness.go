@@ -34,6 +34,7 @@ type MockGiteaServer struct {
 	pullRequests  map[string][]MockPullRequest
 	notFoundRepos map[string]bool // Repositories that should return 404
 	nextID        int
+	mu            sync.Mutex
 }
 
 // MockIssue represents a mock issue for testing
@@ -386,6 +387,7 @@ func (m *MockGiteaServer) handleEditComment(w http.ResponseWriter, r *http.Reque
 	}
 
 	// Update stored comment
+	m.mu.Lock()
 	key := repoKey + "/comments"
 	if storedComments, exists := m.comments[key]; exists {
 		for i := range storedComments {
@@ -395,6 +397,7 @@ func (m *MockGiteaServer) handleEditComment(w http.ResponseWriter, r *http.Reque
 			}
 		}
 	}
+	m.mu.Unlock()
 
 	// Create mock comment response that matches Gitea SDK format
 	comment := map[string]any{
