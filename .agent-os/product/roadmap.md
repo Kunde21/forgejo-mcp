@@ -33,7 +33,7 @@
 ### Must-Have Features
 
 - Pull Request listing functionality
-- Issue comment viewing
+- [x] Issue comment viewing
 - PR comment viewing
 
 ## Phase 4: Comment Management (Q2 2026)
