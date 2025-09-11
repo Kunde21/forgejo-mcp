@@ -51,8 +51,8 @@ func TestToolDiscovery(t *testing.T) {
 		t.Fatalf("Failed to list tools: %v", err)
 	}
 	// Check that we have expected tools
-	if len(tools.Tools) != 6 {
-		t.Fatalf("Expected 6 tools, got %d", len(tools.Tools))
+	if len(tools.Tools) != 7 {
+		t.Fatalf("Expected 7 tools, got %d", len(tools.Tools))
 	}
 
 	// Find tools
@@ -61,6 +61,7 @@ func TestToolDiscovery(t *testing.T) {
 	var createCommentTool *mcp.Tool
 	var listPullRequestsTool *mcp.Tool
 	var listCommentsTool *mcp.Tool
+	var prCommentListTool *mcp.Tool
 	for _, tool := range tools.Tools {
 		switch tool.Name {
 		case "hello":
@@ -73,6 +74,8 @@ func TestToolDiscovery(t *testing.T) {
 			listCommentsTool = tool
 		case "pr_list":
 			listPullRequestsTool = tool
+		case "pr_comment_list":
+			prCommentListTool = tool
 		}
 	}
 
@@ -108,6 +111,13 @@ func TestToolDiscovery(t *testing.T) {
 	}
 	if listPullRequestsTool.Description != "List pull requests from a Forgejo/Gitea repository with pagination and state filtering" {
 		t.Errorf("Expected pr_list tool description 'List pull requests from a Forgejo/Gitea repository with pagination and state filtering', got '%s'", listPullRequestsTool.Description)
+	}
+
+	if prCommentListTool == nil {
+		t.Fatal("pr_comment_list tool not found")
+	}
+	if prCommentListTool.Description != "List comments from a Forgejo/Gitea repository pull request with pagination support" {
+		t.Errorf("Expected pr_comment_list tool description 'List comments from a Forgejo/Gitea repository pull request with pagination support', got '%s'", prCommentListTool.Description)
 	}
 
 	// Verify tool has input schema
@@ -778,7 +788,6 @@ func TestPullRequestListPermissionErrors(t *testing.T) {
 			"state":      "open",
 		},
 	})
-
 	// The call should succeed but the result should contain an error
 	if err != nil {
 		t.Fatalf("Expected error in result, got call error: %v", err)
@@ -831,7 +840,6 @@ func TestPullRequestListAPIFailures(t *testing.T) {
 			"state":      "open",
 		},
 	})
-
 	// The call should succeed but the result should contain an error
 	if err != nil {
 		t.Fatalf("Expected error in result, got call error: %v", err)

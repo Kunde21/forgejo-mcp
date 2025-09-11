@@ -95,11 +95,42 @@ type PullRequestLister interface {
 	ListPullRequests(ctx context.Context, repo string, options ListPullRequestsOptions) ([]PullRequest, error)
 }
 
-// GiteaClientInterface combines IssueLister, IssueCommenter, IssueCommentLister, IssueCommentEditor, and PullRequestLister for complete Gitea operations
+// PullRequestComment represents a comment on a Git repository pull request
+type PullRequestComment struct {
+	ID        int    `json:"id"`
+	Body      string `json:"body"`
+	User      string `json:"user"`
+	CreatedAt string `json:"created_at"`
+	UpdatedAt string `json:"updated_at"`
+}
+
+// PullRequestCommentList represents a collection of pull request comments with pagination metadata
+type PullRequestCommentList struct {
+	Comments []PullRequestComment `json:"comments"`
+	Total    int                  `json:"total"`
+	Limit    int                  `json:"limit"`
+	Offset   int                  `json:"offset"`
+}
+
+// ListPullRequestCommentsArgs represents the arguments for listing pull request comments with validation tags
+type ListPullRequestCommentsArgs struct {
+	Repository        string `json:"repository" validate:"required,regexp=^[a-zA-Z0-9._-]+/[a-zA-Z0-9._-]+$"`
+	PullRequestNumber int    `json:"pull_request_number" validate:"required,min=1"`
+	Limit             int    `json:"limit" validate:"min=1,max=100"`
+	Offset            int    `json:"offset" validate:"min=0"`
+}
+
+// PullRequestCommentLister defines the interface for listing comments from Git repository pull requests
+type PullRequestCommentLister interface {
+	ListPullRequestComments(ctx context.Context, repo string, pullRequestNumber int, limit, offset int) (*PullRequestCommentList, error)
+}
+
+// GiteaClientInterface combines IssueLister, IssueCommenter, IssueCommentLister, IssueCommentEditor, PullRequestLister, and PullRequestCommentLister for complete Gitea operations
 type GiteaClientInterface interface {
 	IssueLister
 	IssueCommenter
 	IssueCommentLister
 	IssueCommentEditor
 	PullRequestLister
+	PullRequestCommentLister
 }

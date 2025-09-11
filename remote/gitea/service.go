@@ -119,6 +119,27 @@ func (s *Service) ListPullRequests(ctx context.Context, repo string, options Lis
 	return s.client.ListPullRequests(ctx, repo, options)
 }
 
+// ListPullRequestComments lists comments for a pull request with validation
+func (s *Service) ListPullRequestComments(ctx context.Context, repo string, pullRequestNumber int, limit, offset int) (*PullRequestCommentList, error) {
+	// Validate repository format
+	if err := s.validateRepository(repo); err != nil {
+		return nil, fmt.Errorf("repository validation failed: %w", err)
+	}
+
+	// Validate pull request number
+	if err := s.validatePullRequestNumber(pullRequestNumber); err != nil {
+		return nil, fmt.Errorf("pull request number validation failed: %w", err)
+	}
+
+	// Validate pagination parameters
+	if err := s.validatePagination(limit, offset); err != nil {
+		return nil, fmt.Errorf("pagination validation failed: %w", err)
+	}
+
+	// Call the underlying client
+	return s.client.ListPullRequestComments(ctx, repo, pullRequestNumber, limit, offset)
+}
+
 // validateRepository checks if the repository string is in the correct format
 func (s *Service) validateRepository(repo string) error {
 	if repo == "" {
@@ -149,6 +170,14 @@ func (s *Service) validatePagination(limit, offset int) error {
 func (s *Service) validateIssueNumber(issueNumber int) error {
 	if issueNumber < 1 {
 		return fmt.Errorf("issue number must be positive")
+	}
+	return nil
+}
+
+// validatePullRequestNumber checks if the pull request number is valid
+func (s *Service) validatePullRequestNumber(pullRequestNumber int) error {
+	if pullRequestNumber < 1 {
+		return fmt.Errorf("pull request number must be positive")
 	}
 	return nil
 }

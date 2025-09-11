@@ -100,6 +100,11 @@ func NewFromService(service *gitea.Service, cfg *config.Config) (*Server, error)
 		Description: "List pull requests from a Forgejo/Gitea repository with pagination and state filtering",
 	}, s.handlePullRequestList)
 
+	mcp.AddTool(mcpServer, &mcp.Tool{
+		Name:        "pr_comment_list",
+		Description: "List comments from a Forgejo/Gitea repository pull request with pagination support",
+	}, s.handlePullRequestCommentList)
+
 	s.mcpServer = mcpServer
 	return s, nil
 }

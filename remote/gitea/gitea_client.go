@@ -223,3 +223,49 @@ func (c *GiteaClient) ListPullRequests(ctx context.Context, repo string, options
 
 	return prs, nil
 }
+
+// ListPullRequestComments retrieves comments from the specified pull request
+func (c *GiteaClient) ListPullRequestComments(ctx context.Context, repo string, pullRequestNumber int, limit, offset int) (*PullRequestCommentList, error) {
+	// Parse repository string (format: "owner/repo")
+	owner, repoName, ok := strings.Cut(repo, "/")
+	if !ok {
+		return nil, fmt.Errorf("invalid repository format: %s, expected 'owner/repo'", repo)
+	}
+
+	// List comments using Gitea SDK
+	opts := gitea.ListIssueCommentOptions{
+		ListOptions: gitea.ListOptions{
+			PageSize: limit,
+			Page:     offset/limit + 1, // Gitea uses 1-based pagination
+		},
+	}
+
+	giteaComments, _, err := c.client.ListIssueComments(owner, repoName, int64(pullRequestNumber), opts)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list pull request comments: %w", err)
+	}
+
+	// Convert to our PullRequestComment struct
+	comments := make([]PullRequestComment, len(giteaComments))
+	for i, gc := range giteaComments {
+		comments[i] = PullRequestComment{
+			ID:        int(gc.ID),
+			Body:      gc.Body,
+			User:      gc.Poster.UserName,
+			CreatedAt: gc.Created.Format("2006-01-02T15:04:05Z"),
+			UpdatedAt: gc.Updated.Format("2006-01-02T15:04:05Z"),
+		}
+	}
+
+	// Create PullRequestCommentList with pagination metadata
+	// Note: Gitea SDK doesn't provide total count in ListPullRequestComments response
+	// We return the actual number of comments returned as total
+	commentList := &PullRequestCommentList{
+		Comments: comments,
+		Total:    len(comments),
+		Limit:    limit,
+		Offset:   offset,
+	}
+
+	return commentList, nil
+}
