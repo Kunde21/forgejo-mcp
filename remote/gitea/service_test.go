@@ -28,39 +28,46 @@ func TestServiceCreateIssueComment(t *testing.T) {
 	}
 }
 
-func TestServiceCreateIssueCommentWithoutValidation(t *testing.T) {
-	// Test CreateIssueComment method without validation
+func TestServiceCreateIssueCommentWithValidation(t *testing.T) {
+	// Test CreateIssueComment method with validation
 	ctx := context.Background()
 	mockClient := &mockGiteaClient{}
 	service := NewService(mockClient)
 
-	// Test successful comment creation - service layer no longer validates
+	// Test cases with expected validation results
 	testCases := []struct {
 		name        string
 		repo        string
 		issueNumber int
 		comment     string
+		expectError bool
 	}{
-		{"valid input", "owner/repo", 1, "Valid comment"},
-		{"empty repo", "", 1, "Comment"},
-		{"invalid repo format", "invalid-format", 1, "Comment"},
-		{"zero issue number", "owner/repo", 0, "Comment"},
-		{"negative issue number", "owner/repo", -1, "Comment"},
-		{"empty comment", "owner/repo", 1, ""},
-		{"whitespace comment", "owner/repo", 1, "   "},
+		{"valid input", "owner/repo", 1, "Valid comment", false},
+		{"empty repo", "", 1, "Comment", true},
+		{"invalid repo format", "invalid-format", 1, "Comment", true},
+		{"zero issue number", "owner/repo", 0, "Comment", true},
+		{"negative issue number", "owner/repo", -1, "Comment", true},
+		{"empty comment", "owner/repo", 1, "", true},
+		{"whitespace comment", "owner/repo", 1, "   ", true},
 	}
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			comment, err := service.CreateIssueComment(ctx, tc.repo, tc.issueNumber, tc.comment)
-			if err != nil {
-				t.Errorf("Expected no error, got %v", err)
-			}
-			if comment == nil {
-				t.Error("Expected comment to be returned")
-			}
-			if comment.Content != tc.comment {
-				t.Errorf("Expected comment content %q, got %s", tc.comment, comment.Content)
+			if tc.expectError {
+				if err == nil {
+					t.Errorf("Expected validation error for case '%s', but got none", tc.name)
+				}
+			} else {
+				if err != nil {
+					t.Errorf("Expected no error for case '%s', got %v", tc.name, err)
+				}
+				if comment == nil {
+					t.Error("Expected comment to be returned")
+				}
+				if comment.Content != tc.comment {
+					t.Errorf("Expected comment content %q, got %s", tc.comment, comment.Content)
+				}
 			}
 		})
 	}

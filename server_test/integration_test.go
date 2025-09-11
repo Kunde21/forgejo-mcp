@@ -50,8 +50,8 @@ func TestToolDiscovery(t *testing.T) {
 		t.Fatalf("Failed to list tools: %v", err)
 	}
 	// Check that we have the expected tools
-	if len(tools.Tools) != 4 {
-		t.Fatalf("Expected 4 tools, got %d", len(tools.Tools))
+	if len(tools.Tools) != 5 {
+		t.Fatalf("Expected 5 tools, got %d", len(tools.Tools))
 	}
 
 	// Find tools

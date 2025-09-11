@@ -264,8 +264,47 @@ Response:
        "offset": 0
      }
    }
- }
- ```
+  }
+  ```
+
+#### Edit Issue Comment
+
+```json
+{
+  "method": "tools/call",
+  "params": {
+    "name": "issue_comment_edit",
+    "arguments": {
+      "repository": "myorg/myrepo",
+      "issue_number": 42,
+      "comment_id": 123,
+      "new_content": "Updated comment with additional information and corrections."
+    }
+  }
+}
+```
+
+Response:
+```json
+{
+  "result": {
+    "content": [
+      {
+        "type": "text",
+        "text": "Comment edited successfully. ID: 123, Updated: 2025-09-10T10:00:00Z\nComment body: Updated comment with additional information and corrections."
+      }
+    ],
+    "structured": {
+      "comment": {
+        "id": 123,
+        "content": "Updated comment with additional information and corrections.",
+        "author": "testuser",
+        "created": "2025-09-10T10:00:00Z"
+      }
+    }
+  }
+}
+```
 
 ## Features
 
@@ -300,9 +339,12 @@ Manage issues in your forgejo repository
  - `issue_comment_create`: Create a comment on a repository issue
    - Parameters: repository (owner/repo), issue_number (positive integer), comment (non-empty string)
    - Returns: Comment creation confirmation with metadata
- - `issue_comment_list`: List comments from a repository issue with pagination support
-   - Parameters: repository (owner/repo), issue_number (positive integer), limit (1-100, default 15), offset (0-based, default 0)
-   - Returns: Array of comments with ID, content, author, and creation timestamp
+  - `issue_comment_list`: List comments from a repository issue with pagination support
+    - Parameters: repository (owner/repo), issue_number (positive integer), limit (1-100, default 15), offset (0-based, default 0)
+    - Returns: Array of comments with ID, content, author, and creation timestamp
+  - `issue_comment_edit`: Edit an existing comment on a repository issue
+    - Parameters: repository (owner/repo), issue_number (positive integer), comment_id (positive integer), new_content (non-empty string)
+    - Returns: Comment edit confirmation with updated metadata
 - List Issues: show all open issues on the current repository
 - Open Issue: create a new issue with details about a feature request or a bug
 - Close Issue: close an issue that has been answered or completed

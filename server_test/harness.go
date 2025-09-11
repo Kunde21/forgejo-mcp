@@ -102,7 +102,7 @@ func (m *MockGiteaServer) handleRepoRequests(w http.ResponseWriter, r *http.Requ
 	path := r.URL.Path
 
 	// Handle issues endpoint
-	if strings.Contains(path, "/issues") && r.Method == "GET" {
+	if strings.Contains(path, "/issues") && !strings.Contains(path, "/comments") && r.Method == "GET" {
 		parts := strings.Split(strings.TrimPrefix(path, "/api/v1/repos/"), "/issues")
 		if len(parts) != 2 {
 			http.NotFound(w, r)
@@ -177,9 +177,76 @@ func (m *MockGiteaServer) handleRepoRequests(w http.ResponseWriter, r *http.Requ
 		json.NewEncoder(w).Encode(comment)
 		return
 	}
+	// Handle comment listing endpoint
+	if strings.Contains(path, "/comments") && r.Method == "GET" {
+		// Parse path: /api/v1/repos/{owner}/{repo}/issues/{number}/comments
+		pathParts := strings.Split(strings.TrimPrefix(path, "/api/v1/repos/"), "/")
+		if len(pathParts) < 5 {
+			http.NotFound(w, r)
+			return
+		}
+
+		owner := pathParts[0]
+		repo := pathParts[1]
+		repoKey := owner + "/" + repo
+
+		// Check if repository exists (simulate API error for nonexistent repos)
+		if repoKey == "nonexistent/repo" {
+			http.NotFound(w, r)
+			return
+		}
+
+		// Get stored comments for this repository
+		key := repoKey + "/comments"
+		storedComments, exists := m.comments[key]
+		if !exists {
+			storedComments = []MockComment{}
+		}
+
+		// Convert to Gitea SDK format
+		comments := make([]map[string]any, len(storedComments))
+		for i, mc := range storedComments {
+			comments[i] = map[string]any{
+				"id":      mc.ID,
+				"body":    mc.Content,
+				"created": mc.Created,
+				"user": map[string]any{
+					"login": mc.Author,
+				},
+			}
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(comments)
+		return
+	}
 
 	// Handle comment editing endpoint
 	if strings.Contains(path, "/comments/") && r.Method == "PATCH" {
+		// Check authentication token
+		authHeader := r.Header.Get("Authorization")
+		token := r.URL.Query().Get("token")
+
+		// Extract token value from header
+		var headerToken string
+		if strings.HasPrefix(authHeader, "Bearer ") {
+			headerToken = strings.TrimPrefix(authHeader, "Bearer ")
+		} else if strings.HasPrefix(authHeader, "token ") {
+			headerToken = strings.TrimPrefix(authHeader, "token ")
+		}
+
+		// Reject invalid-token
+		if headerToken == "invalid-token" || token == "invalid-token" {
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			return
+		}
+
+		// Accept valid tokens or no token (for backward compatibility)
+		if headerToken != "" && headerToken != "mock-token" && headerToken != "test-token" {
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			return
+		}
+
 		// Parse path: /api/v1/repos/{owner}/{repo}/issues/comments/{id}
 		pathParts := strings.Split(strings.TrimPrefix(path, "/api/v1/repos/"), "/")
 		if len(pathParts) < 5 {
@@ -192,7 +259,7 @@ func (m *MockGiteaServer) handleRepoRequests(w http.ResponseWriter, r *http.Requ
 		repoKey := owner + "/" + repo
 
 		// Parse comment ID from URL
-		commentIDStr := strings.TrimPrefix(pathParts[4], "comments/")
+		commentIDStr := pathParts[4]
 		if commentIDStr == "" {
 			http.NotFound(w, r)
 			return
@@ -211,6 +278,16 @@ func (m *MockGiteaServer) handleRepoRequests(w http.ResponseWriter, r *http.Requ
 		if repoKey == "nonexistent/repo" {
 			http.NotFound(w, r)
 			return
+		}
+		// Update stored comment
+		key := repoKey + "/comments"
+		if storedComments, exists := m.comments[key]; exists {
+			for i := range storedComments {
+				if storedComments[i].ID == 1 { // Use fixed ID for testing
+					storedComments[i].Content = commentReq.Body
+					break
+				}
+			}
 		}
 
 		// Create mock comment response that matches Gitea SDK format
