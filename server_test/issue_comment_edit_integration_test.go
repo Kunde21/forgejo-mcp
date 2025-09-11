@@ -5,7 +5,6 @@ import (
 	"strings"
 	"testing"
 	"time"
-	"sync"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
@@ -253,7 +252,6 @@ func TestIssueCommentEditPermissionError(t *testing.T) {
 			"new_content":  "Updated content",
 		},
 	})
-
 	// Should return an error result for permission issues
 	if err != nil {
 		t.Errorf("Expected successful call with error result, got client error: %v", err)
@@ -290,7 +288,6 @@ func TestIssueCommentEditAPIError(t *testing.T) {
 			"new_content":  "Updated content",
 		},
 	})
-
 	// Should return an error result for API failure
 	if err != nil {
 		t.Errorf("Expected successful call with error result, got client error: %v", err)
@@ -302,72 +299,4 @@ func TestIssueCommentEditAPIError(t *testing.T) {
 	}
 }
 
-// TestIssueCommentEditConcurrentRequests tests concurrent comment editing
-func TestIssueCommentEditConcurrentRequests(t *testing.T) {
-	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
-	t.Cleanup(cancel)
-	mock := NewMockGiteaServer(t)
-	ts := NewTestServer(t, ctx, map[string]string{
-		"FORGEJO_REMOTE_URL": mock.URL(),
-		"FORGEJO_AUTH_TOKEN": "mock-token",
-	})
-	if err := ts.Initialize(); err != nil {
-		t.Fatal(err)
-	}
-	client := ts.Client()
-
-	// Number of concurrent requests
-	numRequests := 5
-	var wg sync.WaitGroup
-	results := make([]*mcp.CallToolResult, numRequests)
-	errors := make([]error, numRequests)
-	var mu sync.Mutex
-
-	// Run concurrent requests
-	for i := range numRequests {
-		index := i
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			result, err := client.CallTool(ctx, &mcp.CallToolParams{
-				Name: "issue_comment_edit",
-				Arguments: map[string]any{
-					"repository":   "testuser/testrepo",
-					"issue_number": 1,
-					"comment_id":   123 + index, // Different comment IDs
-					"new_content":  "Concurrent update content",
-				},
-			})
-			mu.Lock()
-			results[index] = result
-			errors[index] = err
-			mu.Unlock()
-		}()
-	}
-
-	// Wait for all requests to complete
-	wg.Wait()
-
-	// Check results
-	for i := range numRequests {
-		if errors[i] != nil {
-			t.Errorf("Concurrent request %d failed: %v", i, errors[i])
-		}
-		if results[i] == nil {
-			t.Errorf("Concurrent request %d returned nil result", i)
-			continue
-		}
-		if len(results[i].Content) == 0 {
-			t.Errorf("Concurrent request %d returned empty content", i)
-			continue
-		}
-		textContent, ok := results[i].Content[0].(*mcp.TextContent)
-		if !ok {
-			t.Errorf("Concurrent request %d returned wrong content type: %T", i, results[i].Content[0])
-			continue
-		}
-		if !strings.Contains(textContent.Text, "Comment edited successfully") {
-			t.Errorf("Concurrent request %d got unexpected result: %s", i, textContent.Text)
-		}
-	}
-}
+// Concurrent testing is now covered in acceptance tests to avoid duplication
