@@ -63,7 +63,7 @@ func TestToolDiscovery(t *testing.T) {
 	var listCommentsTool *mcp.Tool
 	var prCommentListTool *mcp.Tool
 	var prCommentCreateTool *mcp.Tool
-var prCommentEditTool *mcp.Tool
+	var prCommentEditTool *mcp.Tool
 	for _, tool := range tools.Tools {
 		switch tool.Name {
 		case "hello":
@@ -80,6 +80,8 @@ var prCommentEditTool *mcp.Tool
 			prCommentListTool = tool
 		case "pr_comment_create":
 			prCommentCreateTool = tool
+		case "pr_comment_edit":
+			prCommentEditTool = tool
 		}
 	}
 
@@ -128,6 +130,8 @@ var prCommentEditTool *mcp.Tool
 		t.Fatal("pr_comment_create tool not found")
 	}
 	if prCommentCreateTool.Description != "Create a comment on a Forgejo/Gitea repository pull request" {
+		t.Errorf("Expected pr_comment_create tool description 'Create a comment on a Forgejo/Gitea repository pull request', got '%s'", prCommentCreateTool.Description)
+	}
 
 	if prCommentEditTool == nil {
 		t.Fatal("pr_comment_edit tool not found")
@@ -135,18 +139,16 @@ var prCommentEditTool *mcp.Tool
 	if prCommentEditTool.Description != "Edit an existing comment on a Forgejo/Gitea repository pull request" {
 		t.Errorf("Expected pr_comment_edit tool description 'Edit an existing comment on a Forgejo/Gitea repository pull request', got '%s'", prCommentEditTool.Description)
 	}
-		t.Errorf("Expected pr_comment_create tool description 'Create a comment on a Forgejo/Gitea repository pull request', got '%s'", prCommentCreateTool.Description)
-	}
 
 	// Verify tool has input schema
 	if createCommentTool.InputSchema == nil {
 		t.Error("issue_comment_create tool should have input schema")
 	}
 	if prCommentCreateTool.InputSchema == nil {
+		t.Error("pr_comment_create tool should have input schema")
+	}
 	if prCommentEditTool.InputSchema == nil {
 		t.Error("pr_comment_edit tool should have input schema")
-	}
-		t.Error("pr_comment_create tool should have input schema")
 	}
 }
 
@@ -1177,6 +1179,335 @@ func TestPullRequestCommentCreateSuccessfulParameters(t *testing.T) {
 			// Verify comment body is included
 			if !contains(textContent.Text, tt.expected) {
 				t.Errorf("Expected comment body '%s' in response, got: %s", tt.expected, textContent.Text)
+			}
+		})
+	}
+}
+
+// ===== PULL REQUEST COMMENT EDIT INTEGRATION TESTS =====
+
+// TestPullRequestCommentEditCompleteWorkflow tests the complete pull request comment edit workflow
+func TestPullRequestCommentEditCompleteWorkflow(t *testing.T) {
+	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
+	t.Cleanup(cancel)
+
+	// Set up mock Gitea server with existing comment
+	mock := NewMockGiteaServer(t)
+	mock.AddComments("testuser", "testrepo", []MockComment{
+		{
+			ID:      123,
+			Content: "Original comment content",
+			Author:  "testuser",
+			Created: "2025-09-10T10:00:00Z",
+		},
+	})
+
+	ts := NewTestServer(t, ctx, map[string]string{
+		"FORGEJO_REMOTE_URL": mock.URL(),
+		"FORGEJO_AUTH_TOKEN": "mock-token",
+	})
+	if err := ts.Initialize(); err != nil {
+		t.Fatal(err)
+	}
+	client := ts.Client()
+
+	// Test successful comment editing
+	result, err := client.CallTool(ctx, &mcp.CallToolParams{
+		Name: "pr_comment_edit",
+		Arguments: map[string]any{
+			"repository":          "testuser/testrepo",
+			"pull_request_number": 1,
+			"comment_id":          123,
+			"new_content":         "Updated comment content",
+		},
+	})
+	if err != nil {
+		t.Fatalf("Failed to call pr_comment_edit tool: %v", err)
+	}
+
+	// Verify response structure
+	if result == nil {
+		t.Fatal("Expected non-nil result")
+	}
+	if result.Content == nil {
+		t.Fatal("Expected non-nil content")
+	}
+	if len(result.Content) == 0 {
+		t.Fatal("Expected at least one content item")
+	}
+
+	// Verify content type and message
+	textContent, ok := result.Content[0].(*mcp.TextContent)
+	if !ok {
+		t.Fatalf("Expected TextContent, got %T", result.Content[0])
+	}
+	if textContent.Text == "" {
+		t.Error("Expected non-empty text content")
+	}
+
+	// Should contain success message
+	if !contains(textContent.Text, "Pull request comment edited successfully") {
+		t.Errorf("Expected success message, got: %s", textContent.Text)
+	}
+
+	// Should contain comment ID
+	if !contains(textContent.Text, "ID: 123") {
+		t.Errorf("Expected comment ID in message, got: %s", textContent.Text)
+	}
+
+	// Should contain updated comment body
+	if !contains(textContent.Text, "Updated comment content") {
+		t.Errorf("Expected updated comment body in message, got: %s", textContent.Text)
+	}
+}
+
+// TestPullRequestCommentEditValidationErrors tests validation error scenarios
+func TestPullRequestCommentEditValidationErrors(t *testing.T) {
+	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
+	t.Cleanup(cancel)
+
+	mock := NewMockGiteaServer(t)
+	ts := NewTestServer(t, ctx, map[string]string{
+		"FORGEJO_REMOTE_URL": mock.URL(),
+		"FORGEJO_AUTH_TOKEN": "mock-token",
+	})
+	if err := ts.Initialize(); err != nil {
+		t.Fatal(err)
+	}
+	client := ts.Client()
+
+	tests := []struct {
+		name        string
+		args        map[string]any
+		wantError   bool
+		errorSubstr string
+	}{
+		{
+			name: "missing repository",
+			args: map[string]any{
+				"pull_request_number": 1,
+				"comment_id":          123,
+				"new_content":         "test content",
+			},
+			wantError:   true,
+			errorSubstr: "repository: cannot be blank",
+		},
+		{
+			name: "invalid repository format",
+			args: map[string]any{
+				"repository":          "invalid-repo-format",
+				"pull_request_number": 1,
+				"comment_id":          123,
+				"new_content":         "test content",
+			},
+			wantError:   true,
+			errorSubstr: "repository must be in format 'owner/repo'",
+		},
+		{
+			name: "missing new content",
+			args: map[string]any{
+				"repository":          "testuser/testrepo",
+				"pull_request_number": 1,
+				"comment_id":          123,
+			},
+			wantError:   true,
+			errorSubstr: "new_content: cannot be blank",
+		},
+		{
+			name: "empty new content",
+			args: map[string]any{
+				"repository":          "testuser/testrepo",
+				"pull_request_number": 1,
+				"comment_id":          123,
+				"new_content":         "",
+			},
+			wantError:   true,
+			errorSubstr: "new_content: cannot be blank",
+		},
+		{
+			name: "whitespace only new content",
+			args: map[string]any{
+				"repository":          "testuser/testrepo",
+				"pull_request_number": 1,
+				"comment_id":          123,
+				"new_content":         "   \n\t   ",
+			},
+			wantError:   true,
+			errorSubstr: "new_content: cannot be blank",
+		},
+		{
+			name: "zero pull request number",
+			args: map[string]any{
+				"repository":          "testuser/testrepo",
+				"pull_request_number": 0,
+				"comment_id":          123,
+				"new_content":         "test content",
+			},
+			wantError:   true,
+			errorSubstr: "pull_request_number: must be no less than 1",
+		},
+		{
+			name: "negative pull request number",
+			args: map[string]any{
+				"repository":          "testuser/testrepo",
+				"pull_request_number": -1,
+				"comment_id":          123,
+				"new_content":         "test content",
+			},
+			wantError:   true,
+			errorSubstr: "pull_request_number: must be no less than 1",
+		},
+		{
+			name: "zero comment ID",
+			args: map[string]any{
+				"repository":          "testuser/testrepo",
+				"pull_request_number": 1,
+				"comment_id":          0,
+				"new_content":         "test content",
+			},
+			wantError:   true,
+			errorSubstr: "comment_id: must be no less than 1",
+		},
+		{
+			name: "negative comment ID",
+			args: map[string]any{
+				"repository":          "testuser/testrepo",
+				"pull_request_number": 1,
+				"comment_id":          -1,
+				"new_content":         "test content",
+			},
+			wantError:   true,
+			errorSubstr: "comment_id: must be no less than 1",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result, err := client.CallTool(ctx, &mcp.CallToolParams{
+				Name:      "pr_comment_edit",
+				Arguments: tt.args,
+			})
+
+			if tt.wantError {
+				if err != nil {
+					t.Fatalf("Expected error in result, got call error: %v", err)
+				}
+				if result == nil {
+					t.Fatal("Expected error result, got nil")
+				}
+				if !result.IsError {
+					t.Error("Expected result to be marked as error")
+				}
+				if len(result.Content) == 0 {
+					t.Fatal("Expected error content")
+				}
+				textContent, ok := result.Content[0].(*mcp.TextContent)
+				if !ok {
+					t.Fatalf("Expected TextContent, got %T", result.Content[0])
+				}
+				if !contains(textContent.Text, tt.errorSubstr) {
+					t.Errorf("Expected error containing '%s', got: %s", tt.errorSubstr, textContent.Text)
+				}
+			} else {
+				if err != nil {
+					t.Fatalf("Unexpected call error: %v", err)
+				}
+				if result == nil || result.IsError {
+					t.Error("Expected successful result")
+				}
+			}
+		})
+	}
+}
+
+// TestPullRequestCommentEditSuccessfulParameters tests successful comment editing with valid parameters
+func TestPullRequestCommentEditSuccessfulParameters(t *testing.T) {
+	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
+	t.Cleanup(cancel)
+
+	mock := NewMockGiteaServer(t)
+	mock.AddComments("owner", "repo", []MockComment{
+		{
+			ID:      123,
+			Content: "Original comment",
+			Author:  "testuser",
+			Created: "2025-09-10T10:00:00Z",
+		},
+	})
+
+	ts := NewTestServer(t, ctx, map[string]string{
+		"FORGEJO_REMOTE_URL": mock.URL(),
+		"FORGEJO_AUTH_TOKEN": "mock-token",
+	})
+	if err := ts.Initialize(); err != nil {
+		t.Fatal(err)
+	}
+	client := ts.Client()
+
+	tests := []struct {
+		name     string
+		args     map[string]any
+		expected string
+	}{
+		{
+			name: "basic comment edit",
+			args: map[string]any{
+				"repository":          "owner/repo",
+				"pull_request_number": 1,
+				"comment_id":          123,
+				"new_content":         "Updated basic comment.",
+			},
+			expected: "Updated basic comment.",
+		},
+		{
+			name: "comment edit with special characters",
+			args: map[string]any{
+				"repository":          "owner/repo",
+				"pull_request_number": 1,
+				"comment_id":          123,
+				"new_content":         "Updated comment with special chars: @#$%^&*()",
+			},
+			expected: "Updated comment with special chars: @#$%^&*()",
+		},
+		{
+			name: "multiline comment edit",
+			args: map[string]any{
+				"repository":          "owner/repo",
+				"pull_request_number": 1,
+				"comment_id":          123,
+				"new_content":         "Updated line 1\nUpdated line 2\nUpdated line 3",
+			},
+			expected: "Updated line 1\nUpdated line 2\nUpdated line 3",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result, err := client.CallTool(ctx, &mcp.CallToolParams{
+				Name:      "pr_comment_edit",
+				Arguments: tt.args,
+			})
+			if err != nil {
+				t.Fatalf("Failed to call pr_comment_edit tool: %v", err)
+			}
+
+			if result == nil || result.Content == nil {
+				t.Fatal("Expected non-nil result with content")
+			}
+
+			textContent, ok := result.Content[0].(*mcp.TextContent)
+			if !ok {
+				t.Fatalf("Expected TextContent, got %T", result.Content[0])
+			}
+
+			// Verify success message
+			if !contains(textContent.Text, "Pull request comment edited successfully") {
+				t.Errorf("Expected success message, got: %s", textContent.Text)
+			}
+
+			// Verify updated comment body is included
+			if !contains(textContent.Text, tt.expected) {
+				t.Errorf("Expected updated comment body '%s' in response, got: %s", tt.expected, textContent.Text)
 			}
 		})
 	}

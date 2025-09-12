@@ -7,6 +7,7 @@ import (
 	"maps"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"sync"
 	"testing"
 
@@ -371,6 +372,13 @@ func (m *MockGiteaServer) handleEditComment(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
+	commentID := 123 // Default ID for testing
+	if commentIDStr != "" {
+		if parsedID, err := strconv.Atoi(commentIDStr); err == nil {
+			commentID = parsedID
+		}
+	}
+
 	// Parse comment from request body
 	var commentReq struct {
 		Body string `json:"body"`
@@ -389,21 +397,30 @@ func (m *MockGiteaServer) handleEditComment(w http.ResponseWriter, r *http.Reque
 	// Update stored comment
 	m.mu.Lock()
 	key := repoKey + "/comments"
+	commentFound := false
 	if storedComments, exists := m.comments[key]; exists {
 		for i := range storedComments {
-			if storedComments[i].ID == 1 { // Use fixed ID for testing
+			if storedComments[i].ID == commentID {
 				storedComments[i].Content = commentReq.Body
+				commentFound = true
 				break
 			}
 		}
 	}
 	m.mu.Unlock()
 
+	// If comment not found, return 404
+	if !commentFound {
+		http.NotFound(w, r)
+		return
+	}
+
 	// Create mock comment response that matches Gitea SDK format
 	comment := map[string]any{
-		"id":      123, // Use fixed ID for testing
-		"body":    commentReq.Body,
-		"created": "2025-09-10T10:00:00Z",
+		"id":         commentID,
+		"body":       commentReq.Body,
+		"created_at": "2025-09-10T10:00:00Z",
+		"updated_at": "2025-09-10T10:00:00Z",
 		"user": map[string]any{
 			"login": "testuser",
 		},

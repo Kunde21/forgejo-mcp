@@ -127,7 +127,7 @@ type PullRequestCommentEditArgs struct {
 
 // PullRequestCommentEditResult represents the result data for the pr_comment_edit tool
 type PullRequestCommentEditResult struct {
-	Comment gitea.PullRequestComment `json:"comment"`
+	Comment *gitea.PullRequestComment `json:"comment"`
 }
 
 // handlePullRequestCommentEdit handles the "pr_comment_edit" tool request.
@@ -151,12 +151,18 @@ func (s *Server) handlePullRequestCommentEdit(ctx context.Context, request *mcp.
 		return TextError("Context is required"), nil, nil
 	}
 
+	// Explicit validation for integer fields (ozzo-validation v.Min doesn't work well with zero values)
+	if args.PullRequestNumber < 1 {
+		return TextError("Invalid request: pull_request_number: must be no less than 1."), nil, nil
+	}
+	if args.CommentID < 1 {
+		return TextError("Invalid request: comment_id: must be no less than 1."), nil, nil
+	}
+
 	// Validate input arguments using ozzo-validation
 	if err := v.ValidateStruct(&args,
 		v.Field(&args.Repository, v.Required, v.Match(repoReg).Error("repository must be in format 'owner/repo'")),
-		v.Field(&args.PullRequestNumber, v.Min(1)),
-		v.Field(&args.CommentID, v.Min(1)),
-		v.Field(&args.NewContent, v.Required, v.Length(1, 0)), // Non-empty string
+		v.Field(&args.NewContent, v.Required, nonEmptyString()), // Non-empty string, not just whitespace
 	); err != nil {
 		return TextErrorf("Invalid request: %v", err), nil, nil
 	}
@@ -177,5 +183,5 @@ func (s *Server) handlePullRequestCommentEdit(ctx context.Context, request *mcp.
 	responseText := fmt.Sprintf("Pull request comment edited successfully. ID: %d, Updated: %s\nComment body: %s",
 		comment.ID, comment.UpdatedAt, comment.Body)
 
-	return TextResult(responseText), &PullRequestCommentEditResult{Comment: *comment}, nil
+	return TextResult(responseText), &PullRequestCommentEditResult{Comment: comment}, nil
 }

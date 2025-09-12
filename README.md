@@ -489,6 +489,46 @@ Response:
 }
 ```
 
+#### Edit Pull Request Comment
+
+```json
+{
+  "method": "tools/call",
+  "params": {
+    "name": "pr_comment_edit",
+    "arguments": {
+      "repository": "myorg/myrepo",
+      "pull_request_number": 42,
+      "comment_id": 123,
+      "new_content": "Updated comment with additional information and corrections."
+    }
+  }
+}
+```
+
+Response:
+```json
+{
+  "result": {
+    "content": [
+      {
+        "type": "text",
+        "text": "Pull request comment edited successfully. ID: 123, Updated: 2025-09-12T14:30:45Z\nComment body: Updated comment with additional information and corrections."
+      }
+    ],
+    "structured": {
+      "comment": {
+        "id": 123,
+        "body": "Updated comment with additional information and corrections.",
+        "user": "reviewer",
+        "created_at": "2025-09-12T14:30:45Z",
+        "updated_at": "2025-09-12T14:30:45Z"
+      }
+    }
+  }
+}
+```
+
 ## Features
 
 ### SDK Integration
@@ -516,6 +556,9 @@ Tools List:
 - `pr_comment_list`: List comments from a repository pull request with pagination support
   - Parameters: repository (owner/repo), pull_request_number (positive integer), limit (1-100, default 15), offset (0-based, default 0)
   - Returns: Array of comments with ID, content, author, and creation timestamp
+- `pr_comment_edit`: Edit an existing comment on a repository pull request
+  - Parameters: repository (owner/repo), pull_request_number (positive integer), comment_id (positive integer), new_content (non-empty string)
+  - Returns: Comment edit confirmation with updated metadata
 - Review PR: approve or request changes
 
 ### Issue interactions
