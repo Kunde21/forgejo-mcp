@@ -339,3 +339,95 @@ func TestService_CreatePullRequestComment(t *testing.T) {
 		})
 	}
 }
+
+func TestService_EditPullRequestComment(t *testing.T) {
+	t.Parallel()
+	testCases := []struct {
+		name           string
+		args           EditPullRequestCommentArgs
+		mockResponse   *PullRequestComment
+		mockError      error
+		expectedError  string
+		expectedResult *PullRequestComment
+	}{
+		{
+			name: "successful comment editing",
+			args: EditPullRequestCommentArgs{
+				Repository:        "testuser/testrepo",
+				PullRequestNumber: 1,
+				CommentID:         123,
+				NewContent:        "Updated comment content",
+			},
+			mockResponse: &PullRequestComment{
+				ID:        123,
+				Body:      "Updated comment content",
+				User:      "testuser",
+				CreatedAt: "2024-01-01T00:00:00Z",
+				UpdatedAt: "2024-01-02T00:00:00Z",
+			},
+			expectedResult: &PullRequestComment{
+				ID:        123,
+				Body:      "Updated comment content",
+				User:      "testuser",
+				CreatedAt: "2024-01-01T00:00:00Z",
+				UpdatedAt: "2024-01-02T00:00:00Z",
+			},
+		},
+		{
+			name: "client error",
+			args: EditPullRequestCommentArgs{
+				Repository:        "testuser/testrepo",
+				PullRequestNumber: 1,
+				CommentID:         123,
+				NewContent:        "Updated content",
+			},
+			mockError:     fmt.Errorf("failed to edit pull request comment"),
+			expectedError: "failed to edit pull request comment",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			mockClient := &mockGiteaClient{
+				editPullRequestCommentFunc: func(ctx context.Context, args EditPullRequestCommentArgs) (*PullRequestComment, error) {
+					return tc.mockResponse, tc.mockError
+				},
+			}
+
+			service := NewService(mockClient)
+			result, err := service.EditPullRequestComment(context.Background(), tc.args)
+
+			if tc.expectedError != "" {
+				if err == nil {
+					t.Errorf("Expected error containing %q, but got no error", tc.expectedError)
+				} else if !strings.Contains(err.Error(), tc.expectedError) {
+					t.Errorf("Expected error containing %q, got %q", tc.expectedError, err.Error())
+				}
+				return
+			}
+
+			if err != nil {
+				t.Errorf("Unexpected error: %v", err)
+				return
+			}
+
+			if result == nil && tc.expectedResult != nil {
+				t.Errorf("Expected result, got nil")
+				return
+			}
+
+			if result != nil && tc.expectedResult == nil {
+				t.Errorf("Expected nil result, got %v", result)
+				return
+			}
+
+			if result.ID != tc.expectedResult.ID ||
+				result.Body != tc.expectedResult.Body ||
+				result.User != tc.expectedResult.User ||
+				result.CreatedAt != tc.expectedResult.CreatedAt ||
+				result.UpdatedAt != tc.expectedResult.UpdatedAt {
+				t.Errorf("Result mismatch: expected %+v, got %+v", tc.expectedResult, result)
+			}
+		})
+	}
+}

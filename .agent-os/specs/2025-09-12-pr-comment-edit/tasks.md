@@ -56,7 +56,7 @@
   - **No validation methods** - trust that server handler already validated inputs
   - Focus on business logic and error handling from API calls
   - Return converted `PullRequestComment` struct
-- **Status**: ⏳ Pending
+- **Status**: ✅ Completed
 
 #### Task 3.2: Add Service Tests
 - **File**: `remote/gitea/service_test.go`
@@ -65,7 +65,7 @@
   - Test successful comment editing through service
   - Test error propagation from client
   - **No validation tests** - validation is handled in server layer
-- **Status**: ⏳ Pending
+- **Status**: ✅ Completed
 
 ### Phase 4: Server Layer Implementation
 

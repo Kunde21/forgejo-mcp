@@ -146,6 +146,12 @@ func (s *Service) CreatePullRequestComment(ctx context.Context, repo string, pul
 	return s.client.CreatePullRequestComment(ctx, repo, pullRequestNumber, comment)
 }
 
+// EditPullRequestComment edits an existing comment on a pull request
+func (s *Service) EditPullRequestComment(ctx context.Context, args EditPullRequestCommentArgs) (*PullRequestComment, error) {
+	// Call the underlying client directly (no validation - trust that server handler already validated inputs)
+	return s.client.EditPullRequestComment(ctx, args)
+}
+
 // validateRepository checks if the repository string is in the correct format
 func (s *Service) validateRepository(repo string) error {
 	if repo == "" {
