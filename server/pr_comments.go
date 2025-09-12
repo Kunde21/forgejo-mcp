@@ -116,3 +116,66 @@ func (s *Server) handlePullRequestCommentCreate(ctx context.Context, request *mc
 
 	return TextResult(responseText), &PullRequestCommentCreateResult{Comment: *comment}, nil
 }
+
+// PullRequestCommentEditArgs represents the arguments for editing a pull request comment with validation tags
+type PullRequestCommentEditArgs struct {
+	Repository        string `json:"repository" validate:"required,regexp=^[a-zA-Z0-9._-]+/[a-zA-Z0-9._-]+$"`
+	PullRequestNumber int    `json:"pull_request_number" validate:"required,min=1"`
+	CommentID         int    `json:"comment_id" validate:"required,min=1"`
+	NewContent        string `json:"new_content" validate:"required,min=1"`
+}
+
+// PullRequestCommentEditResult represents the result data for the pr_comment_edit tool
+type PullRequestCommentEditResult struct {
+	Comment gitea.PullRequestComment `json:"comment"`
+}
+
+// handlePullRequestCommentEdit handles the "pr_comment_edit" tool request.
+// It edits an existing comment on a specified Forgejo/Gitea pull request.
+//
+// Parameters:
+//   - repository: The repository path in "owner/repo" format
+//   - pull_request_number: The pull request number containing the comment (must be positive)
+//   - comment_id: The ID of the comment to edit (must be positive)
+//   - new_content: The updated comment content (cannot be empty)
+//
+// Returns:
+//   - Success: Comment edit confirmation with updated metadata
+//   - Error: Validation errors or API failures
+//
+// Migration Note: Implements MCP SDK v0.4.0 handler signature with ozzo-validation
+// for parameter validation and structured error responses.
+func (s *Server) handlePullRequestCommentEdit(ctx context.Context, request *mcp.CallToolRequest, args PullRequestCommentEditArgs) (*mcp.CallToolResult, *PullRequestCommentEditResult, error) {
+	// Validate context - required for proper request handling
+	if ctx == nil {
+		return TextError("Context is required"), nil, nil
+	}
+
+	// Validate input arguments using ozzo-validation
+	if err := v.ValidateStruct(&args,
+		v.Field(&args.Repository, v.Required, v.Match(repoReg).Error("repository must be in format 'owner/repo'")),
+		v.Field(&args.PullRequestNumber, v.Min(1)),
+		v.Field(&args.CommentID, v.Min(1)),
+		v.Field(&args.NewContent, v.Required, v.Length(1, 0)), // Non-empty string
+	); err != nil {
+		return TextErrorf("Invalid request: %v", err), nil, nil
+	}
+
+	// Edit the comment using the service layer
+	editArgs := gitea.EditPullRequestCommentArgs{
+		Repository:        args.Repository,
+		PullRequestNumber: args.PullRequestNumber,
+		CommentID:         args.CommentID,
+		NewContent:        args.NewContent,
+	}
+	comment, err := s.giteaService.EditPullRequestComment(ctx, editArgs)
+	if err != nil {
+		return TextErrorf("Failed to edit pull request comment: %v", err), nil, nil
+	}
+
+	// Format success response with updated comment metadata
+	responseText := fmt.Sprintf("Pull request comment edited successfully. ID: %d, Updated: %s\nComment body: %s",
+		comment.ID, comment.UpdatedAt, comment.Body)
+
+	return TextResult(responseText), &PullRequestCommentEditResult{Comment: *comment}, nil
+}

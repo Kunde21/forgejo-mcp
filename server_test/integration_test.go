@@ -51,8 +51,8 @@ func TestToolDiscovery(t *testing.T) {
 		t.Fatalf("Failed to list tools: %v", err)
 	}
 	// Check that we have expected tools
-	if len(tools.Tools) != 8 {
-		t.Fatalf("Expected 8 tools, got %d", len(tools.Tools))
+	if len(tools.Tools) != 9 {
+		t.Fatalf("Expected 9 tools, got %d", len(tools.Tools))
 	}
 
 	// Find tools
@@ -63,6 +63,7 @@ func TestToolDiscovery(t *testing.T) {
 	var listCommentsTool *mcp.Tool
 	var prCommentListTool *mcp.Tool
 	var prCommentCreateTool *mcp.Tool
+var prCommentEditTool *mcp.Tool
 	for _, tool := range tools.Tools {
 		switch tool.Name {
 		case "hello":
@@ -127,6 +128,13 @@ func TestToolDiscovery(t *testing.T) {
 		t.Fatal("pr_comment_create tool not found")
 	}
 	if prCommentCreateTool.Description != "Create a comment on a Forgejo/Gitea repository pull request" {
+
+	if prCommentEditTool == nil {
+		t.Fatal("pr_comment_edit tool not found")
+	}
+	if prCommentEditTool.Description != "Edit an existing comment on a Forgejo/Gitea repository pull request" {
+		t.Errorf("Expected pr_comment_edit tool description 'Edit an existing comment on a Forgejo/Gitea repository pull request', got '%s'", prCommentEditTool.Description)
+	}
 		t.Errorf("Expected pr_comment_create tool description 'Create a comment on a Forgejo/Gitea repository pull request', got '%s'", prCommentCreateTool.Description)
 	}
 
@@ -135,6 +143,9 @@ func TestToolDiscovery(t *testing.T) {
 		t.Error("issue_comment_create tool should have input schema")
 	}
 	if prCommentCreateTool.InputSchema == nil {
+	if prCommentEditTool.InputSchema == nil {
+		t.Error("pr_comment_edit tool should have input schema")
+	}
 		t.Error("pr_comment_create tool should have input schema")
 	}
 }

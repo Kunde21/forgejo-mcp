@@ -110,6 +110,11 @@ func NewFromService(service *gitea.Service, cfg *config.Config) (*Server, error)
 		Description: "Create a comment on a Forgejo/Gitea repository pull request",
 	}, s.handlePullRequestCommentCreate)
 
+	mcp.AddTool(mcpServer, &mcp.Tool{
+		Name:        "pr_comment_edit",
+		Description: "Edit an existing comment on a Forgejo/Gitea repository pull request",
+	}, s.handlePullRequestCommentEdit)
+
 	s.mcpServer = mcpServer
 	return s, nil
 }
