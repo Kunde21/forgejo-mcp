@@ -59,8 +59,8 @@ func validateRepository(mock *MockGiteaServer, repoKey string) bool {
 
 // parsePagination extracts limit and offset from query parameters
 func parsePagination(r *http.Request) (limit, offset int) {
-	// Set default values
-	limit = 0 // 0 means no limit (return all items)
+	// Set default values to match server implementation
+	limit = 15 // Default limit matches server default
 	offset = 0
 
 	// Parse limit from query parameters
@@ -70,10 +70,18 @@ func parsePagination(r *http.Request) (limit, offset int) {
 		}
 	}
 
-	// Parse offset from query parameters
-	if offsetStr := r.URL.Query().Get("offset"); offsetStr != "" {
-		if parsedOffset, err := strconv.Atoi(offsetStr); err == nil && parsedOffset >= 0 {
-			offset = parsedOffset
+	// Check if page parameter exists (Gitea SDK uses page-based pagination)
+	if pageStr := r.URL.Query().Get("page"); pageStr != "" {
+		if parsedPage, err := strconv.Atoi(pageStr); err == nil && parsedPage > 0 {
+			// Convert page to offset: offset = (page - 1) * limit
+			offset = (parsedPage - 1) * limit
+		}
+	} else {
+		// Parse offset from query parameters (fallback for direct offset usage)
+		if offsetStr := r.URL.Query().Get("offset"); offsetStr != "" {
+			if parsedOffset, err := strconv.Atoi(offsetStr); err == nil && parsedOffset >= 0 {
+				offset = parsedOffset
+			}
 		}
 	}
 

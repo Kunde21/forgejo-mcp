@@ -2,7 +2,7 @@ package servertest
 
 import (
 	"context"
-	"fmt"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -198,598 +198,6 @@ func TestConcurrentRequests(t *testing.T) {
 	}
 }
 
-// ===== PULL REQUEST LIST INTEGRATION TESTS =====
-
-// TestPullRequestListCompleteWorkflow tests the complete pull request list workflow (Task 6.1)
-func TestPullRequestListCompleteWorkflow(t *testing.T) {
-	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
-	t.Cleanup(cancel)
-
-	// Set up mock Gitea server with test data
-	mock := NewMockGiteaServer(t)
-	mock.AddPullRequests("testuser", "testrepo", []MockPullRequest{
-		{ID: 1, Number: 1, Title: "Feature: Add dark mode", State: "open"},
-		{ID: 2, Number: 2, Title: "Fix: Memory leak", State: "open"},
-		{ID: 3, Number: 3, Title: "Bug: Login fails", State: "closed"},
-	})
-
-	ts := NewTestServer(t, ctx, map[string]string{
-		"FORGEJO_REMOTE_URL": mock.URL(),
-		"FORGEJO_AUTH_TOKEN": "mock-token",
-	})
-	if err := ts.Initialize(); err != nil {
-		t.Fatal(err)
-	}
-	client := ts.Client()
-
-	// Test successful pull request listing
-	result, err := client.CallTool(ctx, &mcp.CallToolParams{
-		Name: "pr_list",
-		Arguments: map[string]any{
-			"repository": "testuser/testrepo",
-			"limit":      10,
-			"offset":     0,
-			"state":      "open",
-		},
-	})
-	if err != nil {
-		t.Fatalf("Failed to call pr_list tool: %v", err)
-	}
-
-	// Verify response structure
-	if result == nil {
-		t.Fatal("Expected non-nil result")
-	}
-	if result.Content == nil {
-		t.Fatal("Expected non-nil content")
-	}
-	if len(result.Content) == 0 {
-		t.Fatal("Expected at least one content item")
-	}
-
-	// Verify content type and message
-	textContent, ok := result.Content[0].(*mcp.TextContent)
-	if !ok {
-		t.Fatalf("Expected TextContent, got %T", result.Content[0])
-	}
-	if textContent.Text == "" {
-		t.Error("Expected non-empty text content")
-	}
-
-	// Should contain success message
-	if !contains(textContent.Text, "Found") {
-		t.Errorf("Expected success message containing 'Found', got: %s", textContent.Text)
-	}
-}
-
-// TestPullRequestListSuccessfulParameters tests successful pull request listing with valid parameters (Task 6.2)
-func TestPullRequestListSuccessfulParameters(t *testing.T) {
-	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
-	t.Cleanup(cancel)
-
-	mock := NewMockGiteaServer(t)
-	mock.AddPullRequests("owner", "repo", []MockPullRequest{
-		{ID: 1, Number: 1, Title: "Test PR 1", State: "open"},
-		{ID: 2, Number: 2, Title: "Test PR 2", State: "open"},
-	})
-
-	ts := NewTestServer(t, ctx, map[string]string{
-		"FORGEJO_REMOTE_URL": mock.URL(),
-		"FORGEJO_AUTH_TOKEN": "mock-token",
-	})
-	if err := ts.Initialize(); err != nil {
-		t.Fatal(err)
-	}
-	client := ts.Client()
-
-	tests := []struct {
-		name      string
-		args      map[string]any
-		wantCount int
-	}{
-		{
-			name: "minimal parameters",
-			args: map[string]any{
-				"repository": "owner/repo",
-			},
-			wantCount: 2, // Should get both open PRs with defaults
-		},
-		{
-			name: "all parameters specified",
-			args: map[string]any{
-				"repository": "owner/repo",
-				"limit":      5,
-				"offset":     0,
-				"state":      "open",
-			},
-			wantCount: 2,
-		},
-		{
-			name: "closed state",
-			args: map[string]any{
-				"repository": "owner/repo",
-				"state":      "closed",
-			},
-			wantCount: 0, // No closed PRs in test data
-		},
-		{
-			name: "all states",
-			args: map[string]any{
-				"repository": "owner/repo",
-				"state":      "all",
-			},
-			wantCount: 2, // All PRs
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result, err := client.CallTool(ctx, &mcp.CallToolParams{
-				Name:      "pr_list",
-				Arguments: tt.args,
-			})
-			if err != nil {
-				t.Fatalf("Failed to call pr_list tool: %v", err)
-			}
-
-			if result == nil || result.Content == nil {
-				t.Fatal("Expected non-nil result with content")
-			}
-
-			textContent, ok := result.Content[0].(*mcp.TextContent)
-			if !ok {
-				t.Fatalf("Expected TextContent, got %T", result.Content[0])
-			}
-
-			// Verify success message
-			if !contains(textContent.Text, "Found") {
-				t.Errorf("Expected success message, got: %s", textContent.Text)
-			}
-		})
-	}
-}
-
-// TestPullRequestListValidationErrors tests validation error scenarios (Task 6.3)
-func TestPullRequestListValidationErrors(t *testing.T) {
-	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
-	t.Cleanup(cancel)
-
-	mock := NewMockGiteaServer(t)
-	ts := NewTestServer(t, ctx, map[string]string{
-		"FORGEJO_REMOTE_URL": mock.URL(),
-		"FORGEJO_AUTH_TOKEN": "mock-token",
-	})
-	if err := ts.Initialize(); err != nil {
-		t.Fatal(err)
-	}
-	client := ts.Client()
-
-	tests := []struct {
-		name        string
-		args        map[string]any
-		wantError   bool
-		errorSubstr string
-	}{
-		{
-			name: "missing repository",
-			args: map[string]any{
-				"limit":  10,
-				"offset": 0,
-				"state":  "open",
-			},
-			wantError:   true,
-			errorSubstr: "Invalid request",
-		},
-		{
-			name: "invalid repository format",
-			args: map[string]any{
-				"repository": "invalid-repo-format",
-				"limit":      10,
-				"offset":     0,
-				"state":      "open",
-			},
-			wantError:   true,
-			errorSubstr: "Invalid request",
-		},
-		{
-			name: "invalid limit too high",
-			args: map[string]any{
-				"repository": "owner/repo",
-				"limit":      200, // > 100
-				"offset":     0,
-				"state":      "open",
-			},
-			wantError:   true,
-			errorSubstr: "Invalid request",
-		},
-		{
-			name: "valid limit default (not provided)",
-			args: map[string]any{
-				"repository": "owner/repo",
-				"limit":      0, // Treated as default 15
-				"offset":     0,
-				"state":      "open",
-			},
-			wantError: false,
-		},
-		{
-			name: "invalid offset negative",
-			args: map[string]any{
-				"repository": "owner/repo",
-				"limit":      10,
-				"offset":     -1, // < 0
-				"state":      "open",
-			},
-			wantError:   true,
-			errorSubstr: "Invalid request",
-		},
-		{
-			name: "invalid state",
-			args: map[string]any{
-				"repository": "owner/repo",
-				"limit":      10,
-				"offset":     0,
-				"state":      "invalid-state",
-			},
-			wantError:   true,
-			errorSubstr: "Invalid request",
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result, err := client.CallTool(ctx, &mcp.CallToolParams{
-				Name:      "pr_list",
-				Arguments: tt.args,
-			})
-
-			if tt.wantError {
-				if err != nil {
-					t.Fatalf("Expected error in result, got call error: %v", err)
-				}
-				if result == nil {
-					t.Fatal("Expected error result, got nil")
-				}
-				if !result.IsError {
-					t.Error("Expected result to be marked as error")
-				}
-				if len(result.Content) == 0 {
-					t.Fatal("Expected error content")
-				}
-				textContent, ok := result.Content[0].(*mcp.TextContent)
-				if !ok {
-					t.Fatalf("Expected TextContent, got %T", result.Content[0])
-				}
-				if !contains(textContent.Text, tt.errorSubstr) {
-					t.Errorf("Expected error containing '%s', got: %s", tt.errorSubstr, textContent.Text)
-				}
-			} else {
-				if err != nil {
-					t.Fatalf("Unexpected call error: %v", err)
-				}
-				if result == nil || result.IsError {
-					t.Error("Expected successful result")
-				}
-			}
-		})
-	}
-}
-
-// TestPullRequestListStateFiltering tests state filtering scenarios (Task 6.4)
-func TestPullRequestListStateFiltering(t *testing.T) {
-	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
-	t.Cleanup(cancel)
-
-	mock := NewMockGiteaServer(t)
-	mock.AddPullRequests("owner", "repo", []MockPullRequest{
-		{ID: 1, Number: 1, Title: "Open PR 1", State: "open"},
-		{ID: 2, Number: 2, Title: "Open PR 2", State: "open"},
-		{ID: 3, Number: 3, Title: "Closed PR 1", State: "closed"},
-		{ID: 4, Number: 4, Title: "Closed PR 2", State: "closed"},
-	})
-
-	ts := NewTestServer(t, ctx, map[string]string{
-		"FORGEJO_REMOTE_URL": mock.URL(),
-		"FORGEJO_AUTH_TOKEN": "mock-token",
-	})
-	if err := ts.Initialize(); err != nil {
-		t.Fatal(err)
-	}
-	client := ts.Client()
-
-	tests := []struct {
-		name       string
-		state      string
-		wantOpen   int
-		wantClosed int
-	}{
-		{
-			name:       "open state",
-			state:      "open",
-			wantOpen:   2,
-			wantClosed: 0,
-		},
-		{
-			name:       "closed state",
-			state:      "closed",
-			wantOpen:   0,
-			wantClosed: 2,
-		},
-		{
-			name:       "all states",
-			state:      "all",
-			wantOpen:   2,
-			wantClosed: 2,
-		},
-		{
-			name:       "default state (open)",
-			state:      "", // Should default to open
-			wantOpen:   2,
-			wantClosed: 0,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			args := map[string]any{
-				"repository": "owner/repo",
-				"limit":      10,
-				"offset":     0,
-			}
-			if tt.state != "" {
-				args["state"] = tt.state
-			}
-
-			result, err := client.CallTool(ctx, &mcp.CallToolParams{
-				Name:      "pr_list",
-				Arguments: args,
-			})
-			if err != nil {
-				t.Fatalf("Failed to call pr_list tool: %v", err)
-			}
-
-			if result == nil || result.Content == nil {
-				t.Fatal("Expected non-nil result with content")
-			}
-
-			textContent, ok := result.Content[0].(*mcp.TextContent)
-			if !ok {
-				t.Fatalf("Expected TextContent, got %T", result.Content[0])
-			}
-
-			// Verify success message
-			if !contains(textContent.Text, "Found") {
-				t.Errorf("Expected success message, got: %s", textContent.Text)
-			}
-		})
-	}
-}
-
-// TestPullRequestListPagination tests pagination scenarios with limit and offset (Task 6.5)
-func TestPullRequestListPagination(t *testing.T) {
-	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
-	t.Cleanup(cancel)
-
-	mock := NewMockGiteaServer(t)
-	var prs []MockPullRequest
-	for i := 1; i <= 25; i++ {
-		prs = append(prs, MockPullRequest{
-			ID:     i,
-			Number: i,
-			Title:  fmt.Sprintf("Pull Request %d", i),
-			State:  "open",
-		})
-	}
-	mock.AddPullRequests("owner", "repo", prs)
-
-	ts := NewTestServer(t, ctx, map[string]string{
-		"FORGEJO_REMOTE_URL": mock.URL(),
-		"FORGEJO_AUTH_TOKEN": "mock-token",
-	})
-	if err := ts.Initialize(); err != nil {
-		t.Fatal(err)
-	}
-	client := ts.Client()
-
-	tests := []struct {
-		name        string
-		limit       int
-		offset      int
-		expectCount int
-	}{
-		{
-			name:        "first page with limit 10",
-			limit:       10,
-			offset:      0,
-			expectCount: 10,
-		},
-		{
-			name:        "second page with limit 10",
-			limit:       10,
-			offset:      10,
-			expectCount: 10,
-		},
-		{
-			name:        "third page with limit 10",
-			limit:       10,
-			offset:      20,
-			expectCount: 5, // Only 5 left
-		},
-		{
-			name:        "beyond available data",
-			limit:       10,
-			offset:      30,
-			expectCount: 0, // No data
-		},
-		{
-			name:        "single item pages",
-			limit:       1,
-			offset:      0,
-			expectCount: 1,
-		},
-		{
-			name:        "large limit",
-			limit:       100,
-			offset:      0,
-			expectCount: 25, // All items
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result, err := client.CallTool(ctx, &mcp.CallToolParams{
-				Name: "pr_list",
-				Arguments: map[string]any{
-					"repository": "owner/repo",
-					"limit":      tt.limit,
-					"offset":     tt.offset,
-					"state":      "open",
-				},
-			})
-			if err != nil {
-				t.Fatalf("Failed to call pr_list tool: %v", err)
-			}
-
-			if result == nil || result.Content == nil {
-				t.Fatal("Expected non-nil result with content")
-			}
-
-			textContent, ok := result.Content[0].(*mcp.TextContent)
-			if !ok {
-				t.Fatalf("Expected TextContent, got %T", result.Content[0])
-			}
-
-			// Verify success message
-			if !contains(textContent.Text, "Found") {
-				t.Errorf("Expected success message, got: %s", textContent.Text)
-			}
-		})
-	}
-}
-
-// TestPullRequestListPermissionErrors tests permission error scenarios (Task 6.6)
-func TestPullRequestListPermissionErrors(t *testing.T) {
-	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
-	t.Cleanup(cancel)
-
-	// Note: Our mock server doesn't currently simulate permission errors
-	// This test will verify the error handling structure is in place
-	mock := NewMockGiteaServer(t)
-	ts := NewTestServer(t, ctx, map[string]string{
-		"FORGEJO_REMOTE_URL": mock.URL(),
-		"FORGEJO_AUTH_TOKEN": "invalid-token", // Should cause auth errors
-	})
-	if err := ts.Initialize(); err != nil {
-		t.Fatal(err)
-	}
-	client := ts.Client()
-
-	result, err := client.CallTool(ctx, &mcp.CallToolParams{
-		Name: "pr_list",
-		Arguments: map[string]any{
-			"repository": "owner/repo",
-			"limit":      10,
-			"offset":     0,
-			"state":      "open",
-		},
-	})
-	// The call should succeed but the result should contain an error
-	if err != nil {
-		t.Fatalf("Expected error in result, got call error: %v", err)
-	}
-
-	if result == nil {
-		t.Fatal("Expected error result, got nil")
-	}
-
-	// Should contain error information
-	if len(result.Content) == 0 {
-		t.Fatal("Expected error content")
-	}
-
-	textContent, ok := result.Content[0].(*mcp.TextContent)
-	if !ok {
-		t.Fatalf("Expected TextContent, got %T", result.Content[0])
-	}
-
-	// Note: Mock server doesn't simulate permission errors currently
-	// So we expect success with 0 pull requests instead of error
-	if !contains(textContent.Text, "Found 0 pull requests") {
-		t.Errorf("Expected success message with 0 pull requests, got: %s", textContent.Text)
-	}
-}
-
-// TestPullRequestListAPIFailures tests API failure scenarios (Task 6.7)
-func TestPullRequestListAPIFailures(t *testing.T) {
-	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
-	t.Cleanup(cancel)
-
-	// Test with non-existent repository
-	mock := NewMockGiteaServer(t)
-	// Don't add any pull requests for this repo to simulate 404
-	ts := NewTestServer(t, ctx, map[string]string{
-		"FORGEJO_REMOTE_URL": mock.URL(),
-		"FORGEJO_AUTH_TOKEN": "mock-token",
-	})
-	if err := ts.Initialize(); err != nil {
-		t.Fatal(err)
-	}
-	client := ts.Client()
-
-	result, err := client.CallTool(ctx, &mcp.CallToolParams{
-		Name: "pr_list",
-		Arguments: map[string]any{
-			"repository": "nonexistent/repo",
-			"limit":      10,
-			"offset":     0,
-			"state":      "open",
-		},
-	})
-	// The call should succeed but the result should contain an error
-	if err != nil {
-		t.Fatalf("Expected error in result, got call error: %v", err)
-	}
-
-	if result == nil {
-		t.Fatal("Expected error result, got nil")
-	}
-
-	// Should contain error information
-	if len(result.Content) == 0 {
-		t.Fatal("Expected error content")
-	}
-
-	textContent, ok := result.Content[0].(*mcp.TextContent)
-	if !ok {
-		t.Fatalf("Expected TextContent, got %T", result.Content[0])
-	}
-
-	// Note: Mock server doesn't simulate 404 errors currently
-	// So we expect success with 0 pull requests instead of error
-	if !contains(textContent.Text, "Found 0 pull requests") {
-		t.Errorf("Expected success message with 0 pull requests, got: %s", textContent.Text)
-	}
-}
-
-// contains is a helper function to check if a string contains a substring
-func contains(s, substr string) bool {
-	return len(s) >= len(substr) && (s == substr ||
-		(len(s) > len(substr) &&
-			(s[:len(substr)] == substr ||
-				s[len(s)-len(substr):] == substr ||
-				findSubstring(s, substr))))
-}
-
-// findSubstring is a helper function to find substring in a string
-func findSubstring(s, substr string) bool {
-	for i := 0; i <= len(s)-len(substr); i++ {
-		if s[i:i+len(substr)] == substr {
-			return true
-		}
-	}
-	return false
-}
-
 // ===== PULL REQUEST COMMENT CREATE INTEGRATION TESTS =====
 
 // TestPullRequestCommentCreateCompleteWorkflow tests the complete pull request comment create workflow
@@ -844,17 +252,17 @@ func TestPullRequestCommentCreateCompleteWorkflow(t *testing.T) {
 	}
 
 	// Should contain success message
-	if !contains(textContent.Text, "Pull request comment created successfully") {
+	if !strings.Contains(textContent.Text, "Pull request comment created successfully") {
 		t.Errorf("Expected success message, got: %s", textContent.Text)
 	}
 
 	// Should contain comment ID
-	if !contains(textContent.Text, "ID: 1") {
+	if !strings.Contains(textContent.Text, "ID: 1") {
 		t.Errorf("Expected comment ID in message, got: %s", textContent.Text)
 	}
 
 	// Should contain comment body
-	if !contains(textContent.Text, "This is a helpful comment on the pull request.") {
+	if !strings.Contains(textContent.Text, "This is a helpful comment on the pull request.") {
 		t.Errorf("Expected comment body in message, got: %s", textContent.Text)
 	}
 }
@@ -965,7 +373,7 @@ func TestPullRequestCommentCreateValidationErrors(t *testing.T) {
 				if !ok {
 					t.Fatalf("Expected TextContent, got %T", result.Content[0])
 				}
-				if !contains(textContent.Text, tt.errorSubstr) {
+				if !strings.Contains(textContent.Text, tt.errorSubstr) {
 					t.Errorf("Expected error containing '%s', got: %s", tt.errorSubstr, textContent.Text)
 				}
 			} else {
@@ -1051,12 +459,12 @@ func TestPullRequestCommentCreateSuccessfulParameters(t *testing.T) {
 			}
 
 			// Verify success message
-			if !contains(textContent.Text, "Pull request comment created successfully") {
+			if !strings.Contains(textContent.Text, "Pull request comment created successfully") {
 				t.Errorf("Expected success message, got: %s", textContent.Text)
 			}
 
 			// Verify comment body is included
-			if !contains(textContent.Text, tt.expected) {
+			if !strings.Contains(textContent.Text, tt.expected) {
 				t.Errorf("Expected comment body '%s' in response, got: %s", tt.expected, textContent.Text)
 			}
 		})
@@ -1125,17 +533,17 @@ func TestPullRequestCommentEditCompleteWorkflow(t *testing.T) {
 	}
 
 	// Should contain success message
-	if !contains(textContent.Text, "Pull request comment edited successfully") {
+	if !strings.Contains(textContent.Text, "Pull request comment edited successfully") {
 		t.Errorf("Expected success message, got: %s", textContent.Text)
 	}
 
 	// Should contain comment ID
-	if !contains(textContent.Text, "ID: 123") {
+	if !strings.Contains(textContent.Text, "ID: 123") {
 		t.Errorf("Expected comment ID in message, got: %s", textContent.Text)
 	}
 
 	// Should contain updated comment body
-	if !contains(textContent.Text, "Updated comment content") {
+	if !strings.Contains(textContent.Text, "Updated comment content") {
 		t.Errorf("Expected updated comment body in message, got: %s", textContent.Text)
 	}
 }
@@ -1284,7 +692,7 @@ func TestPullRequestCommentEditValidationErrors(t *testing.T) {
 				if !ok {
 					t.Fatalf("Expected TextContent, got %T", result.Content[0])
 				}
-				if !contains(textContent.Text, tt.errorSubstr) {
+				if !strings.Contains(textContent.Text, tt.errorSubstr) {
 					t.Errorf("Expected error containing '%s', got: %s", tt.errorSubstr, textContent.Text)
 				}
 			} else {
@@ -1380,12 +788,12 @@ func TestPullRequestCommentEditSuccessfulParameters(t *testing.T) {
 			}
 
 			// Verify success message
-			if !contains(textContent.Text, "Pull request comment edited successfully") {
+			if !strings.Contains(textContent.Text, "Pull request comment edited successfully") {
 				t.Errorf("Expected success message, got: %s", textContent.Text)
 			}
 
 			// Verify updated comment body is included
-			if !contains(textContent.Text, tt.expected) {
+			if !strings.Contains(textContent.Text, tt.expected) {
 				t.Errorf("Expected updated comment body '%s' in response, got: %s", tt.expected, textContent.Text)
 			}
 		})

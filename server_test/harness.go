@@ -176,7 +176,7 @@ func (m *MockGiteaServer) handlePullRequests(w http.ResponseWriter, r *http.Requ
 		pullRequests = []MockPullRequest{}
 	} else {
 		end := offset + limit
-		if end > len(pullRequests) || limit == 0 {
+		if end > len(pullRequests) {
 			end = len(pullRequests)
 		}
 		pullRequests = pullRequests[offset:end]

@@ -165,7 +165,7 @@ func TestParsePagination(t *testing.T) {
 		{
 			name:           "no pagination parameters",
 			queryParams:    "",
-			expectedLimit:  0, // Will be set to default in implementation
+			expectedLimit:  15, // Default limit matches server implementation
 			expectedOffset: 0,
 		},
 		{
@@ -183,31 +183,31 @@ func TestParsePagination(t *testing.T) {
 		{
 			name:           "only offset specified",
 			queryParams:    "offset=15",
-			expectedLimit:  0, // Will be set to default in implementation
+			expectedLimit:  15, // Default limit matches server implementation
 			expectedOffset: 15,
 		},
 		{
 			name:           "invalid limit - negative",
 			queryParams:    "limit=-5",
-			expectedLimit:  0, // Will be set to default in implementation
+			expectedLimit:  15, // Default limit matches server implementation
 			expectedOffset: 0,
 		},
 		{
 			name:           "invalid limit - zero",
 			queryParams:    "limit=0",
-			expectedLimit:  0, // Will be set to default in implementation
+			expectedLimit:  15, // Default limit matches server implementation
 			expectedOffset: 0,
 		},
 		{
 			name:           "invalid offset - negative",
 			queryParams:    "offset=-10",
-			expectedLimit:  0,
-			expectedOffset: 0, // Will be set to default in implementation
+			expectedLimit:  15, // Default limit matches server implementation
+			expectedOffset: 0,
 		},
 		{
 			name:           "non-numeric values",
 			queryParams:    "limit=abc&offset=xyz",
-			expectedLimit:  0, // Will be set to default in implementation
+			expectedLimit:  15, // Default limit matches server implementation
 			expectedOffset: 0,
 		},
 	}

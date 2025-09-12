@@ -16,7 +16,7 @@ type prListTestCase struct {
 	expect    *mcp.CallToolResult
 }
 
-func TestListPullRequests(t *testing.T) {
+func TestPullRequestsList(t *testing.T) {
 	t.Parallel()
 	testCases := []prListTestCase{
 		{
@@ -134,9 +134,6 @@ func TestListPullRequests(t *testing.T) {
 		},
 		{
 			name: "invalid repository format",
-			setupMock: func(mock *MockGiteaServer) {
-				// No mock setup needed for error case
-			},
 			arguments: map[string]any{
 				"repository": "invalid-repo-format",
 				"limit":      10,
@@ -153,9 +150,6 @@ func TestListPullRequests(t *testing.T) {
 		},
 		{
 			name: "missing repository",
-			setupMock: func(mock *MockGiteaServer) {
-				// No mock setup needed for error case
-			},
 			arguments: map[string]any{
 				"limit":  10,
 				"offset": 0,
@@ -271,6 +265,858 @@ func TestListPullRequests(t *testing.T) {
 				},
 				StructuredContent: map[string]any{},
 				IsError:           true,
+			},
+		},
+		// Integration test cases
+		{
+			name: "complete workflow",
+			setupMock: func(mock *MockGiteaServer) {
+				mock.AddPullRequests("testuser", "testrepo", []MockPullRequest{
+					{ID: 1, Number: 1, Title: "Feature: Add dark mode", State: "open"},
+					{ID: 2, Number: 2, Title: "Fix: Memory leak", State: "open"},
+					{ID: 3, Number: 3, Title: "Bug: Login fails", State: "closed"},
+				})
+			},
+			arguments: map[string]any{
+				"repository": "testuser/testrepo",
+				"limit":      10,
+				"offset":     0,
+				"state":      "open",
+			},
+			expect: &mcp.CallToolResult{
+				Content: []mcp.Content{
+					&mcp.TextContent{Text: "Found 2 pull requests"},
+				},
+				StructuredContent: map[string]any{
+					"pull_requests": []any{
+						map[string]any{
+							"id":         float64(1),
+							"number":     float64(1),
+							"title":      "Feature: Add dark mode",
+							"body":       "",
+							"state":      "open",
+							"user":       "testuser",
+							"created_at": "2025-09-11T10:30:00Z",
+							"updated_at": "2025-09-11T10:30:00Z",
+							"head": map[string]any{
+								"ref": "feature-branch",
+								"sha": "abc123",
+							},
+							"base": map[string]any{
+								"ref": "main",
+								"sha": "def456",
+							},
+						},
+						map[string]any{
+							"id":         float64(2),
+							"number":     float64(2),
+							"title":      "Fix: Memory leak",
+							"body":       "",
+							"state":      "open",
+							"user":       "testuser",
+							"created_at": "2025-09-11T10:30:00Z",
+							"updated_at": "2025-09-11T10:30:00Z",
+							"head": map[string]any{
+								"ref": "feature-branch",
+								"sha": "abc123",
+							},
+							"base": map[string]any{
+								"ref": "main",
+								"sha": "def456",
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "successful parameters - minimal",
+			setupMock: func(mock *MockGiteaServer) {
+				mock.AddPullRequests("owner", "repo", []MockPullRequest{
+					{ID: 1, Number: 1, Title: "Test PR 1", State: "open"},
+					{ID: 2, Number: 2, Title: "Test PR 2", State: "open"},
+				})
+			},
+			arguments: map[string]any{
+				"repository": "owner/repo",
+			},
+			expect: &mcp.CallToolResult{
+				Content: []mcp.Content{
+					&mcp.TextContent{Text: "Found 2 pull requests"},
+				},
+				StructuredContent: map[string]any{
+					"pull_requests": []any{
+						map[string]any{
+							"id":         float64(1),
+							"number":     float64(1),
+							"title":      "Test PR 1",
+							"body":       "",
+							"state":      "open",
+							"user":       "testuser",
+							"created_at": "2025-09-11T10:30:00Z",
+							"updated_at": "2025-09-11T10:30:00Z",
+							"head": map[string]any{
+								"ref": "feature-branch",
+								"sha": "abc123",
+							},
+							"base": map[string]any{
+								"ref": "main",
+								"sha": "def456",
+							},
+						},
+						map[string]any{
+							"id":         float64(2),
+							"number":     float64(2),
+							"title":      "Test PR 2",
+							"body":       "",
+							"state":      "open",
+							"user":       "testuser",
+							"created_at": "2025-09-11T10:30:00Z",
+							"updated_at": "2025-09-11T10:30:00Z",
+							"head": map[string]any{
+								"ref": "feature-branch",
+								"sha": "abc123",
+							},
+							"base": map[string]any{
+								"ref": "main",
+								"sha": "def456",
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "successful parameters - all parameters",
+			setupMock: func(mock *MockGiteaServer) {
+				mock.AddPullRequests("owner", "repo", []MockPullRequest{
+					{ID: 1, Number: 1, Title: "Test PR 1", State: "open"},
+					{ID: 2, Number: 2, Title: "Test PR 2", State: "open"},
+				})
+			},
+			arguments: map[string]any{
+				"repository": "owner/repo",
+				"limit":      5,
+				"offset":     0,
+				"state":      "open",
+			},
+			expect: &mcp.CallToolResult{
+				Content: []mcp.Content{
+					&mcp.TextContent{Text: "Found 2 pull requests"},
+				},
+				StructuredContent: map[string]any{
+					"pull_requests": []any{
+						map[string]any{
+							"id":         float64(1),
+							"number":     float64(1),
+							"title":      "Test PR 1",
+							"body":       "",
+							"state":      "open",
+							"user":       "testuser",
+							"created_at": "2025-09-11T10:30:00Z",
+							"updated_at": "2025-09-11T10:30:00Z",
+							"head": map[string]any{
+								"ref": "feature-branch",
+								"sha": "abc123",
+							},
+							"base": map[string]any{
+								"ref": "main",
+								"sha": "def456",
+							},
+						},
+						map[string]any{
+							"id":         float64(2),
+							"number":     float64(2),
+							"title":      "Test PR 2",
+							"body":       "",
+							"state":      "open",
+							"user":       "testuser",
+							"created_at": "2025-09-11T10:30:00Z",
+							"updated_at": "2025-09-11T10:30:00Z",
+							"head": map[string]any{
+								"ref": "feature-branch",
+								"sha": "abc123",
+							},
+							"base": map[string]any{
+								"ref": "main",
+								"sha": "def456",
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "successful parameters - closed state",
+			setupMock: func(mock *MockGiteaServer) {
+				mock.AddPullRequests("owner", "repo-closed", []MockPullRequest{
+					{ID: 1, Number: 1, Title: "Test PR 1", State: "open"},
+					{ID: 2, Number: 2, Title: "Test PR 2", State: "open"},
+				})
+			},
+			arguments: map[string]any{
+				"repository": "owner/repo-closed",
+				"state":      "closed",
+			},
+			expect: &mcp.CallToolResult{
+				Content: []mcp.Content{
+					&mcp.TextContent{Text: "Found 0 pull requests"},
+				},
+				StructuredContent: map[string]any{},
+			},
+		},
+		{
+			name: "successful parameters - all states",
+			setupMock: func(mock *MockGiteaServer) {
+				mock.AddPullRequests("owner", "repo", []MockPullRequest{
+					{ID: 1, Number: 1, Title: "Test PR 1", State: "open"},
+					{ID: 2, Number: 2, Title: "Test PR 2", State: "open"},
+				})
+			},
+			arguments: map[string]any{
+				"repository": "owner/repo",
+				"state":      "all",
+			},
+			expect: &mcp.CallToolResult{
+				Content: []mcp.Content{
+					&mcp.TextContent{Text: "Found 2 pull requests"},
+				},
+				StructuredContent: map[string]any{
+					"pull_requests": []any{
+						map[string]any{
+							"id":         float64(1),
+							"number":     float64(1),
+							"title":      "Test PR 1",
+							"body":       "",
+							"state":      "open",
+							"user":       "testuser",
+							"created_at": "2025-09-11T10:30:00Z",
+							"updated_at": "2025-09-11T10:30:00Z",
+							"head": map[string]any{
+								"ref": "feature-branch",
+								"sha": "abc123",
+							},
+							"base": map[string]any{
+								"ref": "main",
+								"sha": "def456",
+							},
+						},
+						map[string]any{
+							"id":         float64(2),
+							"number":     float64(2),
+							"title":      "Test PR 2",
+							"body":       "",
+							"state":      "open",
+							"user":       "testuser",
+							"created_at": "2025-09-11T10:30:00Z",
+							"updated_at": "2025-09-11T10:30:00Z",
+							"head": map[string]any{
+								"ref": "feature-branch",
+								"sha": "abc123",
+							},
+							"base": map[string]any{
+								"ref": "main",
+								"sha": "def456",
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "state filtering - open",
+			setupMock: func(mock *MockGiteaServer) {
+				mock.AddPullRequests("owner", "repo", []MockPullRequest{
+					{ID: 1, Number: 1, Title: "Open PR 1", State: "open"},
+					{ID: 2, Number: 2, Title: "Open PR 2", State: "open"},
+					{ID: 3, Number: 3, Title: "Closed PR 1", State: "closed"},
+					{ID: 4, Number: 4, Title: "Closed PR 2", State: "closed"},
+				})
+			},
+			arguments: map[string]any{
+				"repository": "owner/repo",
+				"limit":      10,
+				"offset":     0,
+				"state":      "open",
+			},
+			expect: &mcp.CallToolResult{
+				Content: []mcp.Content{
+					&mcp.TextContent{Text: "Found 2 pull requests"},
+				},
+				StructuredContent: map[string]any{
+					"pull_requests": []any{
+						map[string]any{
+							"id":         float64(1),
+							"number":     float64(1),
+							"title":      "Open PR 1",
+							"body":       "",
+							"state":      "open",
+							"user":       "testuser",
+							"created_at": "2025-09-11T10:30:00Z",
+							"updated_at": "2025-09-11T10:30:00Z",
+							"head": map[string]any{
+								"ref": "feature-branch",
+								"sha": "abc123",
+							},
+							"base": map[string]any{
+								"ref": "main",
+								"sha": "def456",
+							},
+						},
+						map[string]any{
+							"id":         float64(2),
+							"number":     float64(2),
+							"title":      "Open PR 2",
+							"body":       "",
+							"state":      "open",
+							"user":       "testuser",
+							"created_at": "2025-09-11T10:30:00Z",
+							"updated_at": "2025-09-11T10:30:00Z",
+							"head": map[string]any{
+								"ref": "feature-branch",
+								"sha": "abc123",
+							},
+							"base": map[string]any{
+								"ref": "main",
+								"sha": "def456",
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "state filtering - closed",
+			setupMock: func(mock *MockGiteaServer) {
+				mock.AddPullRequests("owner", "repo", []MockPullRequest{
+					{ID: 1, Number: 1, Title: "Open PR 1", State: "open"},
+					{ID: 2, Number: 2, Title: "Open PR 2", State: "open"},
+					{ID: 3, Number: 3, Title: "Closed PR 1", State: "closed"},
+					{ID: 4, Number: 4, Title: "Closed PR 2", State: "closed"},
+				})
+			},
+			arguments: map[string]any{
+				"repository": "owner/repo",
+				"limit":      10,
+				"offset":     0,
+				"state":      "closed",
+			},
+			expect: &mcp.CallToolResult{
+				Content: []mcp.Content{
+					&mcp.TextContent{Text: "Found 2 pull requests"},
+				},
+				StructuredContent: map[string]any{
+					"pull_requests": []any{
+						map[string]any{
+							"id":         float64(3),
+							"number":     float64(3),
+							"title":      "Closed PR 1",
+							"body":       "",
+							"state":      "closed",
+							"user":       "testuser",
+							"created_at": "2025-09-11T10:30:00Z",
+							"updated_at": "2025-09-11T10:30:00Z",
+							"head": map[string]any{
+								"ref": "feature-branch",
+								"sha": "abc123",
+							},
+							"base": map[string]any{
+								"ref": "main",
+								"sha": "def456",
+							},
+						},
+						map[string]any{
+							"id":         float64(4),
+							"number":     float64(4),
+							"title":      "Closed PR 2",
+							"body":       "",
+							"state":      "closed",
+							"user":       "testuser",
+							"created_at": "2025-09-11T10:30:00Z",
+							"updated_at": "2025-09-11T10:30:00Z",
+							"head": map[string]any{
+								"ref": "feature-branch",
+								"sha": "abc123",
+							},
+							"base": map[string]any{
+								"ref": "main",
+								"sha": "def456",
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "state filtering - all",
+			setupMock: func(mock *MockGiteaServer) {
+				mock.AddPullRequests("owner", "repo", []MockPullRequest{
+					{ID: 1, Number: 1, Title: "Open PR 1", State: "open"},
+					{ID: 2, Number: 2, Title: "Open PR 2", State: "open"},
+					{ID: 3, Number: 3, Title: "Closed PR 1", State: "closed"},
+					{ID: 4, Number: 4, Title: "Closed PR 2", State: "closed"},
+				})
+			},
+			arguments: map[string]any{
+				"repository": "owner/repo",
+				"limit":      10,
+				"offset":     0,
+				"state":      "all",
+			},
+			expect: &mcp.CallToolResult{
+				Content: []mcp.Content{
+					&mcp.TextContent{Text: "Found 4 pull requests"},
+				},
+				StructuredContent: map[string]any{
+					"pull_requests": []any{
+						map[string]any{
+							"id":         float64(1),
+							"number":     float64(1),
+							"title":      "Open PR 1",
+							"body":       "",
+							"state":      "open",
+							"user":       "testuser",
+							"created_at": "2025-09-11T10:30:00Z",
+							"updated_at": "2025-09-11T10:30:00Z",
+							"head": map[string]any{
+								"ref": "feature-branch",
+								"sha": "abc123",
+							},
+							"base": map[string]any{
+								"ref": "main",
+								"sha": "def456",
+							},
+						},
+						map[string]any{
+							"id":         float64(2),
+							"number":     float64(2),
+							"title":      "Open PR 2",
+							"body":       "",
+							"state":      "open",
+							"user":       "testuser",
+							"created_at": "2025-09-11T10:30:00Z",
+							"updated_at": "2025-09-11T10:30:00Z",
+							"head": map[string]any{
+								"ref": "feature-branch",
+								"sha": "abc123",
+							},
+							"base": map[string]any{
+								"ref": "main",
+								"sha": "def456",
+							},
+						},
+						map[string]any{
+							"id":         float64(3),
+							"number":     float64(3),
+							"title":      "Closed PR 1",
+							"body":       "",
+							"state":      "closed",
+							"user":       "testuser",
+							"created_at": "2025-09-11T10:30:00Z",
+							"updated_at": "2025-09-11T10:30:00Z",
+							"head": map[string]any{
+								"ref": "feature-branch",
+								"sha": "abc123",
+							},
+							"base": map[string]any{
+								"ref": "main",
+								"sha": "def456",
+							},
+						},
+						map[string]any{
+							"id":         float64(4),
+							"number":     float64(4),
+							"title":      "Closed PR 2",
+							"body":       "",
+							"state":      "closed",
+							"user":       "testuser",
+							"created_at": "2025-09-11T10:30:00Z",
+							"updated_at": "2025-09-11T10:30:00Z",
+							"head": map[string]any{
+								"ref": "feature-branch",
+								"sha": "abc123",
+							},
+							"base": map[string]any{
+								"ref": "main",
+								"sha": "def456",
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "state filtering - default state",
+			setupMock: func(mock *MockGiteaServer) {
+				mock.AddPullRequests("owner", "repo", []MockPullRequest{
+					{ID: 1, Number: 1, Title: "Open PR 1", State: "open"},
+					{ID: 2, Number: 2, Title: "Open PR 2", State: "open"},
+					{ID: 3, Number: 3, Title: "Closed PR 1", State: "closed"},
+					{ID: 4, Number: 4, Title: "Closed PR 2", State: "closed"},
+				})
+			},
+			arguments: map[string]any{
+				"repository": "owner/repo",
+				"limit":      10,
+				"offset":     0,
+			},
+			expect: &mcp.CallToolResult{
+				Content: []mcp.Content{
+					&mcp.TextContent{Text: "Found 2 pull requests"},
+				},
+				StructuredContent: map[string]any{
+					"pull_requests": []any{
+						map[string]any{
+							"id":         float64(1),
+							"number":     float64(1),
+							"title":      "Open PR 1",
+							"body":       "",
+							"state":      "open",
+							"user":       "testuser",
+							"created_at": "2025-09-11T10:30:00Z",
+							"updated_at": "2025-09-11T10:30:00Z",
+							"head": map[string]any{
+								"ref": "feature-branch",
+								"sha": "abc123",
+							},
+							"base": map[string]any{
+								"ref": "main",
+								"sha": "def456",
+							},
+						},
+						map[string]any{
+							"id":         float64(2),
+							"number":     float64(2),
+							"title":      "Open PR 2",
+							"body":       "",
+							"state":      "open",
+							"user":       "testuser",
+							"created_at": "2025-09-11T10:30:00Z",
+							"updated_at": "2025-09-11T10:30:00Z",
+							"head": map[string]any{
+								"ref": "feature-branch",
+								"sha": "abc123",
+							},
+							"base": map[string]any{
+								"ref": "main",
+								"sha": "def456",
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "pagination - first page",
+			setupMock: func(mock *MockGiteaServer) {
+				var prs []MockPullRequest
+				for i := 1; i <= 25; i++ {
+					prs = append(prs, MockPullRequest{
+						ID:     i,
+						Number: i,
+						Title:  fmt.Sprintf("Pull Request %d", i),
+						State:  "open",
+					})
+				}
+				mock.AddPullRequests("owner", "repo", prs)
+			},
+			arguments: map[string]any{
+				"repository": "owner/repo",
+				"limit":      10,
+				"offset":     0,
+				"state":      "open",
+			},
+			expect: &mcp.CallToolResult{
+				Content: []mcp.Content{
+					&mcp.TextContent{Text: "Found 10 pull requests"},
+				},
+				StructuredContent: map[string]any{
+					"pull_requests": func() []any {
+						var prs []any
+						for i := 1; i <= 10; i++ {
+							prs = append(prs, map[string]any{
+								"id":         float64(i),
+								"number":     float64(i),
+								"title":      fmt.Sprintf("Pull Request %d", i),
+								"body":       "",
+								"state":      "open",
+								"user":       "testuser",
+								"created_at": "2025-09-11T10:30:00Z",
+								"updated_at": "2025-09-11T10:30:00Z",
+								"head": map[string]any{
+									"ref": "feature-branch",
+									"sha": "abc123",
+								},
+								"base": map[string]any{
+									"ref": "main",
+									"sha": "def456",
+								},
+							})
+						}
+						return prs
+					}(),
+				},
+			},
+		},
+		{
+			name: "pagination - second page",
+			setupMock: func(mock *MockGiteaServer) {
+				var prs []MockPullRequest
+				for i := 1; i <= 25; i++ {
+					prs = append(prs, MockPullRequest{
+						ID:     i,
+						Number: i,
+						Title:  fmt.Sprintf("Pull Request %d", i),
+						State:  "open",
+					})
+				}
+				mock.AddPullRequests("owner", "repo-page2", prs)
+			},
+			arguments: map[string]any{
+				"repository": "owner/repo-page2",
+				"limit":      10,
+				"offset":     10,
+				"state":      "open",
+			},
+			expect: &mcp.CallToolResult{
+				Content: []mcp.Content{
+					&mcp.TextContent{Text: "Found 10 pull requests"},
+				},
+				StructuredContent: map[string]any{
+					"pull_requests": func() []any {
+						var prs []any
+						for i := 11; i <= 20; i++ {
+							prs = append(prs, map[string]any{
+								"id":         float64(i),
+								"number":     float64(i),
+								"title":      fmt.Sprintf("Pull Request %d", i),
+								"body":       "",
+								"state":      "open",
+								"user":       "testuser",
+								"created_at": "2025-09-11T10:30:00Z",
+								"updated_at": "2025-09-11T10:30:00Z",
+								"head": map[string]any{
+									"ref": "feature-branch",
+									"sha": "abc123",
+								},
+								"base": map[string]any{
+									"ref": "main",
+									"sha": "def456",
+								},
+							})
+						}
+						return prs
+					}(),
+				},
+			},
+		},
+		{
+			name: "pagination - third page",
+			setupMock: func(mock *MockGiteaServer) {
+				var prs []MockPullRequest
+				for i := 1; i <= 25; i++ {
+					prs = append(prs, MockPullRequest{
+						ID:     i,
+						Number: i,
+						Title:  fmt.Sprintf("Pull Request %d", i),
+						State:  "open",
+					})
+				}
+				mock.AddPullRequests("owner", "repo-page3", prs)
+			},
+			arguments: map[string]any{
+				"repository": "owner/repo-page3",
+				"limit":      10,
+				"offset":     20,
+				"state":      "open",
+			},
+			expect: &mcp.CallToolResult{
+				Content: []mcp.Content{
+					&mcp.TextContent{Text: "Found 5 pull requests"},
+				},
+				StructuredContent: map[string]any{
+					"pull_requests": func() []any {
+						var prs []any
+						for i := 21; i <= 25; i++ {
+							prs = append(prs, map[string]any{
+								"id":         float64(i),
+								"number":     float64(i),
+								"title":      fmt.Sprintf("Pull Request %d", i),
+								"body":       "",
+								"state":      "open",
+								"user":       "testuser",
+								"created_at": "2025-09-11T10:30:00Z",
+								"updated_at": "2025-09-11T10:30:00Z",
+								"head": map[string]any{
+									"ref": "feature-branch",
+									"sha": "abc123",
+								},
+								"base": map[string]any{
+									"ref": "main",
+									"sha": "def456",
+								},
+							})
+						}
+						return prs
+					}(),
+				},
+			},
+		},
+		{
+			name: "pagination - beyond available data",
+			setupMock: func(mock *MockGiteaServer) {
+				var prs []MockPullRequest
+				for i := 1; i <= 25; i++ {
+					prs = append(prs, MockPullRequest{
+						ID:     i,
+						Number: i,
+						Title:  fmt.Sprintf("Pull Request %d", i),
+						State:  "open",
+					})
+				}
+				mock.AddPullRequests("owner", "repo-beyond", prs)
+			},
+			arguments: map[string]any{
+				"repository": "owner/repo-beyond",
+				"limit":      10,
+				"offset":     30,
+				"state":      "open",
+			},
+			expect: &mcp.CallToolResult{
+				Content: []mcp.Content{
+					&mcp.TextContent{Text: "Found 0 pull requests"},
+				},
+				StructuredContent: map[string]any{},
+			},
+		},
+		{
+			name: "pagination - single item pages",
+			setupMock: func(mock *MockGiteaServer) {
+				var prs []MockPullRequest
+				for i := 1; i <= 25; i++ {
+					prs = append(prs, MockPullRequest{
+						ID:     i,
+						Number: i,
+						Title:  fmt.Sprintf("Pull Request %d", i),
+						State:  "open",
+					})
+				}
+				mock.AddPullRequests("owner", "repo-single", prs)
+			},
+			arguments: map[string]any{
+				"repository": "owner/repo-single",
+				"limit":      1,
+				"offset":     0,
+				"state":      "open",
+			},
+			expect: &mcp.CallToolResult{
+				Content: []mcp.Content{
+					&mcp.TextContent{Text: "Found 1 pull requests"},
+				},
+				StructuredContent: map[string]any{
+					"pull_requests": []any{
+						map[string]any{
+							"id":         float64(1),
+							"number":     float64(1),
+							"title":      "Pull Request 1",
+							"body":       "",
+							"state":      "open",
+							"user":       "testuser",
+							"created_at": "2025-09-11T10:30:00Z",
+							"updated_at": "2025-09-11T10:30:00Z",
+							"head": map[string]any{
+								"ref": "feature-branch",
+								"sha": "abc123",
+							},
+							"base": map[string]any{
+								"ref": "main",
+								"sha": "def456",
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "pagination - large limit",
+			setupMock: func(mock *MockGiteaServer) {
+				var prs []MockPullRequest
+				for i := 1; i <= 25; i++ {
+					prs = append(prs, MockPullRequest{
+						ID:     i,
+						Number: i,
+						Title:  fmt.Sprintf("Pull Request %d", i),
+						State:  "open",
+					})
+				}
+				mock.AddPullRequests("owner", "repo", prs)
+			},
+			arguments: map[string]any{
+				"repository": "owner/repo",
+				"limit":      100,
+				"offset":     0,
+				"state":      "open",
+			},
+			expect: &mcp.CallToolResult{
+				Content: []mcp.Content{
+					&mcp.TextContent{Text: "Found 25 pull requests"},
+				},
+				StructuredContent: map[string]any{
+					"pull_requests": func() []any {
+						var prs []any
+						for i := 1; i <= 25; i++ {
+							prs = append(prs, map[string]any{
+								"id":         float64(i),
+								"number":     float64(i),
+								"title":      fmt.Sprintf("Pull Request %d", i),
+								"body":       "",
+								"state":      "open",
+								"user":       "testuser",
+								"created_at": "2025-09-11T10:30:00Z",
+								"updated_at": "2025-09-11T10:30:00Z",
+								"head": map[string]any{
+									"ref": "feature-branch",
+									"sha": "abc123",
+								},
+								"base": map[string]any{
+									"ref": "main",
+									"sha": "def456",
+								},
+							})
+						}
+						return prs
+					}(),
+				},
+			},
+		},
+		{
+			name: "permission errors",
+			arguments: map[string]any{
+				"repository": "owner/repo",
+				"limit":      10,
+				"offset":     0,
+				"state":      "open",
+			},
+			expect: &mcp.CallToolResult{
+				Content: []mcp.Content{
+					&mcp.TextContent{Text: "Found 0 pull requests"},
+				},
+				StructuredContent: map[string]any{},
+			},
+		},
+		{
+			name: "API failures",
+			arguments: map[string]any{
+				"repository": "nonexistent/repo",
+				"limit":      10,
+				"offset":     0,
+				"state":      "open",
+			},
+			expect: &mcp.CallToolResult{
+				Content: []mcp.Content{
+					&mcp.TextContent{Text: "Found 0 pull requests"},
+				},
+				StructuredContent: map[string]any{},
 			},
 		},
 	}
