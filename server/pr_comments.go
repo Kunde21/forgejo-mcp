@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	v "github.com/go-ozzo/ozzo-validation/v4"
 	"github.com/kunde21/forgejo-mcp/remote/gitea"
@@ -47,7 +48,7 @@ func (s *Server) handlePullRequestCommentList(ctx context.Context, request *mcp.
 	// Validate input arguments using ozzo-validation
 	if err := v.ValidateStruct(&args,
 		v.Field(&args.Repository, v.Required, v.Match(repoReg).Error("repository must be in format 'owner/repo'")),
-		v.Field(&args.PullRequestNumber, v.Min(1)),
+		v.Field(&args.PullRequestNumber, v.Required.Error("must be no less than 1"), v.Min(1)),
 		v.Field(&args.Limit, v.Min(1), v.Max(100)),
 		v.Field(&args.Offset, v.Min(0)),
 	); err != nil {
@@ -58,6 +59,18 @@ func (s *Server) handlePullRequestCommentList(ctx context.Context, request *mcp.
 	commentList, err := s.giteaService.ListPullRequestComments(ctx, args.Repository, args.PullRequestNumber, args.Limit, args.Offset)
 	if err != nil {
 		return TextErrorf("Failed to list pull request comments: %v", err), nil, nil
+	}
+
+	responseText := "Found 0 comments"
+	if len(commentList.Comments) != 0 {
+		endIndex := min(args.Offset+len(commentList.Comments), commentList.Total)
+		responseText = fmt.Sprintf("Found %d comments (showing %d-%d):\n",
+			commentList.Total,
+			args.Offset+1,
+			endIndex)
+		for i, comment := range commentList.Comments {
+			responseText += fmt.Sprintf("Comment %d (ID: %d): %s\n", i+1, comment.ID, comment.Content)
+		}
 	}
 
 	return TextResultf("Found %d pull request comments", len(commentList.Comments)), &PullRequestCommentList{PullRequestComments: commentList.Comments}, nil
@@ -72,7 +85,7 @@ type PullRequestCommentCreateArgs struct {
 
 // PullRequestCommentCreateResult represents the result data for the pr_comment_create tool
 type PullRequestCommentCreateResult struct {
-	Comment gitea.PullRequestComment `json:"comment"`
+	Comment *gitea.PullRequestComment `json:"comment"`
 }
 
 // handlePullRequestCommentCreate handles the "pr_comment_create" tool request.
@@ -98,8 +111,10 @@ func (s *Server) handlePullRequestCommentCreate(ctx context.Context, request *mc
 	// Validate input arguments using ozzo-validation
 	if err := v.ValidateStruct(&args,
 		v.Field(&args.Repository, v.Required, v.Match(repoReg).Error("repository must be in format 'owner/repo'")),
-		v.Field(&args.PullRequestNumber, v.Min(1)),
-		v.Field(&args.Comment, v.Required, v.Length(1, 0)), // Non-empty string
+		v.Field(&args.PullRequestNumber, v.Required.Error("must be no less than 1"), v.Min(1)),
+		v.Field(&args.Comment, v.Required, v.Length(1, 0), v.By(func(any) error {
+			return v.Validate(strings.TrimSpace(args.Comment), v.Required)
+		})),
 	); err != nil {
 		return TextErrorf("Invalid request: %v", err), nil, nil
 	}
@@ -112,9 +127,9 @@ func (s *Server) handlePullRequestCommentCreate(ctx context.Context, request *mc
 
 	// Format success response with comment metadata
 	responseText := fmt.Sprintf("Pull request comment created successfully. ID: %d, Created: %s\nComment body: %s",
-		comment.ID, comment.CreatedAt, comment.Body)
+		comment.ID, comment.CreatedAt, comment.Content)
 
-	return TextResult(responseText), &PullRequestCommentCreateResult{Comment: *comment}, nil
+	return TextResult(responseText), &PullRequestCommentCreateResult{Comment: comment}, nil
 }
 
 // PullRequestCommentEditArgs represents the arguments for editing a pull request comment with validation tags
@@ -162,7 +177,11 @@ func (s *Server) handlePullRequestCommentEdit(ctx context.Context, request *mcp.
 	// Validate input arguments using ozzo-validation
 	if err := v.ValidateStruct(&args,
 		v.Field(&args.Repository, v.Required, v.Match(repoReg).Error("repository must be in format 'owner/repo'")),
-		v.Field(&args.NewContent, v.Required, nonEmptyString()), // Non-empty string, not just whitespace
+		v.Field(&args.PullRequestNumber, v.Required.Error("must be no less than 1"), v.Min(1)),
+		v.Field(&args.CommentID, v.Required.Error("must be no less than 1"), v.Min(1)),
+		v.Field(&args.NewContent, v.Required, v.By(func(any) error {
+			return v.Validate(strings.TrimSpace(args.NewContent), v.Required)
+		})), // Non-empty string, not just whitespace
 	); err != nil {
 		return TextErrorf("Invalid request: %v", err), nil, nil
 	}
@@ -181,7 +200,7 @@ func (s *Server) handlePullRequestCommentEdit(ctx context.Context, request *mcp.
 
 	// Format success response with updated comment metadata
 	responseText := fmt.Sprintf("Pull request comment edited successfully. ID: %d, Updated: %s\nComment body: %s",
-		comment.ID, comment.UpdatedAt, comment.Body)
+		comment.ID, comment.UpdatedAt, comment.Content)
 
 	return TextResult(responseText), &PullRequestCommentEditResult{Comment: comment}, nil
 }

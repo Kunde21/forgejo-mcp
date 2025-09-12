@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"maps"
 	"net/http"
 	"net/http/httptest"
@@ -50,7 +51,7 @@ type MockComment struct {
 	ID      int    `json:"id"`
 	Content string `json:"content"`
 	Author  string `json:"author"`
-	Created string `json:"created"`
+	Created string `json:"created_at"`
 }
 
 // MockCommentUser represents the user who created the comment
@@ -264,9 +265,10 @@ func (m *MockGiteaServer) handleCreateComment(w http.ResponseWriter, r *http.Req
 
 	// Create mock comment response that matches Gitea SDK format
 	comment := map[string]any{
-		"id":      m.nextID,
-		"body":    commentReq.Body,
-		"created": "2025-09-09T10:30:00Z",
+		"id":         m.nextID,
+		"body":       commentReq.Body,
+		"created_at": "2024-01-01T00:00:00Z",
+		"updated_at": "2024-01-01T00:00:00Z",
 		"user": map[string]any{
 			"login": "testuser",
 		},
@@ -278,7 +280,7 @@ func (m *MockGiteaServer) handleCreateComment(w http.ResponseWriter, r *http.Req
 		ID:      m.nextID - 1, // Use the ID we just assigned
 		Content: commentReq.Body,
 		Author:  "testuser",
-		Created: "2025-09-09T10:30:00Z",
+		Created: "2024-01-01T00:00:00Z",
 	}
 
 	// Store comment
@@ -321,14 +323,26 @@ func (m *MockGiteaServer) handleListComments(w http.ResponseWriter, r *http.Requ
 	if !exists {
 		storedComments = []MockComment{}
 	}
+	limit, offset := parsePagination(r)
+	// Apply pagination
+	if offset >= len(storedComments) {
+		storedComments = []MockComment{}
+	} else {
+		end := offset + limit
+		if end > len(storedComments) || limit == 0 {
+			end = len(storedComments)
+		}
+		storedComments = storedComments[offset:end]
+	}
 
 	// Convert to Gitea SDK format
 	comments := make([]map[string]any, len(storedComments))
 	for i, mc := range storedComments {
 		comments[i] = map[string]any{
-			"id":      mc.ID,
-			"body":    mc.Content,
-			"created": mc.Created,
+			"id":         mc.ID,
+			"body":       mc.Content,
+			"created_at": mc.Created,
+			"updated_at": mc.Created,
 			"user": map[string]any{
 				"login": mc.Author,
 			},
@@ -411,6 +425,7 @@ func (m *MockGiteaServer) handleEditComment(w http.ResponseWriter, r *http.Reque
 
 	// If comment not found, return 404
 	if !commentFound {
+		fmt.Println("COMMENT MISSING")
 		http.NotFound(w, r)
 		return
 	}

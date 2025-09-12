@@ -116,9 +116,6 @@ func TestCreatePullRequestComment(t *testing.T) {
 		},
 		{
 			name: "whitespace only comment",
-			setupMock: func(mock *MockGiteaServer) {
-				// No mock setup needed for error case
-			},
 			arguments: map[string]any{
 				"repository":          "testuser/testrepo",
 				"pull_request_number": 1,
@@ -134,9 +131,6 @@ func TestCreatePullRequestComment(t *testing.T) {
 		},
 		{
 			name: "negative pull request number",
-			setupMock: func(mock *MockGiteaServer) {
-				// No mock setup needed for error case
-			},
 			arguments: map[string]any{
 				"repository":          "testuser/testrepo",
 				"pull_request_number": -1,
@@ -165,7 +159,6 @@ func TestCreatePullRequestComment(t *testing.T) {
 			if err := ts.Initialize(); err != nil {
 				t.Fatalf("Failed to initialize test server: %v", err)
 			}
-
 			result, err := ts.Client().CallTool(context.Background(), &mcp.CallToolParams{
 				Name:      "pr_comment_create",
 				Arguments: tc.arguments,

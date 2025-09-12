@@ -250,8 +250,8 @@ func TestPullRequestCommentConversion(t *testing.T) {
 	// Test JSON marshaling of our struct
 	comment := PullRequestComment{
 		ID:        1,
-		Body:      "Test comment",
-		User:      "testuser",
+		Content:   "Test comment",
+		Author:    "testuser",
 		CreatedAt: "2024-01-01T00:00:00Z",
 		UpdatedAt: "2024-01-01T00:00:00Z",
 	}

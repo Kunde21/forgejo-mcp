@@ -46,8 +46,8 @@ func (m *mockGiteaClient) CreatePullRequestComment(ctx context.Context, repo str
 	}
 	return &PullRequestComment{
 		ID:        1,
-		Body:      comment,
-		User:      "testuser",
+		Content:   comment,
+		Author:    "testuser",
 		CreatedAt: "2024-01-01T00:00:00Z",
 		UpdatedAt: "2024-01-01T00:00:00Z",
 	}, nil
@@ -59,8 +59,8 @@ func (m *mockGiteaClient) EditPullRequestComment(ctx context.Context, args EditP
 	}
 	return &PullRequestComment{
 		ID:        args.CommentID,
-		Body:      args.NewContent,
-		User:      "testuser",
+		Content:   args.NewContent,
+		Author:    "testuser",
 		CreatedAt: "2024-01-01T00:00:00Z",
 		UpdatedAt: "2024-01-02T00:00:00Z",
 	}, nil
@@ -89,8 +89,8 @@ func TestService_ListPullRequestComments(t *testing.T) {
 				Comments: []PullRequestComment{
 					{
 						ID:        1,
-						Body:      "Test comment",
-						User:      "testuser",
+						Content:   "Test comment",
+						Author:    "testuser",
 						CreatedAt: "2024-01-01T00:00:00Z",
 						UpdatedAt: "2024-01-01T00:00:00Z",
 					},
@@ -103,8 +103,8 @@ func TestService_ListPullRequestComments(t *testing.T) {
 				Comments: []PullRequestComment{
 					{
 						ID:        1,
-						Body:      "Test comment",
-						User:      "testuser",
+						Content:   "Test comment",
+						Author:    "testuser",
 						CreatedAt: "2024-01-01T00:00:00Z",
 						UpdatedAt: "2024-01-01T00:00:00Z",
 					},
@@ -271,15 +271,15 @@ func TestService_CreatePullRequestComment(t *testing.T) {
 			comment:           "This is a test comment",
 			mockResponse: &PullRequestComment{
 				ID:        123,
-				Body:      "This is a test comment",
-				User:      "testuser",
+				Content:   "This is a test comment",
+				Author:    "testuser",
 				CreatedAt: "2024-01-01T00:00:00Z",
 				UpdatedAt: "2024-01-01T00:00:00Z",
 			},
 			expectedResult: &PullRequestComment{
 				ID:        123,
-				Body:      "This is a test comment",
-				User:      "testuser",
+				Content:   "This is a test comment",
+				Author:    "testuser",
 				CreatedAt: "2024-01-01T00:00:00Z",
 				UpdatedAt: "2024-01-01T00:00:00Z",
 			},
@@ -330,8 +330,8 @@ func TestService_CreatePullRequestComment(t *testing.T) {
 			}
 
 			if result.ID != tc.expectedResult.ID ||
-				result.Body != tc.expectedResult.Body ||
-				result.User != tc.expectedResult.User ||
+				result.Content != tc.expectedResult.Content ||
+				result.Author != tc.expectedResult.Author ||
 				result.CreatedAt != tc.expectedResult.CreatedAt ||
 				result.UpdatedAt != tc.expectedResult.UpdatedAt {
 				t.Errorf("Result mismatch: expected %+v, got %+v", tc.expectedResult, result)
@@ -360,15 +360,15 @@ func TestService_EditPullRequestComment(t *testing.T) {
 			},
 			mockResponse: &PullRequestComment{
 				ID:        123,
-				Body:      "Updated comment content",
-				User:      "testuser",
+				Content:   "Updated comment content",
+				Author:    "testuser",
 				CreatedAt: "2024-01-01T00:00:00Z",
 				UpdatedAt: "2024-01-02T00:00:00Z",
 			},
 			expectedResult: &PullRequestComment{
 				ID:        123,
-				Body:      "Updated comment content",
-				User:      "testuser",
+				Content:   "Updated comment content",
+				Author:    "testuser",
 				CreatedAt: "2024-01-01T00:00:00Z",
 				UpdatedAt: "2024-01-02T00:00:00Z",
 			},
@@ -422,8 +422,8 @@ func TestService_EditPullRequestComment(t *testing.T) {
 			}
 
 			if result.ID != tc.expectedResult.ID ||
-				result.Body != tc.expectedResult.Body ||
-				result.User != tc.expectedResult.User ||
+				result.Content != tc.expectedResult.Content ||
+				result.Author != tc.expectedResult.Author ||
 				result.CreatedAt != tc.expectedResult.CreatedAt ||
 				result.UpdatedAt != tc.expectedResult.UpdatedAt {
 				t.Errorf("Result mismatch: expected %+v, got %+v", tc.expectedResult, result)

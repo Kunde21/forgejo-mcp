@@ -69,6 +69,10 @@ func TestIssueCommentEditSuccessful(t *testing.T) {
 		t.Fatal(err)
 	}
 	client := ts.Client()
+	mock.AddComments("testuser", "testrepo", []MockComment{
+		{ID: 123, Content: "Test comment 1", Author: "testuser", Created: "2025-09-09T10:30:00Z"},
+		{ID: 234, Content: "Test comment 2", Author: "testuser", Created: "2025-09-09T10:31:00Z"},
+	})
 
 	// Test successful comment editing
 	result, err := client.CallTool(ctx, &mcp.CallToolParams{

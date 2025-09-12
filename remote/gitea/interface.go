@@ -98,8 +98,8 @@ type PullRequestLister interface {
 // PullRequestComment represents a comment on a Git repository pull request
 type PullRequestComment struct {
 	ID        int    `json:"id"`
-	Body      string `json:"body"`
-	User      string `json:"user"`
+	Content   string `json:"content"`
+	Author    string `json:"author"`
 	CreatedAt string `json:"created_at"`
 	UpdatedAt string `json:"updated_at"`
 }

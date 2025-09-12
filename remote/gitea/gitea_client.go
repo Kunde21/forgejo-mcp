@@ -250,8 +250,8 @@ func (c *GiteaClient) ListPullRequestComments(ctx context.Context, repo string, 
 	for i, gc := range giteaComments {
 		comments[i] = PullRequestComment{
 			ID:        int(gc.ID),
-			Body:      gc.Body,
-			User:      gc.Poster.UserName,
+			Content:   gc.Body,
+			Author:    gc.Poster.UserName,
 			CreatedAt: gc.Created.Format("2006-01-02T15:04:05Z"),
 			UpdatedAt: gc.Updated.Format("2006-01-02T15:04:05Z"),
 		}
@@ -291,8 +291,8 @@ func (c *GiteaClient) CreatePullRequestComment(ctx context.Context, repo string,
 	// Convert to our PullRequestComment struct
 	prComment := &PullRequestComment{
 		ID:        int(giteaComment.ID),
-		Body:      giteaComment.Body,
-		User:      giteaComment.Poster.UserName,
+		Content:   giteaComment.Body,
+		Author:    giteaComment.Poster.UserName,
 		CreatedAt: giteaComment.Created.Format("2006-01-02T15:04:05Z"),
 		UpdatedAt: giteaComment.Updated.Format("2006-01-02T15:04:05Z"),
 	}
@@ -321,8 +321,8 @@ func (c *GiteaClient) EditPullRequestComment(ctx context.Context, args EditPullR
 	// Convert to our PullRequestComment struct
 	prComment := &PullRequestComment{
 		ID:        int(giteaComment.ID),
-		Body:      giteaComment.Body,
-		User:      giteaComment.Poster.UserName,
+		Content:   giteaComment.Body,
+		Author:    giteaComment.Poster.UserName,
 		CreatedAt: giteaComment.Created.Format("2006-01-02T15:04:05Z"),
 		UpdatedAt: giteaComment.Updated.Format("2006-01-02T15:04:05Z"),
 	}

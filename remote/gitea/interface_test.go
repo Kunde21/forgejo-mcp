@@ -346,8 +346,8 @@ func TestPullRequestComment_JSONMarshaling(t *testing.T) {
 			name: "basic PR comment",
 			input: PullRequestComment{
 				ID:        1,
-				Body:      "This is a pull request comment",
-				User:      "testuser",
+				Content:   "This is a pull request comment",
+				Author:    "testuser",
 				CreatedAt: "2024-01-01T00:00:00Z",
 				UpdatedAt: "2024-01-01T00:00:00Z",
 			},
@@ -357,8 +357,8 @@ func TestPullRequestComment_JSONMarshaling(t *testing.T) {
 			name: "empty PR comment",
 			input: PullRequestComment{
 				ID:        0,
-				Body:      "",
-				User:      "",
+				Content:   "",
+				Author:    "",
 				CreatedAt: "",
 				UpdatedAt: "",
 			},
@@ -396,15 +396,15 @@ func TestPullRequestCommentList_JSONMarshaling(t *testing.T) {
 				Comments: []PullRequestComment{
 					{
 						ID:        1,
-						Body:      "First PR comment",
-						User:      "user1",
+						Content:   "First PR comment",
+						Author:    "user1",
 						CreatedAt: "2024-01-01T00:00:00Z",
 						UpdatedAt: "2024-01-01T00:00:00Z",
 					},
 					{
 						ID:        2,
-						Body:      "Second PR comment",
-						User:      "user2",
+						Content:   "Second PR comment",
+						Author:    "user2",
 						CreatedAt: "2024-01-02T00:00:00Z",
 						UpdatedAt: "2024-01-02T00:00:00Z",
 					},

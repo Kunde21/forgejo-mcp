@@ -2,6 +2,7 @@ package servertest
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -251,7 +252,7 @@ func TestListPullRequestComments(t *testing.T) {
 				t.Fatalf("Failed to initialize test server: %v", err)
 			}
 
-			result, err := ts.Client().CallTool(context.Background(), &mcp.CallToolParams{
+			result, err := ts.Client().CallTool(t.Context(), &mcp.CallToolParams{
 				Name:      "pr_comment_list",
 				Arguments: tc.arguments,
 			})
@@ -260,6 +261,9 @@ func TestListPullRequestComments(t *testing.T) {
 			}
 			if !cmp.Equal(tc.expect, result) {
 				t.Error(cmp.Diff(tc.expect, result))
+			}
+			if t.Failed() {
+				fmt.Println("FAILED")
 			}
 		})
 	}

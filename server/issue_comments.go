@@ -115,14 +115,9 @@ func (s *Server) handleIssueCommentList(ctx context.Context, request *mcp.CallTo
 	}
 
 	// Format success response with comment count and pagination info
-	var responseText string
-	if len(commentList.Comments) == 0 {
-		responseText = "Found 0 comments"
-	} else {
-		endIndex := args.Offset + len(commentList.Comments)
-		if endIndex > commentList.Total {
-			endIndex = commentList.Total
-		}
+	responseText := "Found 0 comments"
+	if len(commentList.Comments) != 0 {
+		endIndex := min(args.Offset+len(commentList.Comments), commentList.Total)
 		responseText = fmt.Sprintf("Found %d comments (showing %d-%d):\n",
 			commentList.Total,
 			args.Offset+1,
