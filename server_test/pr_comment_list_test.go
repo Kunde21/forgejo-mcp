@@ -28,12 +28,14 @@ func TestListPullRequestComments(t *testing.T) {
 						Content: "This is a great PR!",
 						Author:  "reviewer1",
 						Created: "2024-01-01T00:00:00Z",
+						Updated: "2024-01-01T00:00:00Z",
 					},
 					{
 						ID:      2,
 						Content: "I agree, well done!",
 						Author:  "reviewer2",
 						Created: "2024-01-02T00:00:00Z",
+						Updated: "2024-01-02T00:00:00Z",
 					},
 				})
 			},
@@ -45,7 +47,7 @@ func TestListPullRequestComments(t *testing.T) {
 			},
 			expect: &mcp.CallToolResult{
 				Content: []mcp.Content{
-					&mcp.TextContent{Text: "Found 2 pull request comments"},
+					&mcp.TextContent{Text: "Found 2 comments (showing 1-2):\nComment 1 (ID: 1): This is a great PR!\nComment 2 (ID: 2): I agree, well done!\n"},
 				},
 				StructuredContent: map[string]any{
 					"pull_request_comments": []any{
@@ -77,6 +79,7 @@ func TestListPullRequestComments(t *testing.T) {
 						Content: "Comment " + string(rune(i+'0')),
 						Author:  "user" + string(rune(i+'0')),
 						Created: "2024-01-01T00:00:00Z",
+						Updated: "2024-01-01T00:00:00Z",
 					})
 				}
 				mock.AddComments("testuser", "testrepo", comments)
@@ -89,7 +92,7 @@ func TestListPullRequestComments(t *testing.T) {
 			},
 			expect: &mcp.CallToolResult{
 				Content: []mcp.Content{
-					&mcp.TextContent{Text: "Found 10 pull request comments"},
+					&mcp.TextContent{Text: "Found 10 comments (showing 1-10):\nComment 1 (ID: 1): Comment 1\nComment 2 (ID: 2): Comment 2\nComment 3 (ID: 3): Comment 3\nComment 4 (ID: 4): Comment 4\nComment 5 (ID: 5): Comment 5\nComment 6 (ID: 6): Comment 6\nComment 7 (ID: 7): Comment 7\nComment 8 (ID: 8): Comment 8\nComment 9 (ID: 9): Comment 9\nComment 10 (ID: 10): Comment :\n"},
 				},
 				StructuredContent: map[string]any{
 					"pull_request_comments": func() []any {
@@ -191,7 +194,7 @@ func TestListPullRequestComments(t *testing.T) {
 			name: "default values",
 			setupMock: func(mock *MockGiteaServer) {
 				mock.AddComments("testuser", "testrepo", []MockComment{
-					{ID: 1, Content: "Default test comment", Author: "testuser", Created: "2024-01-01T00:00:00Z"},
+					{ID: 1, Content: "Default test comment", Author: "testuser", Created: "2024-01-01T00:00:00Z", Updated: "2024-01-01T00:00:00Z"},
 				})
 			},
 			arguments: map[string]any{
@@ -200,7 +203,7 @@ func TestListPullRequestComments(t *testing.T) {
 			},
 			expect: &mcp.CallToolResult{
 				Content: []mcp.Content{
-					&mcp.TextContent{Text: "Found 1 pull request comments"},
+					&mcp.TextContent{Text: "Found 1 comments (showing 1-1):\nComment 1 (ID: 1): Default test comment\n"},
 				},
 				StructuredContent: map[string]any{
 					"pull_request_comments": []any{

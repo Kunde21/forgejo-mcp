@@ -11,7 +11,7 @@ import (
 
 // CommentResult represents the result data for the create_issue_comment tool.
 type CommentResult struct {
-	Comment gitea.IssueComment `json:"comment"`
+	Comment gitea.Comment `json:"comment"`
 }
 
 type IssueCommentArgs struct {
@@ -64,10 +64,10 @@ func (s *Server) handleIssueCommentCreate(ctx context.Context, request *mcp.Call
 
 // CommentListResult represents the result data for the list_issue_comments tool.
 type CommentListResult struct {
-	Comments []gitea.IssueComment `json:"comments"`
-	Total    int                  `json:"total"`
-	Limit    int                  `json:"limit"`
-	Offset   int                  `json:"offset"`
+	Comments []gitea.Comment `json:"comments"`
+	Total    int             `json:"total"`
+	Limit    int             `json:"limit"`
+	Offset   int             `json:"offset"`
 }
 
 type IssueCommentListArgs struct {
@@ -137,7 +137,7 @@ func (s *Server) handleIssueCommentList(ctx context.Context, request *mcp.CallTo
 
 // CommentEditResult represents the result data for the issue_comment_edit tool.
 type CommentEditResult struct {
-	Comment gitea.IssueComment `json:"comment"`
+	Comment gitea.Comment `json:"comment"`
 }
 
 type IssueCommentEditArgs struct {

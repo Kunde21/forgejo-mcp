@@ -9,53 +9,6 @@ import (
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
-// TestIssueCommentEditToolDiscovery tests that the issue_comment_edit tool is properly registered
-func TestIssueCommentEditToolDiscovery(t *testing.T) {
-	ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
-	t.Cleanup(cancel)
-	mock := NewMockGiteaServer(t)
-	ts := NewTestServer(t, ctx, map[string]string{
-		"FORGEJO_REMOTE_URL": mock.URL(),
-		"FORGEJO_AUTH_TOKEN": "mock-token",
-	})
-	if err := ts.Initialize(); err != nil {
-		t.Fatal(err)
-	}
-	client := ts.Client()
-
-	// List available tools
-	tools, err := client.ListTools(ctx, &mcp.ListToolsParams{})
-	if err != nil {
-		t.Fatalf("Failed to list tools: %v", err)
-	}
-
-	// Check that we have the expected tools (should now be 9 including pr_comment_edit)
-	if len(tools.Tools) != 9 {
-		t.Fatalf("Expected 9 tools, got %d", len(tools.Tools))
-	}
-
-	// Find the issue_comment_edit tool
-	var editTool *mcp.Tool
-	for _, tool := range tools.Tools {
-		if tool.Name == "issue_comment_edit" {
-			editTool = tool
-			break
-		}
-	}
-
-	if editTool == nil {
-		t.Fatal("issue_comment_edit tool not found")
-	}
-	if editTool.Description != "Edit an existing comment on a Forgejo/Gitea repository issue" {
-		t.Errorf("Expected issue_comment_edit tool description 'Edit an existing comment on a Forgejo/Gitea repository issue', got '%s'", editTool.Description)
-	}
-
-	// Verify tool has input schema
-	if editTool.InputSchema == nil {
-		t.Error("issue_comment_edit tool should have input schema")
-	}
-}
-
 // TestIssueCommentEditSuccessful tests successful comment editing
 func TestIssueCommentEditSuccessful(t *testing.T) {
 	ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)

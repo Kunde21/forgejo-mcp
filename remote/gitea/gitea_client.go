@@ -61,7 +61,7 @@ func (c *GiteaClient) ListIssues(ctx context.Context, repo string, limit, offset
 }
 
 // CreateIssueComment creates a comment on the specified issue
-func (c *GiteaClient) CreateIssueComment(ctx context.Context, repo string, issueNumber int, comment string) (*IssueComment, error) {
+func (c *GiteaClient) CreateIssueComment(ctx context.Context, repo string, issueNumber int, comment string) (*Comment, error) {
 	// Parse repository string (format: "owner/repo")
 	owner, repoName, ok := strings.Cut(repo, "/")
 	if !ok {
@@ -78,12 +78,13 @@ func (c *GiteaClient) CreateIssueComment(ctx context.Context, repo string, issue
 		return nil, fmt.Errorf("failed to create issue comment: %w", err)
 	}
 
-	// Convert to our IssueComment struct
-	issueComment := &IssueComment{
+	// Convert to our Comment struct
+	issueComment := &Comment{
 		ID:      int(giteaComment.ID),
 		Content: giteaComment.Body,
 		Author:  giteaComment.Poster.UserName,
 		Created: giteaComment.Created.Format("2006-01-02T15:04:05Z"),
+		Updated: giteaComment.Updated.Format("2006-01-02T15:04:05Z"),
 	}
 
 	return issueComment, nil
@@ -110,14 +111,15 @@ func (c *GiteaClient) ListIssueComments(ctx context.Context, repo string, issueN
 		return nil, fmt.Errorf("failed to list issue comments: %w", err)
 	}
 
-	// Convert to our IssueComment struct
-	comments := make([]IssueComment, len(giteaComments))
+	// Convert to our Comment struct
+	comments := make([]Comment, len(giteaComments))
 	for i, gc := range giteaComments {
-		comments[i] = IssueComment{
+		comments[i] = Comment{
 			ID:      int(gc.ID),
 			Content: gc.Body,
 			Author:  gc.Poster.UserName,
 			Created: gc.Created.Format("2006-01-02T15:04:05Z"),
+			Updated: gc.Updated.Format("2006-01-02T15:04:05Z"),
 		}
 	}
 
@@ -135,7 +137,7 @@ func (c *GiteaClient) ListIssueComments(ctx context.Context, repo string, issueN
 }
 
 // EditIssueComment edits an existing comment on the specified issue
-func (c *GiteaClient) EditIssueComment(ctx context.Context, args EditIssueCommentArgs) (*IssueComment, error) {
+func (c *GiteaClient) EditIssueComment(ctx context.Context, args EditIssueCommentArgs) (*Comment, error) {
 	// Parse repository string (format: "owner/repo")
 	owner, repoName, ok := strings.Cut(args.Repository, "/")
 	if !ok {
@@ -152,12 +154,13 @@ func (c *GiteaClient) EditIssueComment(ctx context.Context, args EditIssueCommen
 		return nil, fmt.Errorf("failed to edit issue comment: %w", err)
 	}
 
-	// Convert to our IssueComment struct
-	issueComment := &IssueComment{
+	// Convert to our Comment struct
+	issueComment := &Comment{
 		ID:      int(giteaComment.ID),
 		Content: giteaComment.Body,
 		Author:  giteaComment.Poster.UserName,
 		Created: giteaComment.Created.Format("2006-01-02T15:04:05Z"),
+		Updated: giteaComment.Updated.Format("2006-01-02T15:04:05Z"),
 	}
 
 	return issueComment, nil
@@ -245,15 +248,15 @@ func (c *GiteaClient) ListPullRequestComments(ctx context.Context, repo string, 
 		return nil, fmt.Errorf("failed to list pull request comments: %w", err)
 	}
 
-	// Convert to our PullRequestComment struct
-	comments := make([]PullRequestComment, len(giteaComments))
+	// Convert to our Comment struct
+	comments := make([]Comment, len(giteaComments))
 	for i, gc := range giteaComments {
-		comments[i] = PullRequestComment{
-			ID:        int(gc.ID),
-			Content:   gc.Body,
-			Author:    gc.Poster.UserName,
-			CreatedAt: gc.Created.Format("2006-01-02T15:04:05Z"),
-			UpdatedAt: gc.Updated.Format("2006-01-02T15:04:05Z"),
+		comments[i] = Comment{
+			ID:      int(gc.ID),
+			Content: gc.Body,
+			Author:  gc.Poster.UserName,
+			Created: gc.Created.Format("2006-01-02T15:04:05Z"),
+			Updated: gc.Updated.Format("2006-01-02T15:04:05Z"),
 		}
 	}
 
@@ -271,7 +274,7 @@ func (c *GiteaClient) ListPullRequestComments(ctx context.Context, repo string, 
 }
 
 // CreatePullRequestComment creates a comment on the specified pull request
-func (c *GiteaClient) CreatePullRequestComment(ctx context.Context, repo string, pullRequestNumber int, comment string) (*PullRequestComment, error) {
+func (c *GiteaClient) CreatePullRequestComment(ctx context.Context, repo string, pullRequestNumber int, comment string) (*Comment, error) {
 	// Parse repository string (format: "owner/repo")
 	owner, repoName, ok := strings.Cut(repo, "/")
 	if !ok {
@@ -288,20 +291,20 @@ func (c *GiteaClient) CreatePullRequestComment(ctx context.Context, repo string,
 		return nil, fmt.Errorf("failed to create pull request comment: %w", err)
 	}
 
-	// Convert to our PullRequestComment struct
-	prComment := &PullRequestComment{
-		ID:        int(giteaComment.ID),
-		Content:   giteaComment.Body,
-		Author:    giteaComment.Poster.UserName,
-		CreatedAt: giteaComment.Created.Format("2006-01-02T15:04:05Z"),
-		UpdatedAt: giteaComment.Updated.Format("2006-01-02T15:04:05Z"),
+	// Convert to our Comment struct
+	prComment := &Comment{
+		ID:      int(giteaComment.ID),
+		Content: giteaComment.Body,
+		Author:  giteaComment.Poster.UserName,
+		Created: giteaComment.Created.Format("2006-01-02T15:04:05Z"),
+		Updated: giteaComment.Updated.Format("2006-01-02T15:04:05Z"),
 	}
 
 	return prComment, nil
 }
 
 // EditPullRequestComment edits an existing comment on the specified pull request
-func (c *GiteaClient) EditPullRequestComment(ctx context.Context, args EditPullRequestCommentArgs) (*PullRequestComment, error) {
+func (c *GiteaClient) EditPullRequestComment(ctx context.Context, args EditPullRequestCommentArgs) (*Comment, error) {
 	// Parse repository string (format: "owner/repo")
 	owner, repoName, ok := strings.Cut(args.Repository, "/")
 	if !ok {
@@ -318,13 +321,13 @@ func (c *GiteaClient) EditPullRequestComment(ctx context.Context, args EditPullR
 		return nil, fmt.Errorf("failed to edit pull request comment: %w", err)
 	}
 
-	// Convert to our PullRequestComment struct
-	prComment := &PullRequestComment{
-		ID:        int(giteaComment.ID),
-		Content:   giteaComment.Body,
-		Author:    giteaComment.Poster.UserName,
-		CreatedAt: giteaComment.Created.Format("2006-01-02T15:04:05Z"),
-		UpdatedAt: giteaComment.Updated.Format("2006-01-02T15:04:05Z"),
+	// Convert to our Comment struct
+	prComment := &Comment{
+		ID:      int(giteaComment.ID),
+		Content: giteaComment.Body,
+		Author:  giteaComment.Poster.UserName,
+		Created: giteaComment.Created.Format("2006-01-02T15:04:05Z"),
+		Updated: giteaComment.Updated.Format("2006-01-02T15:04:05Z"),
 	}
 
 	return prComment, nil

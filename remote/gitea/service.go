@@ -36,7 +36,7 @@ func (s *Service) ListIssues(ctx context.Context, repo string, limit, offset int
 }
 
 // CreateIssueComment creates a comment on an issue with validation
-func (s *Service) CreateIssueComment(ctx context.Context, repo string, issueNumber int, comment string) (*IssueComment, error) {
+func (s *Service) CreateIssueComment(ctx context.Context, repo string, issueNumber int, comment string) (*Comment, error) {
 	// Validate repository format
 	if err := s.validateRepository(repo); err != nil {
 		return nil, fmt.Errorf("repository validation failed: %w", err)
@@ -78,7 +78,7 @@ func (s *Service) ListIssueComments(ctx context.Context, repo string, issueNumbe
 }
 
 // EditIssueComment edits an existing comment with validation
-func (s *Service) EditIssueComment(ctx context.Context, args EditIssueCommentArgs) (*IssueComment, error) {
+func (s *Service) EditIssueComment(ctx context.Context, args EditIssueCommentArgs) (*Comment, error) {
 	// Validate repository format
 	if err := s.validateRepository(args.Repository); err != nil {
 		return nil, fmt.Errorf("repository validation failed: %w", err)
@@ -141,13 +141,13 @@ func (s *Service) ListPullRequestComments(ctx context.Context, repo string, pull
 }
 
 // CreatePullRequestComment creates a comment on a pull request
-func (s *Service) CreatePullRequestComment(ctx context.Context, repo string, pullRequestNumber int, comment string) (*PullRequestComment, error) {
+func (s *Service) CreatePullRequestComment(ctx context.Context, repo string, pullRequestNumber int, comment string) (*Comment, error) {
 	// Call the underlying client directly (no validation)
 	return s.client.CreatePullRequestComment(ctx, repo, pullRequestNumber, comment)
 }
 
 // EditPullRequestComment edits an existing comment on a pull request
-func (s *Service) EditPullRequestComment(ctx context.Context, args EditPullRequestCommentArgs) (*PullRequestComment, error) {
+func (s *Service) EditPullRequestComment(ctx context.Context, args EditPullRequestCommentArgs) (*Comment, error) {
 	// Call the underlying client directly (no validation - trust that server handler already validated inputs)
 	return s.client.EditPullRequestComment(ctx, args)
 }

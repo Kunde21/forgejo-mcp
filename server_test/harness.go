@@ -49,9 +49,10 @@ type MockIssue struct {
 // MockComment represents a mock comment for testing
 type MockComment struct {
 	ID      int    `json:"id"`
-	Content string `json:"content"`
-	Author  string `json:"author"`
+	Content string `json:"body"`
+	Author  string `json:"user"`
 	Created string `json:"created_at"`
+	Updated string `json:"updated_at"`
 }
 
 // MockCommentUser represents the user who created the comment
@@ -281,11 +282,14 @@ func (m *MockGiteaServer) handleCreateComment(w http.ResponseWriter, r *http.Req
 		Content: commentReq.Body,
 		Author:  "testuser",
 		Created: "2024-01-01T00:00:00Z",
+		Updated: "2024-01-01T00:00:00Z",
 	}
 
 	// Store comment
+	m.mu.Lock()
 	key := repoKey + "/comments"
 	m.comments[key] = append(m.comments[key], mockComment)
+	m.mu.Unlock()
 
 	writeJSONResponse(w, comment, http.StatusCreated)
 }
@@ -318,11 +322,13 @@ func (m *MockGiteaServer) handleListComments(w http.ResponseWriter, r *http.Requ
 	}
 
 	// Get stored comments for this repository
+	m.mu.Lock()
 	key := repoKey + "/comments"
 	storedComments, exists := m.comments[key]
 	if !exists {
 		storedComments = []MockComment{}
 	}
+	m.mu.Unlock()
 	limit, offset := parsePagination(r)
 	// Apply pagination
 	if offset >= len(storedComments) {
@@ -342,7 +348,7 @@ func (m *MockGiteaServer) handleListComments(w http.ResponseWriter, r *http.Requ
 			"id":         mc.ID,
 			"body":       mc.Content,
 			"created_at": mc.Created,
-			"updated_at": mc.Created,
+			"updated_at": mc.Updated,
 			"user": map[string]any{
 				"login": mc.Author,
 			},

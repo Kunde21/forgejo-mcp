@@ -13,7 +13,7 @@ import (
 // PullRequestCommentList represents a collection of pull request comments.
 // This struct is used as the result data for the pr_comment_list tool.
 type PullRequestCommentList struct {
-	PullRequestComments []gitea.PullRequestComment `json:"pull_request_comments"`
+	PullRequestComments []gitea.Comment `json:"pull_request_comments"`
 }
 
 // PullRequestCommentListArgs represents the arguments for listing pull request comments with validation tags
@@ -73,7 +73,7 @@ func (s *Server) handlePullRequestCommentList(ctx context.Context, request *mcp.
 		}
 	}
 
-	return TextResultf("Found %d pull request comments", len(commentList.Comments)), &PullRequestCommentList{PullRequestComments: commentList.Comments}, nil
+	return TextResult(responseText), &PullRequestCommentList{PullRequestComments: commentList.Comments}, nil
 }
 
 // PullRequestCommentCreateArgs represents the arguments for creating a pull request comment with validation tags
@@ -85,7 +85,7 @@ type PullRequestCommentCreateArgs struct {
 
 // PullRequestCommentCreateResult represents the result data for the pr_comment_create tool
 type PullRequestCommentCreateResult struct {
-	Comment *gitea.PullRequestComment `json:"comment"`
+	Comment *gitea.Comment `json:"comment"`
 }
 
 // handlePullRequestCommentCreate handles the "pr_comment_create" tool request.
@@ -127,7 +127,7 @@ func (s *Server) handlePullRequestCommentCreate(ctx context.Context, request *mc
 
 	// Format success response with comment metadata
 	responseText := fmt.Sprintf("Pull request comment created successfully. ID: %d, Created: %s\nComment body: %s",
-		comment.ID, comment.CreatedAt, comment.Content)
+		comment.ID, comment.Created, comment.Content)
 
 	return TextResult(responseText), &PullRequestCommentCreateResult{Comment: comment}, nil
 }
@@ -142,7 +142,7 @@ type PullRequestCommentEditArgs struct {
 
 // PullRequestCommentEditResult represents the result data for the pr_comment_edit tool
 type PullRequestCommentEditResult struct {
-	Comment *gitea.PullRequestComment `json:"comment"`
+	Comment *gitea.Comment `json:"comment"`
 }
 
 // handlePullRequestCommentEdit handles the "pr_comment_edit" tool request.
@@ -200,7 +200,7 @@ func (s *Server) handlePullRequestCommentEdit(ctx context.Context, request *mcp.
 
 	// Format success response with updated comment metadata
 	responseText := fmt.Sprintf("Pull request comment edited successfully. ID: %d, Updated: %s\nComment body: %s",
-		comment.ID, comment.UpdatedAt, comment.Content)
+		comment.ID, comment.Updated, comment.Content)
 
 	return TextResult(responseText), &PullRequestCommentEditResult{Comment: comment}, nil
 }

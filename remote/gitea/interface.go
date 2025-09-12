@@ -16,25 +16,26 @@ type IssueLister interface {
 	ListIssues(ctx context.Context, repo string, limit, offset int) ([]Issue, error)
 }
 
-// IssueComment represents a comment on a Git repository issue
-type IssueComment struct {
+// Comment represents a comment on a Git repository issue or pull request
+type Comment struct {
 	ID      int    `json:"id"`
-	Content string `json:"content"`
-	Author  string `json:"author"`
-	Created string `json:"created"`
+	Content string `json:"body"`
+	Author  string `json:"user"`
+	Created string `json:"created_at"`
+	Updated string `json:"updated_at"`
 }
 
 // IssueCommenter defines the interface for creating comments on Git repository issues
 type IssueCommenter interface {
-	CreateIssueComment(ctx context.Context, repo string, issueNumber int, comment string) (*IssueComment, error)
+	CreateIssueComment(ctx context.Context, repo string, issueNumber int, comment string) (*Comment, error)
 }
 
 // IssueCommentList represents a collection of comments with pagination metadata
 type IssueCommentList struct {
-	Comments []IssueComment `json:"comments"`
-	Total    int            `json:"total"`
-	Limit    int            `json:"limit"`
-	Offset   int            `json:"offset"`
+	Comments []Comment `json:"comments"`
+	Total    int       `json:"total"`
+	Limit    int       `json:"limit"`
+	Offset   int       `json:"offset"`
 }
 
 // ListIssueCommentsArgs represents the arguments for listing issue comments with validation tags
@@ -60,7 +61,7 @@ type EditIssueCommentArgs struct {
 
 // IssueCommentEditor defines the interface for editing comments on Git repository issues
 type IssueCommentEditor interface {
-	EditIssueComment(ctx context.Context, args EditIssueCommentArgs) (*IssueComment, error)
+	EditIssueComment(ctx context.Context, args EditIssueCommentArgs) (*Comment, error)
 }
 
 // PullRequestBranch represents a branch reference in a pull request
@@ -95,21 +96,12 @@ type PullRequestLister interface {
 	ListPullRequests(ctx context.Context, repo string, options ListPullRequestsOptions) ([]PullRequest, error)
 }
 
-// PullRequestComment represents a comment on a Git repository pull request
-type PullRequestComment struct {
-	ID        int    `json:"id"`
-	Content   string `json:"content"`
-	Author    string `json:"author"`
-	CreatedAt string `json:"created_at"`
-	UpdatedAt string `json:"updated_at"`
-}
-
 // PullRequestCommentList represents a collection of pull request comments with pagination metadata
 type PullRequestCommentList struct {
-	Comments []PullRequestComment `json:"comments"`
-	Total    int                  `json:"total"`
-	Limit    int                  `json:"limit"`
-	Offset   int                  `json:"offset"`
+	Comments []Comment `json:"comments"`
+	Total    int       `json:"total"`
+	Limit    int       `json:"limit"`
+	Offset   int       `json:"offset"`
 }
 
 // ListPullRequestCommentsArgs represents the arguments for listing pull request comments with validation tags
@@ -134,7 +126,7 @@ type PullRequestCommentLister interface {
 
 // PullRequestCommenter defines the interface for creating comments on Git repository pull requests
 type PullRequestCommenter interface {
-	CreatePullRequestComment(ctx context.Context, repo string, pullRequestNumber int, comment string) (*PullRequestComment, error)
+	CreatePullRequestComment(ctx context.Context, repo string, pullRequestNumber int, comment string) (*Comment, error)
 }
 
 // EditPullRequestCommentArgs represents the arguments for editing a pull request comment
@@ -147,7 +139,7 @@ type EditPullRequestCommentArgs struct {
 
 // PullRequestCommentEditor defines the interface for editing comments on Git repository pull requests
 type PullRequestCommentEditor interface {
-	EditPullRequestComment(ctx context.Context, args EditPullRequestCommentArgs) (*PullRequestComment, error)
+	EditPullRequestComment(ctx context.Context, args EditPullRequestCommentArgs) (*Comment, error)
 }
 
 // GiteaClientInterface combines IssueLister, IssueCommenter, IssueCommentLister, IssueCommentEditor, PullRequestLister, PullRequestCommentLister, PullRequestCommenter, and PullRequestCommentEditor for complete Gitea operations

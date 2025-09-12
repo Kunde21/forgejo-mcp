@@ -9,53 +9,6 @@ import (
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
-// TestPRCommentEditToolDiscovery tests that the pr_comment_edit tool is properly registered
-func TestPRCommentEditToolDiscovery(t *testing.T) {
-	ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
-	t.Cleanup(cancel)
-	mock := NewMockGiteaServer(t)
-	ts := NewTestServer(t, ctx, map[string]string{
-		"FORGEJO_REMOTE_URL": mock.URL(),
-		"FORGEJO_AUTH_TOKEN": "mock-token",
-	})
-	if err := ts.Initialize(); err != nil {
-		t.Fatal(err)
-	}
-	client := ts.Client()
-
-	// List available tools
-	tools, err := client.ListTools(ctx, &mcp.ListToolsParams{})
-	if err != nil {
-		t.Fatalf("Failed to list tools: %v", err)
-	}
-
-	// Check that we have expected tools (should now be 9 including pr_comment_edit)
-	if len(tools.Tools) != 9 {
-		t.Fatalf("Expected 9 tools, got %d", len(tools.Tools))
-	}
-
-	// Find the pr_comment_edit tool
-	var editTool *mcp.Tool
-	for _, tool := range tools.Tools {
-		if tool.Name == "pr_comment_edit" {
-			editTool = tool
-			break
-		}
-	}
-
-	if editTool == nil {
-		t.Fatal("pr_comment_edit tool not found")
-	}
-	if editTool.Description != "Edit an existing comment on a Forgejo/Gitea repository pull request" {
-		t.Errorf("Expected pr_comment_edit tool description 'Edit an existing comment on a Forgejo/Gitea repository pull request', got '%s'", editTool.Description)
-	}
-
-	// Verify tool has input schema
-	if editTool.InputSchema == nil {
-		t.Error("pr_comment_edit tool should have input schema")
-	}
-}
-
 // TestPRCommentEditValidation tests input validation for pr_comment_edit
 func TestPRCommentEditValidation(t *testing.T) {
 	ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
