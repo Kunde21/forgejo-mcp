@@ -1,6 +1,6 @@
 # Product Roadmap
 
-> Last Updated: 2025-09-11
+> Last Updated: 2025-09-12
 > Version: 1.0.0
 > Status: Active Development
 
@@ -43,7 +43,7 @@
 
 ### Must-Have Features
 
-- PR comment functionality
+- [x] PR comment functionality
 - [x] Issue comment functionality
 - [x] Issue comment editing functionality
 
