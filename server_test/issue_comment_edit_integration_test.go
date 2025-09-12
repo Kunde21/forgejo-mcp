@@ -29,9 +29,9 @@ func TestIssueCommentEditToolDiscovery(t *testing.T) {
 		t.Fatalf("Failed to list tools: %v", err)
 	}
 
-	// Check that we have the expected tools (should now be 7 including pr_comment_list)
-	if len(tools.Tools) != 7 {
-		t.Fatalf("Expected 7 tools, got %d", len(tools.Tools))
+	// Check that we have the expected tools (should now be 8 including pr_comment_edit)
+	if len(tools.Tools) != 8 {
+		t.Fatalf("Expected 8 tools, got %d", len(tools.Tools))
 	}
 
 	// Find the issue_comment_edit tool

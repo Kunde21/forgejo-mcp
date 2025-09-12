@@ -10,6 +10,7 @@ import (
 type mockGiteaClient struct {
 	listPullRequestCommentsFunc  func(ctx context.Context, repo string, pullRequestNumber int, limit, offset int) (*PullRequestCommentList, error)
 	createPullRequestCommentFunc func(ctx context.Context, repo string, pullRequestNumber int, comment string) (*PullRequestComment, error)
+	editPullRequestCommentFunc   func(ctx context.Context, args EditPullRequestCommentArgs) (*PullRequestComment, error)
 }
 
 func (m *mockGiteaClient) ListIssues(ctx context.Context, repo string, limit, offset int) ([]Issue, error) {
@@ -49,6 +50,19 @@ func (m *mockGiteaClient) CreatePullRequestComment(ctx context.Context, repo str
 		User:      "testuser",
 		CreatedAt: "2024-01-01T00:00:00Z",
 		UpdatedAt: "2024-01-01T00:00:00Z",
+	}, nil
+}
+
+func (m *mockGiteaClient) EditPullRequestComment(ctx context.Context, args EditPullRequestCommentArgs) (*PullRequestComment, error) {
+	if m.editPullRequestCommentFunc != nil {
+		return m.editPullRequestCommentFunc(ctx, args)
+	}
+	return &PullRequestComment{
+		ID:        args.CommentID,
+		Body:      args.NewContent,
+		User:      "testuser",
+		CreatedAt: "2024-01-01T00:00:00Z",
+		UpdatedAt: "2024-01-02T00:00:00Z",
 	}, nil
 }
 

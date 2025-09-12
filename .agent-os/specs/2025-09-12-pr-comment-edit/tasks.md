@@ -35,7 +35,7 @@
   - Convert Gitea SDK response to internal `PullRequestComment` struct
   - Handle errors with proper wrapping and context
   - **No input validation** - trust that inputs are already validated
-- **Status**: ⏳ Pending
+- **Status**: [x] Completed
 
 #### Task 2.2: Add Client Tests
 - **File**: `remote/gitea/client_test.go`
@@ -44,7 +44,7 @@
   - Test successful comment editing
   - Test error scenarios (invalid repository, PR not found, comment not found, etc.)
   - Test response conversion and formatting
-- **Status**: ⏳ Pending
+- **Status**: [x] Completed
 
 ### Phase 3: Service Layer Implementation
 

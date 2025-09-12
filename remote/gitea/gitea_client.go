@@ -299,3 +299,33 @@ func (c *GiteaClient) CreatePullRequestComment(ctx context.Context, repo string,
 
 	return prComment, nil
 }
+
+// EditPullRequestComment edits an existing comment on the specified pull request
+func (c *GiteaClient) EditPullRequestComment(ctx context.Context, args EditPullRequestCommentArgs) (*PullRequestComment, error) {
+	// Parse repository string (format: "owner/repo")
+	owner, repoName, ok := strings.Cut(args.Repository, "/")
+	if !ok {
+		return nil, fmt.Errorf("invalid repository format: %s, expected 'owner/repo'", args.Repository)
+	}
+
+	// Edit comment using Gitea SDK
+	opts := gitea.EditIssueCommentOption{
+		Body: args.NewContent,
+	}
+
+	giteaComment, _, err := c.client.EditIssueComment(owner, repoName, int64(args.CommentID), opts)
+	if err != nil {
+		return nil, fmt.Errorf("failed to edit pull request comment: %w", err)
+	}
+
+	// Convert to our PullRequestComment struct
+	prComment := &PullRequestComment{
+		ID:        int(giteaComment.ID),
+		Body:      giteaComment.Body,
+		User:      giteaComment.Poster.UserName,
+		CreatedAt: giteaComment.Created.Format("2006-01-02T15:04:05Z"),
+		UpdatedAt: giteaComment.Updated.Format("2006-01-02T15:04:05Z"),
+	}
+
+	return prComment, nil
+}

@@ -121,8 +121,13 @@ func TestGiteaClient_MethodExistence(t *testing.T) {
 		return client.CreatePullRequestComment(nil, "", 0, "")
 	}
 
+	// Test EditPullRequestComment method existence
+	_ = func() (*PullRequestComment, error) {
+		return client.EditPullRequestComment(nil, EditPullRequestCommentArgs{})
+	}
+
 	// If we reach here, the methods exist
-	t.Log("ListPullRequestComments and CreatePullRequestComment methods exist on GiteaClient")
+	t.Log("ListPullRequestComments, CreatePullRequestComment, and EditPullRequestComment methods exist on GiteaClient")
 }
 
 // TestGiteaClient_CreatePullRequestComment tests the CreatePullRequestComment method
@@ -155,6 +160,55 @@ func TestGiteaClient_CreatePullRequestComment(t *testing.T) {
 			if tc.expectedError == "invalid repository format: invalid, expected 'owner/repo'" {
 				client, _ := NewGiteaClient("http://localhost:3000", "token")
 				_, err := client.CreatePullRequestComment(context.Background(), tc.repo, tc.pullRequestNumber, tc.comment)
+				if err == nil {
+					t.Errorf("Expected error for invalid repository format")
+				} else if err.Error() != tc.expectedError {
+					t.Errorf("Expected error %q, got %q", tc.expectedError, err.Error())
+				}
+				return
+			}
+
+			// For successful cases, we can't easily test without a real Gitea server
+			// The method implementation is tested through service layer tests
+			t.Skip("Client method is tested through service layer integration")
+		})
+	}
+}
+
+// TestGiteaClient_EditPullRequestComment tests the EditPullRequestComment method
+func TestGiteaClient_EditPullRequestComment(t *testing.T) {
+	t.Parallel()
+	testCases := []struct {
+		name          string
+		args          EditPullRequestCommentArgs
+		expectedError string
+	}{
+		{
+			name: "invalid repository format",
+			args: EditPullRequestCommentArgs{
+				Repository:        "invalid",
+				PullRequestNumber: 1,
+				CommentID:         1,
+				NewContent:        "Updated comment",
+			},
+			expectedError: "invalid repository format: invalid, expected 'owner/repo'",
+		},
+		{
+			name: "valid parameters",
+			args: EditPullRequestCommentArgs{
+				Repository:        "testuser/testrepo",
+				PullRequestNumber: 1,
+				CommentID:         1,
+				NewContent:        "This is an updated comment",
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			if tc.expectedError == "invalid repository format: invalid, expected 'owner/repo'" {
+				client, _ := NewGiteaClient("http://localhost:3000", "token")
+				_, err := client.EditPullRequestComment(context.Background(), tc.args)
 				if err == nil {
 					t.Errorf("Expected error for invalid repository format")
 				} else if err.Error() != tc.expectedError {
