@@ -514,3 +514,60 @@ type mockPullRequestCommentLister struct{}
 func (m *mockPullRequestCommentLister) ListPullRequestComments(ctx context.Context, repo string, pullRequestNumber int, limit, offset int) (*PullRequestCommentList, error) {
 	return &PullRequestCommentList{}, nil
 }
+
+func TestEditPullRequestCommentArgs_JSONMarshaling(t *testing.T) {
+	t.Parallel()
+	testCases := []dataStructureTestCase{
+		{
+			name: "valid edit args",
+			input: EditPullRequestCommentArgs{
+				Repository:        "testuser/testrepo",
+				PullRequestNumber: 42,
+				CommentID:         123,
+				NewContent:        "Updated comment content",
+			},
+			expected: `{"repository":"testuser/testrepo","pull_request_number":42,"comment_id":123,"new_content":"Updated comment content"}`,
+		},
+		{
+			name: "minimal edit args",
+			input: EditPullRequestCommentArgs{
+				Repository:        "owner/repo",
+				PullRequestNumber: 1,
+				CommentID:         1,
+				NewContent:        "Fixed typo",
+			},
+			expected: `{"repository":"owner/repo","pull_request_number":1,"comment_id":1,"new_content":"Fixed typo"}`,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			data, err := json.Marshal(tc.input)
+			if err != nil {
+				t.Fatalf("Failed to marshal EditPullRequestCommentArgs: %v", err)
+			}
+			if string(data) != tc.expected {
+				t.Errorf("Expected %s, got %s", tc.expected, string(data))
+			}
+
+			var unmarshaled EditPullRequestCommentArgs
+			if err := json.Unmarshal(data, &unmarshaled); err != nil {
+				t.Fatalf("Failed to unmarshal EditPullRequestCommentArgs: %v", err)
+			}
+			if unmarshaled != tc.input {
+				t.Errorf("Expected %+v, got %+v", tc.input, unmarshaled)
+			}
+		})
+	}
+}
+
+func TestPullRequestCommentEditor_Interface(t *testing.T) {
+	t.Parallel()
+	var _ PullRequestCommentEditor = (*mockPullRequestCommentEditor)(nil)
+}
+
+type mockPullRequestCommentEditor struct{}
+
+func (m *mockPullRequestCommentEditor) EditPullRequestComment(ctx context.Context, args EditPullRequestCommentArgs) (*PullRequestComment, error) {
+	return &PullRequestComment{}, nil
+}

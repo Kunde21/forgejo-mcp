@@ -14,7 +14,7 @@
   - Define interface with method signature
   - Add `EditPullRequestCommentArgs` struct without validation tags
   - Update `GiteaClientInterface` to include `PullRequestCommentEditor`
-- **Status**: ⏳ Pending
+- **Status**: ✅ Completed
 
 #### Task 1.2: Add Type Definitions
 - **File**: `remote/gitea/interface.go`
@@ -22,7 +22,7 @@
 - **Implementation**:
   - Ensure `PullRequestComment` struct exists (should already be there from listing/creation)
   - Add `EditPullRequestCommentArgs` struct with proper JSON tags
-- **Status**: ⏳ Pending
+- **Status**: ✅ Completed
 
 ### Phase 2: Client Layer Implementation
 

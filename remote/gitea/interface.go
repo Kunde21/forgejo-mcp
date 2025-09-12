@@ -137,7 +137,20 @@ type PullRequestCommenter interface {
 	CreatePullRequestComment(ctx context.Context, repo string, pullRequestNumber int, comment string) (*PullRequestComment, error)
 }
 
-// GiteaClientInterface combines IssueLister, IssueCommenter, IssueCommentLister, IssueCommentEditor, PullRequestLister, PullRequestCommentLister, and PullRequestCommenter for complete Gitea operations
+// EditPullRequestCommentArgs represents the arguments for editing a pull request comment
+type EditPullRequestCommentArgs struct {
+	Repository        string `json:"repository"`
+	PullRequestNumber int    `json:"pull_request_number"`
+	CommentID         int    `json:"comment_id"`
+	NewContent        string `json:"new_content"`
+}
+
+// PullRequestCommentEditor defines the interface for editing comments on Git repository pull requests
+type PullRequestCommentEditor interface {
+	EditPullRequestComment(ctx context.Context, args EditPullRequestCommentArgs) (*PullRequestComment, error)
+}
+
+// GiteaClientInterface combines IssueLister, IssueCommenter, IssueCommentLister, IssueCommentEditor, PullRequestLister, PullRequestCommentLister, PullRequestCommenter, and PullRequestCommentEditor for complete Gitea operations
 type GiteaClientInterface interface {
 	IssueLister
 	IssueCommenter
@@ -146,4 +159,5 @@ type GiteaClientInterface interface {
 	PullRequestLister
 	PullRequestCommentLister
 	PullRequestCommenter
+	PullRequestCommentEditor
 }
