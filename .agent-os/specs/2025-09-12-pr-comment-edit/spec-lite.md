@@ -1,0 +1,3 @@
+# Spec Summary (Lite)
+
+Add a new MCP tool `pr_comment_edit` that enables AI agents to edit existing comments on Forgejo/Gitea repository pull requests, providing complete PR comment lifecycle management capabilities alongside existing create and list PR comment tools. The tool will allow agents to update comment content by repository, PR number, comment ID, and new content, with proper validation and error handling.

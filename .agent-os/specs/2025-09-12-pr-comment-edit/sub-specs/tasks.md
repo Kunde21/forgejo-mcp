@@ -1,0 +1,30 @@
+# Spec Tasks
+
+- [ ] 1. Implement PR comment edit interface in remote/gitea
+  - [ ] 1.1 Define EditPullRequestCommentArgs struct in interface.go
+  - [ ] 1.2 Add PullRequestCommentEditor interface in interface.go
+  - [ ] 1.3 Update GiteaClientInterface to include PullRequestCommentEditor
+- [ ] 2. Implement client layer in remote/gitea/gitea_client.go
+  - [ ] 2.1 Add EditPullRequestComment method without validation
+  - [ ] 2.2 Parse repository format (owner/repo)
+  - [ ] 2.3 Use Gitea SDK's EditIssueComment for PR comments
+  - [ ] 2.4 Convert Gitea response to PullRequestComment struct
+- [ ] 3. Implement service layer in remote/gitea/service.go
+  - [ ] 3.1 Add EditPullRequestComment method without validation
+  - [ ] 3.2 Delegate to client layer with proper arguments
+- [ ] 4. Implement server layer in server/pr_comments.go
+  - [ ] 4.1 Define PullRequestCommentEditArgs with validation tags
+  - [ ] 4.2 Define PullRequestCommentEditResult struct
+  - [ ] 4.3 Implement handlePullRequestCommentEdit with validation
+  - [ ] 4.4 Use ozzo-validation for all inputs (repository, PR number, comment ID, new content)
+  - [ ] 4.5 Return TextErrorf for validation errors
+  - [ ] 4.6 Return TextResult with confirmation and updated comment metadata
+- [ ] 5. Register tool in server/server.go
+  - [ ] 5.1 Add pr_comment_edit tool to MCP server with description
+  - [ ] 5.2 Register handler function
+- [ ] 6. Write tests
+  - [ ] 6.1 Write unit tests for client layer
+  - [ ] 6.2 Write unit tests for service layer
+  - [ ] 6.3 Write unit tests for server layer (validation scenarios)
+  - [ ] 6.4 Write integration test with mock server
+  - [ ] 6.5 Verify all tests pass
