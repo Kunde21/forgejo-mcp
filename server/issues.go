@@ -11,7 +11,7 @@ import (
 // IssueList represents a collection of repository issues.
 // This struct is used as the result data for the list_issues tool.
 type IssueList struct {
-	Issues []gitea.Issue `json:"issues"`
+	Issues []gitea.Issue `json:"issues,omitempty"`
 }
 
 type IssueListArgs struct {

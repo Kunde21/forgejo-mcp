@@ -11,7 +11,7 @@ import (
 // PullRequestList represents a collection of repository pull requests.
 // This struct is used as the result data for the pr_list tool.
 type PullRequestList struct {
-	PullRequests []gitea.PullRequest `json:"pull_requests"`
+	PullRequests []gitea.PullRequest `json:"pull_requests,omitempty"`
 }
 
 // PullRequestListArgs represents the arguments for listing pull requests with validation tags

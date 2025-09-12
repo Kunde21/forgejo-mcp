@@ -147,7 +147,7 @@ func TestListPullRequests(t *testing.T) {
 				Content: []mcp.Content{
 					&mcp.TextContent{Text: "Invalid request: repository: repository must be in format 'owner/repo'."},
 				},
-				StructuredContent: map[string]any{"pull_requests": nil},
+				StructuredContent: map[string]any{},
 				IsError:           true,
 			},
 		},
@@ -165,7 +165,7 @@ func TestListPullRequests(t *testing.T) {
 				Content: []mcp.Content{
 					&mcp.TextContent{Text: "Invalid request: repository: cannot be blank."},
 				},
-				StructuredContent: map[string]any{"pull_requests": nil},
+				StructuredContent: map[string]any{},
 				IsError:           true,
 			},
 		},
@@ -187,7 +187,7 @@ func TestListPullRequests(t *testing.T) {
 				Content: []mcp.Content{
 					&mcp.TextContent{Text: "Invalid request: limit: must be no greater than 100."},
 				},
-				StructuredContent: map[string]any{"pull_requests": nil},
+				StructuredContent: map[string]any{},
 				IsError:           true,
 			},
 		},
@@ -209,7 +209,7 @@ func TestListPullRequests(t *testing.T) {
 				Content: []mcp.Content{
 					&mcp.TextContent{Text: "Invalid request: state: state must be one of: open, closed, all."},
 				},
-				StructuredContent: map[string]any{"pull_requests": nil},
+				StructuredContent: map[string]any{},
 				IsError:           true,
 			},
 		},
@@ -269,7 +269,7 @@ func TestListPullRequests(t *testing.T) {
 				Content: []mcp.Content{
 					&mcp.TextContent{Text: "Invalid request: offset: must be no less than 0."},
 				},
-				StructuredContent: map[string]any{"pull_requests": nil},
+				StructuredContent: map[string]any{},
 				IsError:           true,
 			},
 		},

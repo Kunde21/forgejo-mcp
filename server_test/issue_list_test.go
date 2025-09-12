@@ -97,7 +97,7 @@ func TestListIssues(t *testing.T) {
 				Content: []mcp.Content{
 					&mcp.TextContent{Text: "Invalid request: repository: repository must be in format 'owner/repo'."},
 				},
-				StructuredContent: map[string]any{"issues": nil},
+				StructuredContent: map[string]any{},
 				IsError:           true,
 			},
 		},
@@ -114,7 +114,7 @@ func TestListIssues(t *testing.T) {
 				Content: []mcp.Content{
 					&mcp.TextContent{Text: "Invalid request: repository: cannot be blank."},
 				},
-				StructuredContent: map[string]any{"issues": nil},
+				StructuredContent: map[string]any{},
 				IsError:           true,
 			},
 		},
@@ -135,7 +135,7 @@ func TestListIssues(t *testing.T) {
 				Content: []mcp.Content{
 					&mcp.TextContent{Text: "Invalid request: limit: must be no greater than 100."},
 				},
-				StructuredContent: map[string]any{"issues": nil},
+				StructuredContent: map[string]any{},
 				IsError:           true,
 			},
 		},

@@ -11,7 +11,7 @@ import (
 
 // CommentResult represents the result data for the create_issue_comment tool.
 type CommentResult struct {
-	Comment gitea.Comment `json:"comment"`
+	Comment gitea.Comment `json:"comment,omitempty"`
 }
 
 type IssueCommentArgs struct {
@@ -64,10 +64,10 @@ func (s *Server) handleIssueCommentCreate(ctx context.Context, request *mcp.Call
 
 // CommentListResult represents the result data for the list_issue_comments tool.
 type CommentListResult struct {
-	Comments []gitea.Comment `json:"comments"`
-	Total    int             `json:"total"`
-	Limit    int             `json:"limit"`
-	Offset   int             `json:"offset"`
+	Comments []gitea.Comment `json:"comments,omitempty"`
+	Total    int             `json:"total,omitempty"`
+	Limit    int             `json:"limit,omitempty"`
+	Offset   int             `json:"offset,omitempty"`
 }
 
 type IssueCommentListArgs struct {
@@ -137,7 +137,7 @@ func (s *Server) handleIssueCommentList(ctx context.Context, request *mcp.CallTo
 
 // CommentEditResult represents the result data for the issue_comment_edit tool.
 type CommentEditResult struct {
-	Comment gitea.Comment `json:"comment"`
+	Comment *gitea.Comment `json:"comment,omitempty"`
 }
 
 type IssueCommentEditArgs struct {
@@ -196,5 +196,5 @@ func (s *Server) handleIssueCommentEdit(ctx context.Context, request *mcp.CallTo
 	responseText := fmt.Sprintf("Comment edited successfully. ID: %d, Updated: %s\nComment body: %s",
 		comment.ID, comment.Created, comment.Content)
 
-	return TextResult(responseText), &CommentEditResult{Comment: *comment}, nil
+	return TextResult(responseText), &CommentEditResult{Comment: comment}, nil
 }

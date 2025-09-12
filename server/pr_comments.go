@@ -13,7 +13,7 @@ import (
 // PullRequestCommentList represents a collection of pull request comments.
 // This struct is used as the result data for the pr_comment_list tool.
 type PullRequestCommentList struct {
-	PullRequestComments []gitea.Comment `json:"pull_request_comments"`
+	PullRequestComments []gitea.Comment `json:"pull_request_comments,omitempty"`
 }
 
 // PullRequestCommentListArgs represents the arguments for listing pull request comments with validation tags
@@ -85,7 +85,7 @@ type PullRequestCommentCreateArgs struct {
 
 // PullRequestCommentCreateResult represents the result data for the pr_comment_create tool
 type PullRequestCommentCreateResult struct {
-	Comment *gitea.Comment `json:"comment"`
+	Comment *gitea.Comment `json:"comment,omitempty"`
 }
 
 // handlePullRequestCommentCreate handles the "pr_comment_create" tool request.
@@ -142,7 +142,7 @@ type PullRequestCommentEditArgs struct {
 
 // PullRequestCommentEditResult represents the result data for the pr_comment_edit tool
 type PullRequestCommentEditResult struct {
-	Comment *gitea.Comment `json:"comment"`
+	Comment *gitea.Comment `json:"comment,omitempty"`
 }
 
 // handlePullRequestCommentEdit handles the "pr_comment_edit" tool request.
