@@ -151,6 +151,9 @@ Overall, great work on this feature!`,
 		},
 		{
 			name: "whitespace only comment",
+			setupMock: func(mock *MockGiteaServer) {
+				// No mock setup needed for error case
+			},
 			arguments: map[string]any{
 				"repository":          "testuser/testrepo",
 				"pull_request_number": 1,
@@ -166,6 +169,9 @@ Overall, great work on this feature!`,
 		},
 		{
 			name: "negative pull request number",
+			setupMock: func(mock *MockGiteaServer) {
+				// No mock setup needed for error case
+			},
 			arguments: map[string]any{
 				"repository":          "testuser/testrepo",
 				"pull_request_number": -1,
@@ -183,18 +189,22 @@ Overall, great work on this feature!`,
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
+			t.Cleanup(cancel)
+
 			mock := NewMockGiteaServer(t)
 			if tc.setupMock != nil {
 				tc.setupMock(mock)
 			}
-			ts := NewTestServer(t, t.Context(), map[string]string{
+			ts := NewTestServer(t, ctx, map[string]string{
 				"FORGEJO_REMOTE_URL": mock.URL(),
 				"FORGEJO_AUTH_TOKEN": "mock-token",
 			})
 			if err := ts.Initialize(); err != nil {
 				t.Fatalf("Failed to initialize test server: %v", err)
 			}
-			result, err := ts.Client().CallTool(context.Background(), &mcp.CallToolParams{
+			result, err := ts.Client().CallTool(ctx, &mcp.CallToolParams{
 				Name:      "pr_comment_create",
 				Arguments: tc.arguments,
 			})
@@ -211,6 +221,7 @@ Overall, great work on this feature!`,
 // TestPullRequestCommentLifecycle tests the complete PR comment lifecycle: create, list
 // This test is kept as a multi-step acceptance test since it involves multiple tool calls
 func TestPullRequestCommentLifecycle(t *testing.T) {
+	t.Parallel()
 	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
 	t.Cleanup(cancel)
 	mock := NewMockGiteaServer(t)
@@ -360,6 +371,7 @@ func TestPullRequestCommentCreationPerformance(t *testing.T) {
 // TestPullRequestCommentCreationConcurrentDifferentPRs tests concurrent request handling on different PRs
 // This acceptance test focuses on end-to-end concurrent behavior across different pull requests
 func TestPullRequestCommentCreationConcurrentDifferentPRs(t *testing.T) {
+	t.Parallel()
 	ctx, cancel := context.WithTimeout(t.Context(), 15*time.Second)
 	t.Cleanup(cancel)
 
@@ -406,9 +418,13 @@ func TestPullRequestCommentCreationConcurrentDifferentPRs(t *testing.T) {
 }
 
 func TestCreatePullRequestCommentConcurrent(t *testing.T) {
+	t.Parallel()
+	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
+	t.Cleanup(cancel)
+
 	mock := NewMockGiteaServer(t)
 	mock.AddComments("testuser", "testrepo", []MockComment{}) // Start with no comments
-	ts := NewTestServer(t, t.Context(), map[string]string{
+	ts := NewTestServer(t, ctx, map[string]string{
 		"FORGEJO_REMOTE_URL": mock.URL(),
 		"FORGEJO_AUTH_TOKEN": "mock-token",
 	})
@@ -417,10 +433,14 @@ func TestCreatePullRequestCommentConcurrent(t *testing.T) {
 	}
 
 	const numGoroutines = 5
+	var wg sync.WaitGroup
 	results := make(chan error, numGoroutines)
+
 	for i := range numGoroutines {
+		wg.Add(1)
 		go func(commentNum int) {
-			_, err := ts.Client().CallTool(context.Background(), &mcp.CallToolParams{
+			defer wg.Done()
+			_, err := ts.Client().CallTool(ctx, &mcp.CallToolParams{
 				Name: "pr_comment_create",
 				Arguments: map[string]any{
 					"repository":          "testuser/testrepo",
@@ -431,6 +451,10 @@ func TestCreatePullRequestCommentConcurrent(t *testing.T) {
 			results <- err
 		}(i)
 	}
+
+	// Wait for all goroutines to complete
+	wg.Wait()
+	close(results)
 	for range numGoroutines {
 		if err := <-results; err != nil {
 			t.Errorf("Concurrent request failed: %v", err)
@@ -440,6 +464,7 @@ func TestCreatePullRequestCommentConcurrent(t *testing.T) {
 
 // TestPullRequestCommentCreateCompleteWorkflow tests the complete pull request comment create workflow
 func TestPullRequestCommentCreateCompleteWorkflow(t *testing.T) {
+	t.Parallel()
 	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
 	t.Cleanup(cancel)
 
@@ -507,6 +532,7 @@ func TestPullRequestCommentCreateCompleteWorkflow(t *testing.T) {
 
 // TestPullRequestCommentCreateValidationErrors tests validation error scenarios
 func TestPullRequestCommentCreateValidationErrors(t *testing.T) {
+	t.Parallel()
 	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
 	t.Cleanup(cancel)
 
@@ -628,6 +654,7 @@ func TestPullRequestCommentCreateValidationErrors(t *testing.T) {
 
 // TestPullRequestCommentCreateSuccessfulParameters tests successful comment creation with valid parameters
 func TestPullRequestCommentCreateSuccessfulParameters(t *testing.T) {
+	t.Parallel()
 	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
 	t.Cleanup(cancel)
 
