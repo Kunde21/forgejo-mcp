@@ -2,7 +2,6 @@ package servertest
 
 import (
 	"context"
-	"strings"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -267,40 +266,7 @@ func TestEditPullRequestComment(t *testing.T) {
 			},
 		},
 		{
-			name: "real world code review comment",
-			setupMock: func(mock *MockGiteaServer) {
-				mock.AddComments("testuser", "testrepo", []MockComment{
-					{
-						ID:      42,
-						Content: "Initial code review comment",
-						Author:  "reviewer",
-						Created: "2025-09-10T10:00:00Z",
-					},
-				})
-			},
-			arguments: map[string]any{
-				"repository":          "testuser/testrepo",
-				"pull_request_number": 1,
-				"comment_id":          42,
-				"new_content":         "Updated code review feedback:\n\n✅ **Fixed Issues:**\n1. Added proper error handling for empty input\n2. Improved variable naming for clarity\n3. Added comprehensive unit tests\n\n**Additional Suggestions:**\n- Consider adding input validation\n- The performance could be optimized for large datasets\n\nGreat work on addressing the previous feedback!",
-			},
-			expect: &mcp.CallToolResult{
-				Content: []mcp.Content{
-					&mcp.TextContent{Text: "Pull request comment edited successfully. ID: 42, Updated: 2025-09-10T10:00:00Z\nComment body: Updated code review feedback:\n\n✅ **Fixed Issues:**\n1. Added proper error handling for empty input\n2. Improved variable naming for clarity\n3. Added comprehensive unit tests\n\n**Additional Suggestions:**\n- Consider adding input validation\n- The performance could be optimized for large datasets\n\nGreat work on addressing the previous feedback!"},
-				},
-				StructuredContent: map[string]any{
-					"comment": map[string]any{
-						"id":         float64(42),
-						"body":       "Updated code review feedback:\n\n✅ **Fixed Issues:**\n1. Added proper error handling for empty input\n2. Improved variable naming for clarity\n3. Added comprehensive unit tests\n\n**Additional Suggestions:**\n- Consider adding input validation\n- The performance could be optimized for large datasets\n\nGreat work on addressing the previous feedback!",
-						"user":       "reviewer",
-						"created_at": "2025-09-10T10:00:00Z",
-						"updated_at": "2025-09-10T10:00:00Z",
-					},
-				},
-			},
-		},
-		{
-			name: "large content performance test",
+			name: "permission error",
 			setupMock: func(mock *MockGiteaServer) {
 				mock.AddComments("testuser", "testrepo", []MockComment{
 					{
@@ -310,26 +276,20 @@ func TestEditPullRequestComment(t *testing.T) {
 						Created: "2025-09-10T10:00:00Z",
 					},
 				})
+				mock.SetForbiddenCommentEdit(123)
 			},
 			arguments: map[string]any{
 				"repository":          "testuser/testrepo",
 				"pull_request_number": 1,
 				"comment_id":          123,
-				"new_content":         strings.Repeat("This is a detailed updated code review comment with comprehensive revised feedback that demonstrates handling of larger content. This comment includes multiple paragraphs and detailed analysis of the code changes.", 20),
+				"new_content":         "Updated content",
 			},
 			expect: &mcp.CallToolResult{
 				Content: []mcp.Content{
-					&mcp.TextContent{Text: "Pull request comment edited successfully. ID: 123, Updated: 2025-09-10T10:00:00Z\nComment body: " + strings.Repeat("This is a detailed updated code review comment with comprehensive revised feedback that demonstrates handling of larger content. This comment includes multiple paragraphs and detailed analysis of the code changes.", 20)},
+					&mcp.TextContent{Text: "Failed to edit pull request comment: failed to edit pull request comment: unknown API error: 403\nRequest: '/api/v1/repos/testuser/testrepo/issues/comments/123' with 'PATCH' method and 'Forbidden\n' body"},
 				},
-				StructuredContent: map[string]any{
-					"comment": map[string]any{
-						"body":       strings.Repeat("This is a detailed updated code review comment with comprehensive revised feedback that demonstrates handling of larger content. This comment includes multiple paragraphs and detailed analysis of the code changes.", 20),
-						"created_at": "2025-09-10T10:00:00Z",
-						"id":         float64(123),
-						"updated_at": "2025-09-10T10:00:00Z",
-						"user":       "testuser",
-					},
-				},
+				StructuredContent: map[string]any{},
+				IsError:           true,
 			},
 		},
 	}
@@ -413,16 +373,17 @@ func TestEditPullRequestCommentPermissionError(t *testing.T) {
 			Created: "2025-09-10T10:00:00Z",
 		},
 	})
+	mock.SetForbiddenCommentEdit(123)
 	ts := NewTestServer(t, t.Context(), map[string]string{
 		"FORGEJO_REMOTE_URL": mock.URL(),
-		"FORGEJO_AUTH_TOKEN": "invalid-token",
+		"FORGEJO_AUTH_TOKEN": "mock-token",
 	})
 	if err := ts.Initialize(); err != nil {
 		t.Fatal(err)
 	}
 	client := ts.Client()
 
-	// Test with invalid token (simulates permission error)
+	// Test with permission error
 	result, err := client.CallTool(context.Background(), &mcp.CallToolParams{
 		Name: "pr_comment_edit",
 		Arguments: map[string]any{

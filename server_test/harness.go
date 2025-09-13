@@ -30,13 +30,16 @@ type TestServer struct {
 
 // MockGiteaServer represents a mock Gitea API server for testing
 type MockGiteaServer struct {
-	server        *httptest.Server
-	issues        map[string][]MockIssue
-	comments      map[string][]MockComment
-	pullRequests  map[string][]MockPullRequest
-	notFoundRepos map[string]bool // Repositories that should return 404
-	nextID        int
-	mu            sync.Mutex
+	server       *httptest.Server
+	issues       map[string][]MockIssue
+	comments     map[string][]MockComment
+	pullRequests map[string][]MockPullRequest
+	// Repositories that should return 404
+	notFoundRepos map[string]bool
+	// Comment IDs that should return 403
+	forbiddenCommentIDs map[int]bool
+	nextID              int
+	mu                  sync.Mutex
 }
 
 // MockIssue represents a mock issue for testing
@@ -72,11 +75,12 @@ type MockPullRequest struct {
 // NewMockGiteaServer creates a new mock Gitea server
 func NewMockGiteaServer(t *testing.T) *MockGiteaServer {
 	mock := &MockGiteaServer{
-		issues:        make(map[string][]MockIssue),
-		comments:      make(map[string][]MockComment),
-		pullRequests:  make(map[string][]MockPullRequest),
-		notFoundRepos: make(map[string]bool),
-		nextID:        1,
+		issues:              make(map[string][]MockIssue),
+		comments:            make(map[string][]MockComment),
+		pullRequests:        make(map[string][]MockPullRequest),
+		notFoundRepos:       make(map[string]bool),
+		forbiddenCommentIDs: make(map[int]bool),
+		nextID:              1,
 	}
 
 	// Create HTTP handler for mock API with modern routing
@@ -122,6 +126,11 @@ func (m *MockGiteaServer) AddPullRequests(owner, repo string, pullRequests []Moc
 func (m *MockGiteaServer) SetNotFoundRepo(owner, repo string) {
 	key := owner + "/" + repo
 	m.notFoundRepos[key] = true
+}
+
+// SetForbiddenCommentEdit marks a comment ID as forbidden (will return 403)
+func (m *MockGiteaServer) SetForbiddenCommentEdit(commentID int) {
+	m.forbiddenCommentIDs[commentID] = true
 }
 
 // handleVersion handles the version endpoint
@@ -411,6 +420,12 @@ func (m *MockGiteaServer) handleEditComment(w http.ResponseWriter, r *http.Reque
 	// Check if repository exists (simulate API error for nonexistent repos)
 	if repoKey == "nonexistent/repo" {
 		http.NotFound(w, r)
+		return
+	}
+
+	// Check if comment is forbidden (simulate permission error)
+	if m.forbiddenCommentIDs[commentID] {
+		http.Error(w, "Forbidden", http.StatusForbidden)
 		return
 	}
 
