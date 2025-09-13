@@ -101,7 +101,7 @@ func (s *Server) handleIssueCommentList(ctx context.Context, request *mcp.CallTo
 	// Validate input arguments using ozzo-validation
 	if err := v.ValidateStruct(&args,
 		v.Field(&args.Repository, v.Required, v.Match(repoReg).Error("repository must be in format 'owner/repo'")),
-		v.Field(&args.IssueNumber, v.Min(1)),
+		v.Field(&args.IssueNumber, v.Required.Error("must be no less than 1"), v.Min(1)),
 		v.Field(&args.Limit, v.Min(1), v.Max(100)),
 		v.Field(&args.Offset, v.Min(0)),
 	); err != nil {
@@ -115,16 +115,16 @@ func (s *Server) handleIssueCommentList(ctx context.Context, request *mcp.CallTo
 	}
 
 	// Format success response with comment count and pagination info
-	responseText := "Found 0 comments"
-	if len(commentList.Comments) != 0 {
-		endIndex := min(args.Offset+len(commentList.Comments), commentList.Total)
-		responseText = fmt.Sprintf("Found %d comments (showing %d-%d):\n",
-			commentList.Total,
-			args.Offset+1,
-			endIndex)
-		for i, comment := range commentList.Comments {
-			responseText += fmt.Sprintf("Comment %d (ID: %d): %s\n", i+1, comment.ID, comment.Content)
-		}
+	if len(commentList.Comments) == 0 {
+		return TextResult("Found 0 comments"), nil, nil
+	}
+	endIndex := min(args.Offset+len(commentList.Comments), commentList.Total)
+	responseText := fmt.Sprintf("Found %d comments (showing %d-%d):\n",
+		commentList.Total,
+		args.Offset+1,
+		endIndex)
+	for i, comment := range commentList.Comments {
+		responseText += fmt.Sprintf("Comment %d (ID: %d): %s\n", i+1, comment.ID, comment.Content)
 	}
 
 	return TextResult(responseText), &CommentListResult{
