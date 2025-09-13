@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"maps"
 	"net/http"
 	"net/http/httptest"
@@ -446,7 +445,6 @@ func (m *MockGiteaServer) handleEditComment(w http.ResponseWriter, r *http.Reque
 
 	// If comment not found, return 404
 	if !commentFound {
-		fmt.Println("COMMENT MISSING")
 		http.NotFound(w, r)
 		return
 	}
