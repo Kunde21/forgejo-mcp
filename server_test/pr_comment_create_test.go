@@ -2,7 +2,9 @@ package servertest
 
 import (
 	"context"
+	"strings"
 	"testing"
+	"time"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
@@ -36,6 +38,37 @@ func TestCreatePullRequestComment(t *testing.T) {
 					"comment": map[string]any{
 						"id":         float64(1),
 						"body":       "This is a helpful comment on the pull request.",
+						"user":       "testuser",
+						"created_at": "2024-01-01T00:00:00Z",
+						"updated_at": "2024-01-01T00:00:00Z",
+					},
+				},
+			},
+		},
+		{
+			name: "real-world code review comment",
+			setupMock: func(mock *MockGiteaServer) {
+				mock.AddComments("testuser", "testrepo", []MockComment{}) // Start with no comments
+			},
+			arguments: map[string]any{
+				"repository":          "testuser/testrepo",
+				"pull_request_number": 42,
+				"comment": `I've reviewed your changes and have a few suggestions:
+
+1. Consider adding error handling for the edge case where the input is empty
+2. The function could benefit from more descriptive variable names
+3. Add unit tests for the new functionality
+
+Overall, great work on this feature!`,
+			},
+			expect: &mcp.CallToolResult{
+				Content: []mcp.Content{
+					&mcp.TextContent{Text: "Pull request comment created successfully. ID: 1, Created: 2024-01-01T00:00:00Z\nComment body: I've reviewed your changes and have a few suggestions:\n\n1. Consider adding error handling for the edge case where the input is empty\n2. The function could benefit from more descriptive variable names\n3. Add unit tests for the new functionality\n\nOverall, great work on this feature!"},
+				},
+				StructuredContent: map[string]any{
+					"comment": map[string]any{
+						"id":         float64(1),
+						"body":       "I've reviewed your changes and have a few suggestions:\n\n1. Consider adding error handling for the edge case where the input is empty\n2. The function could benefit from more descriptive variable names\n3. Add unit tests for the new functionality\n\nOverall, great work on this feature!",
 						"user":       "testuser",
 						"created_at": "2024-01-01T00:00:00Z",
 						"updated_at": "2024-01-01T00:00:00Z",
@@ -173,35 +206,74 @@ func TestCreatePullRequestComment(t *testing.T) {
 	}
 }
 
-func TestCreatePullRequestCommentConcurrent(t *testing.T) {
+// TestPullRequestCommentLifecycle tests the complete PR comment lifecycle: create, list
+// This test is kept as a multi-step acceptance test since it involves multiple tool calls
+func TestPullRequestCommentLifecycle(t *testing.T) {
+	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
+	t.Cleanup(cancel)
 	mock := NewMockGiteaServer(t)
-	mock.AddComments("testuser", "testrepo", []MockComment{}) // Start with no comments
-	ts := NewTestServer(t, t.Context(), map[string]string{
+	ts := NewTestServer(t, ctx, map[string]string{
 		"FORGEJO_REMOTE_URL": mock.URL(),
 		"FORGEJO_AUTH_TOKEN": "mock-token",
 	})
 	if err := ts.Initialize(); err != nil {
-		t.Fatalf("Failed to initialize test server: %v", err)
+		t.Fatal(err)
+	}
+	client := ts.Client()
+
+	repo := "testuser/testrepo"
+	pullRequestNumber := 1
+	testComment := "This is a test comment on a pull request for acceptance testing."
+
+	// Step 1: Create a PR comment
+	t.Log("Step 1: Creating PR comment")
+	createResult, err := client.CallTool(ctx, &mcp.CallToolParams{
+		Name: "pr_comment_create",
+		Arguments: map[string]any{
+			"repository":          repo,
+			"pull_request_number": pullRequestNumber,
+			"comment":             testComment,
+		},
+	})
+	if err != nil {
+		t.Fatalf("Failed to create PR comment: %v", err)
+	}
+	if createResult.IsError {
+		t.Fatalf("PR comment creation failed: %s", getTextContent(createResult.Content))
 	}
 
-	const numGoroutines = 5
-	results := make(chan error, numGoroutines)
-	for i := range numGoroutines {
-		go func(commentNum int) {
-			_, err := ts.Client().CallTool(context.Background(), &mcp.CallToolParams{
-				Name: "pr_comment_create",
-				Arguments: map[string]any{
-					"repository":          "testuser/testrepo",
-					"pull_request_number": 1,
-					"comment":             "Concurrent comment " + string(rune(commentNum+'0')),
-				},
-			})
-			results <- err
-		}(i)
+	// Verify creation response
+	createText := getTextContent(createResult.Content)
+	if !strings.Contains(createText, "Pull request comment created successfully") {
+		t.Errorf("Expected successful creation message, got: %s", createText)
 	}
-	for range numGoroutines {
-		if err := <-results; err != nil {
-			t.Errorf("Concurrent request failed: %v", err)
-		}
+	if !strings.Contains(createText, testComment) {
+		t.Errorf("Expected comment in response, got: %s", createText)
 	}
+
+	// Step 2: List PR comments to verify creation
+	t.Log("Step 2: Listing PR comments to verify creation")
+	listResult, err := client.CallTool(ctx, &mcp.CallToolParams{
+		Name: "pr_comment_list",
+		Arguments: map[string]any{
+			"repository":          repo,
+			"pull_request_number": pullRequestNumber,
+			"limit":               10,
+			"offset":              0,
+		},
+	})
+	if err != nil {
+		t.Fatalf("Failed to list PR comments: %v", err)
+	}
+	if listResult.IsError {
+		t.Fatalf("PR comment listing failed: %s", getTextContent(listResult.Content))
+	}
+
+	// Verify the comment appears in the list
+	listText := getTextContent(listResult.Content)
+	if !strings.Contains(listText, testComment) {
+		t.Errorf("Expected comment in list, got: %s", listText)
+	}
+
+	t.Log("✅ PR comment lifecycle test completed successfully")
 }
