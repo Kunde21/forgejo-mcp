@@ -43,14 +43,14 @@ func (s *Server) handleIssueCommentCreate(ctx context.Context, request *mcp.Call
 	// Validate input arguments using ozzo-validation
 	if err := v.ValidateStruct(&args,
 		v.Field(&args.Repository, v.Required, v.Match(repoReg).Error("repository must be in format 'owner/repo'")),
-		v.Field(&args.IssueNumber, v.Min(1)),
-		v.Field(&args.Comment, v.Required, v.Length(1, 0)), // Non-empty string
+		v.Field(&args.IssueNumber, v.Required.Error("must be no less than 1"), v.Min(1)),
+		v.Field(&args.Comment, v.Required, v.Match(emptyReg).Error("cannot be blank")),
 	); err != nil {
 		return TextErrorf("Invalid request: %v", err), nil, nil
 	}
 
 	// Create the comment using the service layer
-	comment, err := s.giteaService.CreateIssueComment(ctx, args.Repository, args.IssueNumber, args.Comment)
+	comment, err := s.remote.CreateIssueComment(ctx, args.Repository, args.IssueNumber, args.Comment)
 	if err != nil {
 		return TextErrorf("Failed to create comment: %v", err), nil, nil
 	}
@@ -109,7 +109,7 @@ func (s *Server) handleIssueCommentList(ctx context.Context, request *mcp.CallTo
 	}
 
 	// Fetch comments from the Gitea/Forgejo repository
-	commentList, err := s.giteaService.ListIssueComments(ctx, args.Repository, args.IssueNumber, args.Limit, args.Offset)
+	commentList, err := s.remote.ListIssueComments(ctx, args.Repository, args.IssueNumber, args.Limit, args.Offset)
 	if err != nil {
 		return TextErrorf("Failed to list issue comments: %v", err), nil, nil
 	}
@@ -171,9 +171,9 @@ func (s *Server) handleIssueCommentEdit(ctx context.Context, request *mcp.CallTo
 	// Validate input arguments using ozzo-validation
 	if err := v.ValidateStruct(&args,
 		v.Field(&args.Repository, v.Required, v.Match(repoReg).Error("repository must be in format 'owner/repo'")),
-		v.Field(&args.IssueNumber, v.Min(1)),
-		v.Field(&args.CommentID, v.Min(1)),
-		v.Field(&args.NewContent, v.Required, v.Length(1, 0)), // Non-empty string
+		v.Field(&args.IssueNumber, v.Required.Error("must be no less than 1"), v.Min(1)),
+		v.Field(&args.CommentID, v.Required.Error("must be no less than 1"), v.Min(1)),
+		v.Field(&args.NewContent, v.Required, v.Match(emptyReg).Error("cannot be blank")),
 	); err != nil {
 		return TextErrorf("Invalid request: %v", err), nil, nil
 	}
@@ -187,7 +187,7 @@ func (s *Server) handleIssueCommentEdit(ctx context.Context, request *mcp.CallTo
 	}
 
 	// Edit the comment using the service layer
-	comment, err := s.giteaService.EditIssueComment(ctx, serviceArgs)
+	comment, err := s.remote.EditIssueComment(ctx, serviceArgs)
 	if err != nil {
 		return TextErrorf("Failed to edit comment: %v", err), nil, nil
 	}

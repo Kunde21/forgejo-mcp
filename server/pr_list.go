@@ -60,7 +60,7 @@ func (s *Server) handlePullRequestList(ctx context.Context, request *mcp.CallToo
 	}
 
 	// Fetch pull requests from the Gitea/Forgejo repository
-	pullRequests, err := s.giteaService.ListPullRequests(ctx, args.Repository, options)
+	pullRequests, err := s.remote.ListPullRequests(ctx, args.Repository, options)
 	if err != nil {
 		return TextErrorf("Failed to list pull requests: %v", err), nil, nil
 	}

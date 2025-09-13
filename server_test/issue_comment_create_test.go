@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
@@ -108,7 +109,7 @@ func TestCreateIssueComment(t *testing.T) {
 			},
 			expect: &mcp.CallToolResult{
 				Content: []mcp.Content{
-					&mcp.TextContent{Text: "Failed to create comment: issue number validation failed: issue number must be positive"},
+					&mcp.TextContent{Text: "Invalid request: issue_number: must be no less than 1."},
 				},
 				StructuredContent: map[string]any{
 					"comment": map[string]any{
@@ -157,7 +158,7 @@ func TestCreateIssueComment(t *testing.T) {
 			},
 			expect: &mcp.CallToolResult{
 				Content: []mcp.Content{
-					&mcp.TextContent{Text: "Failed to create comment: comment content validation failed: comment content cannot be only whitespace"},
+					&mcp.TextContent{Text: "Invalid request: comment: cannot be blank."},
 				},
 				StructuredContent: map[string]any{
 					"comment": map[string]any{
@@ -216,8 +217,8 @@ func TestCreateIssueComment(t *testing.T) {
 			if err != nil {
 				t.Fatalf("Failed to call issue_comment_create tool: %v", err)
 			}
-			if !cmp.Equal(tc.expect, result) {
-				t.Error(cmp.Diff(tc.expect, result))
+			if !cmp.Equal(tc.expect, result, cmpopts.IgnoreUnexported(mcp.TextContent{})) {
+				t.Error(cmp.Diff(tc.expect, result, cmpopts.IgnoreUnexported(mcp.TextContent{})))
 			}
 		})
 	}

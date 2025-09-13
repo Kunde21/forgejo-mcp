@@ -3,7 +3,6 @@ package server
 import (
 	"context"
 	"fmt"
-	"strings"
 
 	v "github.com/go-ozzo/ozzo-validation/v4"
 	"github.com/kunde21/forgejo-mcp/remote/gitea"
@@ -56,7 +55,7 @@ func (s *Server) handlePullRequestCommentList(ctx context.Context, request *mcp.
 	}
 
 	// Fetch pull request comments from the Gitea/Forgejo repository
-	commentList, err := s.giteaService.ListPullRequestComments(ctx, args.Repository, args.PullRequestNumber, args.Limit, args.Offset)
+	commentList, err := s.remote.ListPullRequestComments(ctx, args.Repository, args.PullRequestNumber, args.Limit, args.Offset)
 	if err != nil {
 		return TextErrorf("Failed to list pull request comments: %v", err), nil, nil
 	}
@@ -112,15 +111,13 @@ func (s *Server) handlePullRequestCommentCreate(ctx context.Context, request *mc
 	if err := v.ValidateStruct(&args,
 		v.Field(&args.Repository, v.Required, v.Match(repoReg).Error("repository must be in format 'owner/repo'")),
 		v.Field(&args.PullRequestNumber, v.Required.Error("must be no less than 1"), v.Min(1)),
-		v.Field(&args.Comment, v.Required, v.Length(1, 0), v.By(func(any) error {
-			return v.Validate(strings.TrimSpace(args.Comment), v.Required)
-		})),
+		v.Field(&args.Comment, v.Required, v.Match(emptyReg).Error("cannot be blank")),
 	); err != nil {
 		return TextErrorf("Invalid request: %v", err), nil, nil
 	}
 
 	// Create the comment using the service layer
-	comment, err := s.giteaService.CreatePullRequestComment(ctx, args.Repository, args.PullRequestNumber, args.Comment)
+	comment, err := s.remote.CreatePullRequestComment(ctx, args.Repository, args.PullRequestNumber, args.Comment)
 	if err != nil {
 		return TextErrorf("Failed to create pull request comment: %v", err), nil, nil
 	}
@@ -177,11 +174,9 @@ func (s *Server) handlePullRequestCommentEdit(ctx context.Context, request *mcp.
 	// Validate input arguments using ozzo-validation
 	if err := v.ValidateStruct(&args,
 		v.Field(&args.Repository, v.Required, v.Match(repoReg).Error("repository must be in format 'owner/repo'")),
-		v.Field(&args.PullRequestNumber, v.Required.Error("must be no less than 1"), v.Min(1)),
-		v.Field(&args.CommentID, v.Required.Error("must be no less than 1"), v.Min(1)),
-		v.Field(&args.NewContent, v.Required, v.By(func(any) error {
-			return v.Validate(strings.TrimSpace(args.NewContent), v.Required)
-		})), // Non-empty string, not just whitespace
+		v.Field(&args.PullRequestNumber, v.Min(1)),
+		v.Field(&args.CommentID, v.Min(1)),
+		v.Field(&args.NewContent, v.Required, v.Match(emptyReg).Error("cannot be blank")),
 	); err != nil {
 		return TextErrorf("Invalid request: %v", err), nil, nil
 	}
@@ -193,7 +188,7 @@ func (s *Server) handlePullRequestCommentEdit(ctx context.Context, request *mcp.
 		CommentID:         args.CommentID,
 		NewContent:        args.NewContent,
 	}
-	comment, err := s.giteaService.EditPullRequestComment(ctx, editArgs)
+	comment, err := s.remote.EditPullRequestComment(ctx, editArgs)
 	if err != nil {
 		return TextErrorf("Failed to edit pull request comment: %v", err), nil, nil
 	}

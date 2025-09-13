@@ -46,7 +46,7 @@ func (s *Server) handleIssueList(ctx context.Context, request *mcp.CallToolReque
 	}
 
 	// Fetch issues from the Gitea/Forgejo repository
-	issues, err := s.giteaService.ListIssues(ctx, args.Repository, args.Limit, args.Offset)
+	issues, err := s.remote.ListIssues(ctx, args.Repository, args.Limit, args.Offset)
 	if err != nil {
 		return TextErrorf("Failed to list issues: %v", err), nil, nil
 	}

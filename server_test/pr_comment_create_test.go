@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
@@ -211,8 +212,8 @@ Overall, great work on this feature!`,
 			if err != nil {
 				t.Fatalf("Failed to call pr_comment_create tool: %v", err)
 			}
-			if !cmp.Equal(tc.expect, result) {
-				t.Error(cmp.Diff(tc.expect, result))
+			if !cmp.Equal(tc.expect, result, cmpopts.IgnoreUnexported(mcp.TextContent{})) {
+				t.Error(cmp.Diff(tc.expect, result, cmpopts.IgnoreUnexported(mcp.TextContent{})))
 			}
 		})
 	}

@@ -38,12 +38,12 @@ type IssueCommentList struct {
 	Offset   int       `json:"offset"`
 }
 
-// ListIssueCommentsArgs represents the arguments for listing issue comments with validation tags
+// ListIssueCommentsArgs represents the arguments for listing issue comments
 type ListIssueCommentsArgs struct {
-	Repository  string `json:"repository" validate:"required,regexp=^[a-zA-Z0-9._-]+/[a-zA-Z0-9._-]+$"`
-	IssueNumber int    `json:"issue_number" validate:"required,min=1"`
-	Limit       int    `json:"limit" validate:"min=1,max=100"`
-	Offset      int    `json:"offset" validate:"min=0"`
+	Repository  string `json:"repository"`
+	IssueNumber int    `json:"issue_number"`
+	Limit       int    `json:"limit"`
+	Offset      int    `json:"offset"`
 }
 
 // IssueCommentLister defines the interface for listing comments from Git repository issues
@@ -51,12 +51,12 @@ type IssueCommentLister interface {
 	ListIssueComments(ctx context.Context, repo string, issueNumber int, limit, offset int) (*IssueCommentList, error)
 }
 
-// EditIssueCommentArgs represents the arguments for editing an issue comment with validation tags
+// EditIssueCommentArgs represents the arguments for editing an issue comment
 type EditIssueCommentArgs struct {
-	Repository  string `json:"repository" validate:"required,regexp=^[a-zA-Z0-9._-]+/[a-zA-Z0-9._-]+$"`
-	IssueNumber int    `json:"issue_number" validate:"required,min=1"`
-	CommentID   int    `json:"comment_id" validate:"required,min=1"`
-	NewContent  string `json:"new_content" validate:"required,min=1"`
+	Repository  string `json:"repository"`
+	IssueNumber int    `json:"issue_number"`
+	CommentID   int    `json:"comment_id"`
+	NewContent  string `json:"new_content"`
 }
 
 // IssueCommentEditor defines the interface for editing comments on Git repository issues
@@ -84,11 +84,11 @@ type PullRequest struct {
 	Base      PullRequestBranch `json:"base"`
 }
 
-// ListPullRequestsOptions represents the options for listing pull requests with validation tags
+// ListPullRequestsOptions represents the options for listing pull requests
 type ListPullRequestsOptions struct {
-	State  string `json:"state" validate:"oneof=open closed all"`
-	Limit  int    `json:"limit" validate:"min=1,max=100"`
-	Offset int    `json:"offset" validate:"min=0"`
+	State  string `json:"state"`
+	Limit  int    `json:"limit"`
+	Offset int    `json:"offset"`
 }
 
 // PullRequestLister defines the interface for listing pull requests from a Git repository
@@ -104,12 +104,12 @@ type PullRequestCommentList struct {
 	Offset   int       `json:"offset"`
 }
 
-// ListPullRequestCommentsArgs represents the arguments for listing pull request comments with validation tags
+// ListPullRequestCommentsArgs represents the arguments for listing pull request comments
 type ListPullRequestCommentsArgs struct {
-	Repository        string `json:"repository" validate:"required,regexp=^[a-zA-Z0-9._-]+/[a-zA-Z0-9._-]+$"`
-	PullRequestNumber int    `json:"pull_request_number" validate:"required,min=1"`
-	Limit             int    `json:"limit" validate:"min=1,max=100"`
-	Offset            int    `json:"offset" validate:"min=0"`
+	Repository        string `json:"repository"`
+	PullRequestNumber int    `json:"pull_request_number"`
+	Limit             int    `json:"limit"`
+	Offset            int    `json:"offset"`
 }
 
 // CreatePullRequestCommentArgs represents the arguments for creating a pull request comment

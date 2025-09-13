@@ -170,7 +170,7 @@ func TestIssueCommentEdit(t *testing.T) {
 			expect: &mcp.CallToolResult{
 				Content: []mcp.Content{
 					&mcp.TextContent{
-						Text: "Failed to edit comment: issue number validation failed: issue number must be positive",
+						Text: "Invalid request: issue_number: must be no less than 1.",
 					},
 				},
 				StructuredContent: map[string]any{},
@@ -190,7 +190,7 @@ func TestIssueCommentEdit(t *testing.T) {
 			expect: &mcp.CallToolResult{
 				Content: []mcp.Content{
 					&mcp.TextContent{
-						Text: "Failed to edit comment: comment ID validation failed: comment ID must be positive",
+						Text: "Invalid request: comment_id: must be no less than 1.",
 					},
 				},
 				StructuredContent: map[string]any{},
@@ -273,7 +273,7 @@ func TestIssueCommentEdit(t *testing.T) {
 			expect: &mcp.CallToolResult{
 				Content: []mcp.Content{
 					&mcp.TextContent{
-						Text: "Failed to edit comment: comment ID validation failed: comment ID must be positive",
+						Text: "Invalid request: comment_id: must be no less than 1.",
 					},
 				},
 				StructuredContent: map[string]any{},

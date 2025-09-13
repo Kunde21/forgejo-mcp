@@ -19,44 +19,6 @@ func getRepoKeyFromRequest(r *http.Request) (string, error) {
 	return owner + "/" + repo, nil
 }
 
-// validateRepository checks if repository exists and is accessible
-func validateRepository(mock *MockGiteaServer, repoKey string) bool {
-	if repoKey == "" {
-		return false
-	}
-
-	// Check if repository key is in valid format (owner/repo)
-	owner, repo, ok := strings.Cut(repoKey, "/")
-	if !ok || owner == "" || repo == "" {
-		return false
-	}
-
-	// Check if repository is marked as not found
-	if mock.notFoundRepos[repoKey] {
-		return false
-	}
-
-	// For backward compatibility, check if it's the special "nonexistent/repo" case
-	if repoKey == "nonexistent/repo" {
-		return false
-	}
-
-	// Check if repository has any data (issues, pull requests, or comments)
-	if _, exists := mock.issues[repoKey]; exists {
-		return true
-	}
-	if _, exists := mock.pullRequests[repoKey]; exists {
-		return true
-	}
-	if _, exists := mock.comments[repoKey+"/comments"]; exists {
-		return true
-	}
-
-	// If no data exists but it's not marked as not found, consider it valid
-	// This allows for empty repositories
-	return !mock.notFoundRepos[repoKey]
-}
-
 // parsePagination extracts limit and offset from query parameters
 func parsePagination(r *http.Request) (limit, offset int) {
 	// Set default values to match server implementation

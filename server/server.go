@@ -16,9 +16,9 @@ import (
 // Migration Note: Updated from mark3labs/mcp-go to github.com/modelcontextprotocol/go-sdk/mcp v0.4.0
 // for official protocol compliance and long-term stability.
 type Server struct {
-	mcpServer    *mcp.Server
-	config       *config.Config
-	giteaService *gitea.Service
+	mcpServer *mcp.Server
+	config    *config.Config
+	remote    gitea.GiteaClientInterface
 }
 
 // New creates a new MCP server instance with default configuration.
@@ -47,12 +47,12 @@ func NewFromConfig(cfg *config.Config) (*Server, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to create Gitea client: %w", err)
 	}
-	return NewFromService(gitea.NewService(giteaClient), cfg)
+	return NewFromService(giteaClient, cfg)
 }
 
 // NewFromService creates a new MCP server instance with the provided service.
 // This allows for dependency injection, particularly useful for testing with mock services.
-func NewFromService(service *gitea.Service, cfg *config.Config) (*Server, error) {
+func NewFromService(service gitea.GiteaClientInterface, cfg *config.Config) (*Server, error) {
 	if service == nil {
 		return nil, fmt.Errorf("service cannot be nil")
 	}
@@ -61,8 +61,8 @@ func NewFromService(service *gitea.Service, cfg *config.Config) (*Server, error)
 	}
 
 	s := &Server{
-		config:       cfg,
-		giteaService: service,
+		config: cfg,
+		remote: service,
 	}
 	mcpServer := mcp.NewServer(&mcp.Implementation{
 		Name:    "forgejo-mcp",
