@@ -4,13 +4,18 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"maps"
 	"net/http"
 	"net/http/httptest"
 	"strconv"
+	"strings"
 	"sync"
 	"testing"
+	"time"
 
+	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/kunde21/forgejo-mcp/config"
 	"github.com/kunde21/forgejo-mcp/server"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
@@ -37,8 +42,10 @@ type MockGiteaServer struct {
 	notFoundRepos map[string]bool
 	// Comment IDs that should return 403
 	forbiddenCommentIDs map[int]bool
-	nextID              int
-	mu                  sync.Mutex
+	// Comment IDs that should return 500 error
+	serverErrorCommentIDs map[int]bool
+	nextID                int
+	mu                    sync.Mutex
 }
 
 // MockIssue represents a mock issue for testing
@@ -71,15 +78,84 @@ type MockPullRequest struct {
 	State  string `json:"state"`
 }
 
+// GetTextContent extracts text content from MCP content slice
+//
+// Parameters:
+//   - content: []mcp.Content the content slice to extract from
+//
+// Returns:
+//   - string: the extracted text content, or empty string if not found
+//
+// Example usage:
+//
+//	text := GetTextContent(result.Content)
+//	if strings.Contains(text, "success") {
+//	    t.Log("Operation succeeded")
+//	}
+func GetTextContent(content []mcp.Content) string {
+	for _, c := range content {
+		if textContent, ok := c.(*mcp.TextContent); ok {
+			return textContent.Text
+		}
+	}
+	return ""
+}
+
+// GetStructuredContent extracts structured content from MCP result
+//
+// Parameters:
+//   - result: *mcp.CallToolResult the result to extract structured content from
+//
+// Returns:
+//   - map[string]any: the structured content, or nil if not found
+//
+// Example usage:
+//
+//	structured := GetStructuredContent(result)
+//	if comment, ok := structured["comment"].(map[string]any); ok {
+//	    t.Logf("Comment ID: %v", comment["id"])
+//	}
+func GetStructuredContent(result *mcp.CallToolResult) map[string]any {
+	if result == nil || result.StructuredContent == nil {
+		return nil
+	}
+	if structured, ok := result.StructuredContent.(map[string]any); ok {
+		return structured
+	}
+	return nil
+}
+
+// CreateTestContext creates a standardized test context with timeout
+//
+// Parameters:
+//   - t: *testing.T for test context
+//   - timeout: time.Duration for the context timeout (defaults to 5 seconds if 0)
+//
+// Returns:
+//   - context.Context: the created context
+//   - context.CancelFunc: the cancel function for cleanup
+//
+// Example usage:
+//
+//	ctx, cancel := CreateTestContext(t, 10*time.Second)
+//	defer cancel()
+func CreateTestContext(t *testing.T, timeout time.Duration) (context.Context, context.CancelFunc) {
+	if timeout == 0 {
+		timeout = 5 * time.Second
+	}
+	return context.WithTimeout(t.Context(), timeout)
+}
+
 // NewMockGiteaServer creates a new mock Gitea server
 func NewMockGiteaServer(t *testing.T) *MockGiteaServer {
 	mock := &MockGiteaServer{
-		issues:              make(map[string][]MockIssue),
-		comments:            make(map[string][]MockComment),
-		pullRequests:        make(map[string][]MockPullRequest),
-		notFoundRepos:       make(map[string]bool),
-		forbiddenCommentIDs: make(map[int]bool),
-		nextID:              1,
+		issues:                make(map[string][]MockIssue),
+		comments:              make(map[string][]MockComment),
+		pullRequests:          make(map[string][]MockPullRequest),
+		notFoundRepos:         make(map[string]bool),
+		forbiddenCommentIDs:   make(map[int]bool),
+		serverErrorCommentIDs: make(map[int]bool),
+		nextID:                1,
 	}
 
 	// Create HTTP handler for mock API with modern routing
@@ -105,31 +181,54 @@ func (m *MockGiteaServer) URL() string {
 
 // AddIssues adds mock issues for a repository
 func (m *MockGiteaServer) AddIssues(owner, repo string, issues []MockIssue) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
 	key := owner + "/" + repo
 	m.issues[key] = issues
 }
 
 // AddComments adds mock comments for a repository
 func (m *MockGiteaServer) AddComments(owner, repo string, comments []MockComment) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
 	key := owner + "/" + repo + "/comments"
 	m.comments[key] = comments
 }
 
 // AddPullRequests adds mock pull requests for a repository
 func (m *MockGiteaServer) AddPullRequests(owner, repo string, pullRequests []MockPullRequest) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
 	key := owner + "/" + repo
 	m.pullRequests[key] = pullRequests
 }
 
 // SetNotFoundRepo marks a repository as not found (will return 404)
 func (m *MockGiteaServer) SetNotFoundRepo(owner, repo string) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
 	key := owner + "/" + repo
 	m.notFoundRepos[key] = true
 }
 
 // SetForbiddenCommentEdit marks a comment ID as forbidden (will return 403)
 func (m *MockGiteaServer) SetForbiddenCommentEdit(commentID int) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
 	m.forbiddenCommentIDs[commentID] = true
+}
+
+// SetServerErrorCommentEdit marks a comment ID as server error (will return 500)
+func (m *MockGiteaServer) SetServerErrorCommentEdit(commentID int) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	m.serverErrorCommentIDs[commentID] = true
 }
 
 // handleVersion handles the version endpoint
@@ -154,7 +253,11 @@ func (m *MockGiteaServer) handlePullRequests(w http.ResponseWriter, r *http.Requ
 	}
 
 	// Check if repository is marked as not found
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
 	if m.notFoundRepos[repoKey] {
+		m.mu.Unlock()
 		http.NotFound(w, r)
 		return
 	}
@@ -233,13 +336,59 @@ func (m *MockGiteaServer) handleIssues(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
 	issues, exists := m.issues[repoKey]
 	if !exists {
 		http.NotFound(w, r)
 		return
 	}
 
-	writeJSONResponse(w, issues, http.StatusOK)
+	// Filter by state if provided in query parameters (default to open like Gitea client)
+	state := r.URL.Query().Get("state")
+	if state == "" {
+		state = "open" // Default to open issues only
+	}
+	var filteredIssues []MockIssue
+	for _, issue := range issues {
+		if state == "all" || issue.State == state {
+			filteredIssues = append(filteredIssues, issue)
+		}
+	}
+
+	// Handle pagination
+	limit, offset := parsePagination(r)
+
+	// Apply pagination
+	if offset >= len(filteredIssues) {
+		filteredIssues = []MockIssue{}
+	} else {
+		end := offset + limit
+		if end > len(filteredIssues) {
+			end = len(filteredIssues)
+		}
+		filteredIssues = filteredIssues[offset:end]
+	}
+
+	// Convert to Gitea SDK format
+	giteaIssues := make([]map[string]any, len(filteredIssues))
+	for i, issue := range filteredIssues {
+		giteaIssues[i] = map[string]any{
+			"id":     issue.Index,
+			"number": issue.Index,
+			"title":  issue.Title,
+			"body":   "",
+			"state":  issue.State,
+			"user": map[string]any{
+				"login": "testuser",
+			},
+			"created_at": "2025-09-14T10:30:00Z",
+			"updated_at": "2025-09-14T10:30:00Z",
+		}
+	}
+
+	writeJSONResponse(w, giteaIssues, http.StatusOK)
 }
 
 // handleCreateComment handles comment creation endpoint
@@ -272,6 +421,9 @@ func (m *MockGiteaServer) handleCreateComment(w http.ResponseWriter, r *http.Req
 		return
 	}
 
+	// Store comment with proper synchronization
+	m.mu.Lock()
+
 	// Create mock comment response that matches Gitea SDK format
 	comment := map[string]any{
 		"id":         m.nextID,
@@ -293,8 +445,6 @@ func (m *MockGiteaServer) handleCreateComment(w http.ResponseWriter, r *http.Req
 		Updated: "2024-01-01T00:00:00Z",
 	}
 
-	// Store comment
-	m.mu.Lock()
 	key := repoKey + "/comments"
 	m.comments[key] = append(m.comments[key], mockComment)
 	m.mu.Unlock()
@@ -318,6 +468,9 @@ func (m *MockGiteaServer) handleListComments(w http.ResponseWriter, r *http.Requ
 	}
 
 	// Check if repository is marked as not found
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
 	if m.notFoundRepos[repoKey] {
 		http.NotFound(w, r)
 		return
@@ -330,13 +483,11 @@ func (m *MockGiteaServer) handleListComments(w http.ResponseWriter, r *http.Requ
 	}
 
 	// Get stored comments for this repository
-	m.mu.Lock()
 	key := repoKey + "/comments"
 	storedComments, exists := m.comments[key]
 	if !exists {
 		storedComments = []MockComment{}
 	}
-	m.mu.Unlock()
 	limit, offset := parsePagination(r)
 	// Apply pagination
 	if offset >= len(storedComments) {
@@ -423,13 +574,21 @@ func (m *MockGiteaServer) handleEditComment(w http.ResponseWriter, r *http.Reque
 	}
 
 	// Check if comment is forbidden (simulate permission error)
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
 	if m.forbiddenCommentIDs[commentID] {
 		http.Error(w, "Forbidden", http.StatusForbidden)
 		return
 	}
 
+	// Check if comment should return server error
+	if m.serverErrorCommentIDs[commentID] {
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+
 	// Update stored comment
-	m.mu.Lock()
 	key := repoKey + "/comments"
 	commentFound := false
 	if storedComments, exists := m.comments[key]; exists {
@@ -441,7 +600,6 @@ func (m *MockGiteaServer) handleEditComment(w http.ResponseWriter, r *http.Reque
 			}
 		}
 	}
-	m.mu.Unlock()
 
 	// If comment not found, return 404
 	if !commentFound {
@@ -463,12 +621,35 @@ func (m *MockGiteaServer) handleEditComment(w http.ResponseWriter, r *http.Reque
 	writeJSONResponse(w, comment, http.StatusOK)
 }
 
-// NewTestServer creates a new TestServer instance
+// NewTestServer creates a new TestServer instance with standardized setup
+//
+// Parameters:
+//   - t: testing.T for test context and cleanup
+//   - ctx: context.Context for the test execution (uses t.Context() if nil)
+//   - env: map[string]string for environment variables (FORGEJO_REMOTE_URL, FORGEJO_AUTH_TOKEN)
+//
+// Returns:
+//   - *TestServer: configured test server instance ready for use
+//
+// Example usage:
+//
+//	mock := NewMockGiteaServer(t)
+//	ts := NewTestServer(t, ctx, map[string]string{
+//	    "FORGEJO_REMOTE_URL": mock.URL(),
+//	    "FORGEJO_AUTH_TOKEN": "mock-token",
+//	})
+//	if err := ts.Initialize(); err != nil {
+//	    t.Fatal(err)
+//	}
+//	client := ts.Client()
 func NewTestServer(t *testing.T, ctx context.Context, env map[string]string) *TestServer {
 	if ctx == nil {
 		ctx = t.Context()
 	}
-	ctx, cancel := context.WithCancel(ctx)
+
+	// Create a context with timeout for safety
+	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
+
 	defaults := map[string]string{
 		"FORGEJO_REMOTE_URL": "http://change-me.now.localhost",
 		"FORGEJO_AUTH_TOKEN": "test-token",
@@ -481,8 +662,9 @@ func NewTestServer(t *testing.T, ctx context.Context, env map[string]string) *Te
 		AuthToken: defaults["FORGEJO_AUTH_TOKEN"],
 	})
 	if err != nil {
-		t.Fatal(err)
+		t.Fatalf("Failed to create server from config: %v", err)
 	}
+
 	// Create client with in-memory transport
 	client := mcp.NewClient(&mcp.Implementation{
 		Name:    "test-client",
@@ -504,7 +686,7 @@ func NewTestServer(t *testing.T, ctx context.Context, env map[string]string) *Te
 	// Connect client
 	session, err := client.Connect(ctx, clientTransport, &mcp.ClientSessionOptions{})
 	if err != nil {
-		t.Fatal("failed to connect client: ", err)
+		t.Fatalf("Failed to connect client: %v", err)
 	}
 
 	ts := &TestServer{
@@ -520,12 +702,13 @@ func NewTestServer(t *testing.T, ctx context.Context, env map[string]string) *Te
 	t.Cleanup(func() {
 		cancel()
 		if err := session.Close(); err != nil {
-			t.Log(err)
+			t.Logf("Error closing session: %v", err)
 		}
 	})
 	return ts
 }
 
+// Client returns the MCP client session for tool calls
 func (ts *TestServer) Client() *mcp.ClientSession { return ts.session }
 
 // IsRunning checks if the server process is running
@@ -544,4 +727,128 @@ func (ts *TestServer) Start() error {
 func (ts *TestServer) Initialize() error {
 	// In the new SDK, initialization happens automatically during connection
 	return nil
+}
+
+// CallToolWithValidation calls a tool with standardized error handling and validation
+//
+// Parameters:
+//   - ctx: context.Context for the tool call
+//   - toolName: string name of the tool to call
+//   - arguments: map[string]any arguments for the tool call
+//
+// Returns:
+//   - *mcp.CallToolResult: the result of the tool call
+//   - error: any error that occurred during the call
+//
+// Example usage:
+//
+//	result, err := ts.CallToolWithValidation(ctx, "issue_list", map[string]any{
+//	    "repository": "testuser/testrepo",
+//	    "limit":      10,
+//	})
+func (ts *TestServer) CallToolWithValidation(ctx context.Context, toolName string, arguments map[string]any) (*mcp.CallToolResult, error) {
+	if ctx == nil {
+		ctx = ts.ctx
+	}
+
+	result, err := ts.Client().CallTool(ctx, &mcp.CallToolParams{
+		Name:      toolName,
+		Arguments: arguments,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to call tool '%s': %w", toolName, err)
+	}
+
+	return result, nil
+}
+
+// ValidateToolResult compares an actual tool result with expected result using deep equality
+//
+// Parameters:
+//   - expected: *mcp.CallToolResult the expected result
+//   - actual: *mcp.CallToolResult the actual result
+//   - t: *testing.T for reporting errors
+//
+// Returns:
+//   - bool: true if results match, false otherwise
+//
+// Example usage:
+//
+//	if !ts.ValidateToolResult(tc.expect, result, t) {
+//	    t.Errorf("Tool result validation failed")
+//	}
+func (ts *TestServer) ValidateToolResult(expected, actual *mcp.CallToolResult, t *testing.T) bool {
+	t.Helper()
+
+	if !cmp.Equal(expected, actual, cmpopts.IgnoreUnexported(mcp.TextContent{})) {
+		t.Errorf("Tool result mismatch (-expected +actual):\n%s",
+			cmp.Diff(expected, actual, cmpopts.IgnoreUnexported(mcp.TextContent{})))
+		return false
+	}
+
+	return true
+}
+
+// ValidateErrorResult validates that a tool result contains an expected error
+//
+// Parameters:
+//   - result: *mcp.CallToolResult the result to validate
+//   - expectedErrorText: string the expected error text (partial match allowed)
+//   - t: *testing.T for reporting errors
+//
+// Returns:
+//   - bool: true if result contains expected error, false otherwise
+//
+// Example usage:
+//
+//	if !ts.ValidateErrorResult(result, "Invalid request", t) {
+//	    t.Errorf("Expected error result not found")
+//	}
+func (ts *TestServer) ValidateErrorResult(result *mcp.CallToolResult, expectedErrorText string, t *testing.T) bool {
+	t.Helper()
+
+	if !result.IsError {
+		t.Errorf("Expected error result, but got success")
+		return false
+	}
+
+	actualText := GetTextContent(result.Content)
+	if !strings.Contains(actualText, expectedErrorText) {
+		t.Errorf("Expected error text '%s' not found in result: '%s'", expectedErrorText, actualText)
+		return false
+	}
+
+	return true
+}
+
+// ValidateSuccessResult validates that a tool result is successful and contains expected text
+//
+// Parameters:
+//   - result: *mcp.CallToolResult the result to validate
+//   - expectedSuccessText: string the expected success text (partial match allowed)
+//   - t: *testing.T for reporting errors
+//
+// Returns:
+//   - bool: true if result is successful and contains expected text, false otherwise
+//
+// Example usage:
+//
+//	if !ts.ValidateSuccessResult(result, "Comment created successfully", t) {
+//	    t.Errorf("Expected success result not found")
+//	}
+func (ts *TestServer) ValidateSuccessResult(result *mcp.CallToolResult, expectedSuccessText string, t *testing.T) bool {
+	t.Helper()
+
+	if result.IsError {
+		t.Errorf("Expected success result, but got error: %s", GetTextContent(result.Content))
+		return false
+	}
+
+	actualText := GetTextContent(result.Content)
+	if !strings.Contains(actualText, expectedSuccessText) {
+		t.Errorf("Expected success text '%s' not found in result: '%s'", expectedSuccessText, actualText)
+		return false
+	}
+
+	return true
 }

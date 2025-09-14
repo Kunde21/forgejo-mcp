@@ -13,11 +13,23 @@ import (
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
+// prCommentCreateTestCase represents a test case for PR comment creation
 type prCommentCreateTestCase struct {
-	name      string
-	setupMock func(*MockGiteaServer)
-	arguments map[string]any
-	expect    *mcp.CallToolResult
+	name        string
+	setupMock   func(*MockGiteaServer)
+	arguments   map[string]any
+	expect      *mcp.CallToolResult
+	expectError string // Expected error text (empty for success)
+	isError     bool   // Whether to expect an error result
+}
+
+// prCommentCreatePerformanceTestCase represents a performance test case
+type prCommentCreatePerformanceTestCase struct {
+	name        string
+	setupMock   func(*MockGiteaServer)
+	arguments   map[string]any
+	expect      *mcp.CallToolResult
+	maxDuration time.Duration // Maximum expected duration
 }
 
 func TestCreatePullRequestComment(t *testing.T) {
@@ -296,7 +308,6 @@ func TestPullRequestCommentLifecycle(t *testing.T) {
 // This acceptance test focuses on end-to-end performance scenarios
 func TestPullRequestCommentCreationPerformance(t *testing.T) {
 	t.Parallel()
-	t.Skip()
 
 	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
 	t.Cleanup(cancel)
@@ -338,11 +349,13 @@ func TestPullRequestCommentCreationPerformance(t *testing.T) {
 			&mcp.TextContent{Text: "Pull request comment created successfully"},
 		},
 		StructuredContent: map[string]any{
-			"body":       largeComment,
-			"created_at": "2025-09-10T10:00:00Z",
-			"id":         float64(123),
-			"updated_at": "2025-09-10T10:00:00Z",
-			"user":       "testuser",
+			"comment": map[string]any{
+				"body":       largeComment,
+				"created_at": "2024-01-01T00:00:00Z",
+				"id":         float64(1),
+				"updated_at": "2024-01-01T00:00:00Z",
+				"user":       "testuser",
+			},
 		},
 		IsError: false,
 	}

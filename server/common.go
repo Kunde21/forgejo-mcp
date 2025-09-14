@@ -23,5 +23,7 @@ func TextErrorf(format string, args ...any) *mcp.CallToolResult {
 	return &mcp.CallToolResult{Content: []mcp.Content{&mcp.TextContent{Text: fmt.Sprintf(format, args...)}}, IsError: true}
 }
 
-var repoReg = regexp.MustCompile(`^[a-zA-Z0-9._-]+/[a-zA-Z0-9._-]+$`)
-var emptyReg = regexp.MustCompilePOSIX(`[^[:space:]]+`)
+var (
+	repoReg  = regexp.MustCompile(`^[a-zA-Z0-9._-]+/[a-zA-Z0-9._-]+$`)
+	emptyReg = regexp.MustCompilePOSIX(`[^[:space:]]+`)
+)

@@ -1,10 +1,19 @@
 package servertest
 
 import (
+	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
+	"sync"
+	"testing"
+	"time"
+
+	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
+	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
 // getRepoKeyFromRequest extracts the repository key from path values using modern Go 1.22+ routing
@@ -108,5 +117,178 @@ func writeJSONResponse(w http.ResponseWriter, data any, statusCode int) {
 
 	if data != nil {
 		json.NewEncoder(w).Encode(data)
+	}
+}
+
+// ValidateToolCall executes a tool call with standardized validation and error handling
+//
+// Parameters:
+//   - t: *testing.T for test context and error reporting
+//   - client: *mcp.ClientSession the MCP client session
+//   - ctx: context.Context for the tool call
+//   - toolName: string name of the tool to call
+//   - arguments: map[string]any arguments for the tool call
+//   - expectedError: string expected error text (empty for success case)
+//
+// Returns:
+//   - *mcp.CallToolResult: the result of the tool call (nil on error)
+//
+// Example usage:
+//
+//	result := ValidateToolCall(t, client, ctx, "issue_list", map[string]any{
+//	    "repository": "testuser/testrepo",
+//	}, "")
+//	if result != nil {
+//	    t.Log("Tool call succeeded")
+//	}
+func ValidateToolCall(t *testing.T, client *mcp.ClientSession, ctx context.Context, toolName string, arguments map[string]any, expectedError string) *mcp.CallToolResult {
+	t.Helper()
+
+	result, err := client.CallTool(ctx, &mcp.CallToolParams{
+		Name:      toolName,
+		Arguments: arguments,
+	})
+	if err != nil {
+		if expectedError != "" {
+			if strings.Contains(err.Error(), expectedError) {
+				return nil
+			}
+			t.Errorf("Expected error containing '%s', got: %v", expectedError, err)
+		} else {
+			t.Errorf("Tool call failed unexpectedly: %v", err)
+		}
+		return nil
+	}
+
+	// Check if we expected an error but got success
+	if expectedError != "" {
+		t.Errorf("Expected error containing '%s', but got success result", expectedError)
+		return nil
+	}
+
+	return result
+}
+
+// AssertToolResultEqual compares two tool results for equality with detailed error reporting
+//
+// Parameters:
+//   - t: *testing.T for test context and error reporting
+//   - expected: *mcp.CallToolResult the expected result
+//   - actual: *mcp.CallToolResult the actual result
+//
+// Example usage:
+//
+//	AssertToolResultEqual(t, tc.expect, result)
+func AssertToolResultEqual(t *testing.T, expected, actual *mcp.CallToolResult) {
+	t.Helper()
+
+	if !cmp.Equal(expected, actual, cmpopts.IgnoreUnexported(mcp.TextContent{})) {
+		t.Errorf("Tool result mismatch (-expected +actual):\n%s",
+			cmp.Diff(expected, actual, cmpopts.IgnoreUnexported(mcp.TextContent{})))
+	}
+}
+
+// AssertToolResultContains validates that a tool result contains expected text
+//
+// Parameters:
+//   - t: *testing.T for test context and error reporting
+//   - result: *mcp.CallToolResult the result to validate
+//   - expectedText: string the expected text to contain
+//   - expectError: bool whether to expect an error result
+//
+// Example usage:
+//
+//	AssertToolResultContains(t, result, "Comment created successfully", false)
+func AssertToolResultContains(t *testing.T, result *mcp.CallToolResult, expectedText string, expectError bool) {
+	t.Helper()
+
+	if result == nil {
+		t.Fatal("Tool result is nil")
+	}
+
+	if result.IsError != expectError {
+		if expectError {
+			t.Errorf("Expected error result, but got success")
+		} else {
+			t.Errorf("Expected success result, but got error")
+		}
+		return
+	}
+
+	actualText := GetTextContent(result.Content)
+	if !strings.Contains(actualText, expectedText) {
+		t.Errorf("Expected text '%s' not found in result: '%s'", expectedText, actualText)
+	}
+}
+
+// CreateStandardTestContext creates a standardized test context with proper timeout and cleanup
+//
+// Parameters:
+//   - t: *testing.T for test context
+//   - timeoutSeconds: int timeout in seconds (defaults to 5 if 0)
+//
+// Returns:
+//   - context.Context: the created context
+//   - context.CancelFunc: the cancel function for cleanup
+//
+// Example usage:
+//
+//	ctx, cancel := CreateStandardTestContext(t, 10)
+//	defer cancel()
+func CreateStandardTestContext(t *testing.T, timeoutSeconds int) (context.Context, context.CancelFunc) {
+	t.Helper()
+
+	if timeoutSeconds <= 0 {
+		timeoutSeconds = 5
+	}
+
+	ctx, cancel := context.WithTimeout(t.Context(), time.Duration(timeoutSeconds)*time.Second)
+	t.Cleanup(cancel)
+
+	return ctx, cancel
+}
+
+// RunConcurrentTest executes a function concurrently with proper synchronization and error handling
+//
+// Parameters:
+//   - t: *testing.T for test context and error reporting
+//   - numGoroutines: int number of goroutines to run
+//   - testFunc: func(int) error function to execute in each goroutine
+//
+// Example usage:
+//
+//	RunConcurrentTest(t, 3, func(id int) error {
+//	    _, err := ts.Client().CallTool(ctx, &mcp.CallToolParams{
+//	        Name: "tool_name",
+//	        Arguments: map[string]any{
+//	            "id": id,
+//	        },
+//	    })
+//	    return err
+//	})
+func RunConcurrentTest(t *testing.T, numGoroutines int, testFunc func(int) error) {
+	t.Helper()
+
+	var wg sync.WaitGroup
+	errChan := make(chan error, numGoroutines)
+
+	for i := 0; i < numGoroutines; i++ {
+		wg.Add(1)
+		go func(id int) {
+			defer wg.Done()
+
+			if err := testFunc(id); err != nil {
+				errChan <- fmt.Errorf("goroutine %d failed: %w", id, err)
+			}
+		}(i + 1)
+	}
+
+	// Wait for all goroutines to complete
+	wg.Wait()
+	close(errChan)
+
+	// Check for errors
+	for err := range errChan {
+		t.Error(err)
 	}
 }

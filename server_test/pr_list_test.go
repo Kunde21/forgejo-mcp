@@ -4,16 +4,37 @@ import (
 	"context"
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
+// TestCategory defines the type of test for organization
+type TestCategory string
+
+const (
+	Unit        TestCategory = "Unit"
+	Integration TestCategory = "Integration"
+	Acceptance  TestCategory = "Acceptance"
+	Validation  TestCategory = "validation"
+	Success     TestCategory = "success"
+	Pagination  TestCategory = "pagination"
+	Performance TestCategory = "performance"
+	Error       TestCategory = "error"
+)
+
+// prListTestCase represents a comprehensive test case for pull request listing
 type prListTestCase struct {
-	name      string
-	setupMock func(*MockGiteaServer)
-	arguments map[string]any
-	expect    *mcp.CallToolResult
+	name           string
+	category       TestCategory
+	setupMock      func(*MockGiteaServer)
+	arguments      map[string]any
+	expect         *mcp.CallToolResult
+	expectError    bool
+	errorSubstring string
+	timeout        time.Duration
+	validateFunc   func(*testing.T, *mcp.CallToolResult)
 }
 
 func TestPullRequestsList(t *testing.T) {
