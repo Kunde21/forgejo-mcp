@@ -52,18 +52,18 @@ func TestListPullRequestComments(t *testing.T) {
 				StructuredContent: map[string]any{
 					"pull_request_comments": []any{
 						map[string]any{
-							"id":         float64(1),
-							"body":       "This is a great PR!",
-							"user":       "reviewer1",
-							"created_at": "2024-01-01T00:00:00Z",
-							"updated_at": "2024-01-01T00:00:00Z",
+							"id":      float64(1),
+							"body":    "This is a great PR!",
+							"user":    "reviewer1",
+							"created": "2024-01-01T00:00:00Z",
+							"updated": "2024-01-01T00:00:00Z",
 						},
 						map[string]any{
-							"id":         float64(2),
-							"body":       "I agree, well done!",
-							"user":       "reviewer2",
-							"created_at": "2024-01-02T00:00:00Z",
-							"updated_at": "2024-01-02T00:00:00Z",
+							"id":      float64(2),
+							"body":    "I agree, well done!",
+							"user":    "reviewer2",
+							"created": "2024-01-02T00:00:00Z",
+							"updated": "2024-01-02T00:00:00Z",
 						},
 					},
 				},
@@ -99,11 +99,11 @@ func TestListPullRequestComments(t *testing.T) {
 						var comments []any
 						for i := 1; i <= 10; i++ {
 							comments = append(comments, map[string]any{
-								"id":         float64(i),
-								"body":       "Comment " + string(rune(i+'0')),
-								"user":       "user" + string(rune(i+'0')),
-								"created_at": "2024-01-01T00:00:00Z",
-								"updated_at": "2024-01-01T00:00:00Z",
+								"id":      float64(i),
+								"body":    "Comment " + string(rune(i+'0')),
+								"user":    "user" + string(rune(i+'0')),
+								"created": "2024-01-01T00:00:00Z",
+								"updated": "2024-01-01T00:00:00Z",
 							})
 						}
 						return comments
@@ -208,11 +208,11 @@ func TestListPullRequestComments(t *testing.T) {
 				StructuredContent: map[string]any{
 					"pull_request_comments": []any{
 						map[string]any{
-							"id":         float64(1),
-							"body":       "Default test comment",
-							"user":       "testuser",
-							"created_at": "2024-01-01T00:00:00Z",
-							"updated_at": "2024-01-01T00:00:00Z",
+							"id":      float64(1),
+							"body":    "Default test comment",
+							"user":    "testuser",
+							"created": "2024-01-01T00:00:00Z",
+							"updated": "2024-01-01T00:00:00Z",
 						},
 					},
 				},

@@ -21,8 +21,8 @@ type Comment struct {
 	ID      int    `json:"id"`
 	Content string `json:"body"`
 	Author  string `json:"user"`
-	Created string `json:"created_at"`
-	Updated string `json:"updated_at"`
+	Created string `json:"created"`
+	Updated string `json:"updated"`
 }
 
 // IssueCommenter defines the interface for creating comments on Git repository issues
@@ -78,8 +78,8 @@ type PullRequest struct {
 	Body      string            `json:"body"`
 	State     string            `json:"state"`
 	User      string            `json:"user"`
-	CreatedAt string            `json:"created_at"`
-	UpdatedAt string            `json:"updated_at"`
+	CreatedAt string            `json:"created"`
+	UpdatedAt string            `json:"updated"`
 	Head      PullRequestBranch `json:"head"`
 	Base      PullRequestBranch `json:"base"`
 }
