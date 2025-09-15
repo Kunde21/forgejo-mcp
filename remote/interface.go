@@ -1,4 +1,4 @@
-package gitea
+package remote
 
 import (
 	"context"
@@ -142,8 +142,8 @@ type PullRequestCommentEditor interface {
 	EditPullRequestComment(ctx context.Context, args EditPullRequestCommentArgs) (*Comment, error)
 }
 
-// GiteaClientInterface combines IssueLister, IssueCommenter, IssueCommentLister, IssueCommentEditor, PullRequestLister, PullRequestCommentLister, PullRequestCommenter, and PullRequestCommentEditor for complete Gitea operations
-type GiteaClientInterface interface {
+// ClientInterface combines IssueLister, IssueCommenter, IssueCommentLister, IssueCommentEditor, PullRequestLister, PullRequestCommentLister, PullRequestCommenter, and PullRequestCommentEditor for complete Git operations
+type ClientInterface interface {
 	IssueLister
 	IssueCommenter
 	IssueCommentLister

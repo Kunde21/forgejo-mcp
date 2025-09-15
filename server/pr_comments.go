@@ -5,14 +5,14 @@ import (
 	"fmt"
 
 	v "github.com/go-ozzo/ozzo-validation/v4"
-	"github.com/kunde21/forgejo-mcp/remote/gitea"
+	"github.com/kunde21/forgejo-mcp/remote"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
 // PullRequestCommentList represents a collection of pull request comments.
 // This struct is used as the result data for the pr_comment_list tool.
 type PullRequestCommentList struct {
-	PullRequestComments []gitea.Comment `json:"pull_request_comments,omitempty"`
+	PullRequestComments []remote.Comment `json:"pull_request_comments,omitempty"`
 }
 
 // PullRequestCommentListArgs represents the arguments for listing pull request comments with validation tags
@@ -84,7 +84,7 @@ type PullRequestCommentCreateArgs struct {
 
 // PullRequestCommentCreateResult represents the result data for the pr_comment_create tool
 type PullRequestCommentCreateResult struct {
-	Comment *gitea.Comment `json:"comment,omitempty"`
+	Comment *remote.Comment `json:"comment,omitempty"`
 }
 
 // handlePullRequestCommentCreate handles the "pr_comment_create" tool request.
@@ -139,7 +139,7 @@ type PullRequestCommentEditArgs struct {
 
 // PullRequestCommentEditResult represents the result data for the pr_comment_edit tool
 type PullRequestCommentEditResult struct {
-	Comment *gitea.Comment `json:"comment,omitempty"`
+	Comment *remote.Comment `json:"comment,omitempty"`
 }
 
 // handlePullRequestCommentEdit handles the "pr_comment_edit" tool request.
@@ -182,7 +182,7 @@ func (s *Server) handlePullRequestCommentEdit(ctx context.Context, request *mcp.
 	}
 
 	// Edit the comment using the service layer
-	editArgs := gitea.EditPullRequestCommentArgs{
+	editArgs := remote.EditPullRequestCommentArgs{
 		Repository:        args.Repository,
 		PullRequestNumber: args.PullRequestNumber,
 		CommentID:         args.CommentID,

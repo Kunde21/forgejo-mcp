@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"code.gitea.io/sdk/gitea"
+	"github.com/kunde21/forgejo-mcp/remote"
 )
 
 // GiteaClient implements IssueLister using the Gitea SDK
@@ -26,7 +27,7 @@ func NewGiteaClient(url, token string) (*GiteaClient, error) {
 }
 
 // ListIssues retrieves issues from the specified repository
-func (c *GiteaClient) ListIssues(ctx context.Context, repo string, limit, offset int) ([]Issue, error) {
+func (c *GiteaClient) ListIssues(ctx context.Context, repo string, limit, offset int) ([]remote.Issue, error) {
 	// Parse repository string (format: "owner/repo")
 	owner, repoName, ok := strings.Cut(repo, "/")
 	if !ok {
@@ -48,9 +49,9 @@ func (c *GiteaClient) ListIssues(ctx context.Context, repo string, limit, offset
 	}
 
 	// Convert to our Issue struct
-	issues := make([]Issue, len(giteaIssues))
+	issues := make([]remote.Issue, len(giteaIssues))
 	for i, gi := range giteaIssues {
-		issues[i] = Issue{
+		issues[i] = remote.Issue{
 			Number: int(gi.Index),
 			Title:  gi.Title,
 			State:  string(gi.State),
@@ -61,7 +62,7 @@ func (c *GiteaClient) ListIssues(ctx context.Context, repo string, limit, offset
 }
 
 // CreateIssueComment creates a comment on the specified issue
-func (c *GiteaClient) CreateIssueComment(ctx context.Context, repo string, issueNumber int, comment string) (*Comment, error) {
+func (c *GiteaClient) CreateIssueComment(ctx context.Context, repo string, issueNumber int, comment string) (*remote.Comment, error) {
 	// Parse repository string (format: "owner/repo")
 	owner, repoName, ok := strings.Cut(repo, "/")
 	if !ok {
@@ -79,7 +80,7 @@ func (c *GiteaClient) CreateIssueComment(ctx context.Context, repo string, issue
 	}
 
 	// Convert to our Comment struct
-	issueComment := &Comment{
+	issueComment := &remote.Comment{
 		ID:      int(giteaComment.ID),
 		Content: giteaComment.Body,
 		Author:  giteaComment.Poster.UserName,
@@ -91,7 +92,7 @@ func (c *GiteaClient) CreateIssueComment(ctx context.Context, repo string, issue
 }
 
 // ListIssueComments retrieves comments from the specified issue
-func (c *GiteaClient) ListIssueComments(ctx context.Context, repo string, issueNumber int, limit, offset int) (*IssueCommentList, error) {
+func (c *GiteaClient) ListIssueComments(ctx context.Context, repo string, issueNumber int, limit, offset int) (*remote.IssueCommentList, error) {
 	// Parse repository string (format: "owner/repo")
 	owner, repoName, ok := strings.Cut(repo, "/")
 	if !ok {
@@ -112,9 +113,9 @@ func (c *GiteaClient) ListIssueComments(ctx context.Context, repo string, issueN
 	}
 
 	// Convert to our Comment struct
-	comments := make([]Comment, len(giteaComments))
+	comments := make([]remote.Comment, len(giteaComments))
 	for i, gc := range giteaComments {
-		comments[i] = Comment{
+		comments[i] = remote.Comment{
 			ID:      int(gc.ID),
 			Content: gc.Body,
 			Author:  gc.Poster.UserName,
@@ -126,7 +127,7 @@ func (c *GiteaClient) ListIssueComments(ctx context.Context, repo string, issueN
 	// Create IssueCommentList with pagination metadata
 	// Note: Gitea SDK doesn't provide total count in ListIssueComments response
 	// We return the actual number of comments returned as total
-	commentList := &IssueCommentList{
+	commentList := &remote.IssueCommentList{
 		Comments: comments,
 		Total:    len(comments),
 		Limit:    limit,
@@ -137,7 +138,7 @@ func (c *GiteaClient) ListIssueComments(ctx context.Context, repo string, issueN
 }
 
 // EditIssueComment edits an existing comment on the specified issue
-func (c *GiteaClient) EditIssueComment(ctx context.Context, args EditIssueCommentArgs) (*Comment, error) {
+func (c *GiteaClient) EditIssueComment(ctx context.Context, args remote.EditIssueCommentArgs) (*remote.Comment, error) {
 	// Parse repository string (format: "owner/repo")
 	owner, repoName, ok := strings.Cut(args.Repository, "/")
 	if !ok {
@@ -155,7 +156,7 @@ func (c *GiteaClient) EditIssueComment(ctx context.Context, args EditIssueCommen
 	}
 
 	// Convert to our Comment struct
-	issueComment := &Comment{
+	issueComment := &remote.Comment{
 		ID:      int(giteaComment.ID),
 		Content: giteaComment.Body,
 		Author:  giteaComment.Poster.UserName,
@@ -167,7 +168,7 @@ func (c *GiteaClient) EditIssueComment(ctx context.Context, args EditIssueCommen
 }
 
 // ListPullRequests retrieves pull requests from the specified repository
-func (c *GiteaClient) ListPullRequests(ctx context.Context, repo string, options ListPullRequestsOptions) ([]PullRequest, error) {
+func (c *GiteaClient) ListPullRequests(ctx context.Context, repo string, options remote.ListPullRequestsOptions) ([]remote.PullRequest, error) {
 	// Parse repository string (format: "owner/repo")
 	owner, repoName, ok := strings.Cut(repo, "/")
 	if !ok {
@@ -202,9 +203,9 @@ func (c *GiteaClient) ListPullRequests(ctx context.Context, repo string, options
 	}
 
 	// Convert to our PullRequest struct
-	prs := make([]PullRequest, len(giteaPRs))
+	prs := make([]remote.PullRequest, len(giteaPRs))
 	for i, gpr := range giteaPRs {
-		prs[i] = PullRequest{
+		prs[i] = remote.PullRequest{
 			ID:        int(gpr.ID),
 			Number:    int(gpr.Index),
 			Title:     gpr.Title,
@@ -213,11 +214,11 @@ func (c *GiteaClient) ListPullRequests(ctx context.Context, repo string, options
 			User:      gpr.Poster.UserName,
 			CreatedAt: gpr.Created.Format("2006-01-02T15:04:05Z"),
 			UpdatedAt: gpr.Updated.Format("2006-01-02T15:04:05Z"),
-			Head: PullRequestBranch{
+			Head: remote.PullRequestBranch{
 				Ref: gpr.Head.Ref,
 				Sha: gpr.Head.Sha,
 			},
-			Base: PullRequestBranch{
+			Base: remote.PullRequestBranch{
 				Ref: gpr.Base.Ref,
 				Sha: gpr.Base.Sha,
 			},
@@ -228,7 +229,7 @@ func (c *GiteaClient) ListPullRequests(ctx context.Context, repo string, options
 }
 
 // ListPullRequestComments retrieves comments from the specified pull request
-func (c *GiteaClient) ListPullRequestComments(ctx context.Context, repo string, pullRequestNumber int, limit, offset int) (*PullRequestCommentList, error) {
+func (c *GiteaClient) ListPullRequestComments(ctx context.Context, repo string, pullRequestNumber int, limit, offset int) (*remote.PullRequestCommentList, error) {
 	// Parse repository string (format: "owner/repo")
 	owner, repoName, ok := strings.Cut(repo, "/")
 	if !ok {
@@ -249,9 +250,9 @@ func (c *GiteaClient) ListPullRequestComments(ctx context.Context, repo string, 
 	}
 
 	// Convert to our Comment struct
-	comments := make([]Comment, len(giteaComments))
+	comments := make([]remote.Comment, len(giteaComments))
 	for i, gc := range giteaComments {
-		comments[i] = Comment{
+		comments[i] = remote.Comment{
 			ID:      int(gc.ID),
 			Content: gc.Body,
 			Author:  gc.Poster.UserName,
@@ -263,7 +264,7 @@ func (c *GiteaClient) ListPullRequestComments(ctx context.Context, repo string, 
 	// Create PullRequestCommentList with pagination metadata
 	// Note: Gitea SDK doesn't provide total count in ListPullRequestComments response
 	// We return the actual number of comments returned as total
-	commentList := &PullRequestCommentList{
+	commentList := &remote.PullRequestCommentList{
 		Comments: comments,
 		Total:    len(comments),
 		Limit:    limit,
@@ -274,7 +275,7 @@ func (c *GiteaClient) ListPullRequestComments(ctx context.Context, repo string, 
 }
 
 // CreatePullRequestComment creates a comment on the specified pull request
-func (c *GiteaClient) CreatePullRequestComment(ctx context.Context, repo string, pullRequestNumber int, comment string) (*Comment, error) {
+func (c *GiteaClient) CreatePullRequestComment(ctx context.Context, repo string, pullRequestNumber int, comment string) (*remote.Comment, error) {
 	// Parse repository string (format: "owner/repo")
 	owner, repoName, ok := strings.Cut(repo, "/")
 	if !ok {
@@ -292,7 +293,7 @@ func (c *GiteaClient) CreatePullRequestComment(ctx context.Context, repo string,
 	}
 
 	// Convert to our Comment struct
-	prComment := &Comment{
+	prComment := &remote.Comment{
 		ID:      int(giteaComment.ID),
 		Content: giteaComment.Body,
 		Author:  giteaComment.Poster.UserName,
@@ -304,7 +305,7 @@ func (c *GiteaClient) CreatePullRequestComment(ctx context.Context, repo string,
 }
 
 // EditPullRequestComment edits an existing comment on the specified pull request
-func (c *GiteaClient) EditPullRequestComment(ctx context.Context, args EditPullRequestCommentArgs) (*Comment, error) {
+func (c *GiteaClient) EditPullRequestComment(ctx context.Context, args remote.EditPullRequestCommentArgs) (*remote.Comment, error) {
 	// Parse repository string (format: "owner/repo")
 	owner, repoName, ok := strings.Cut(args.Repository, "/")
 	if !ok {
@@ -322,7 +323,7 @@ func (c *GiteaClient) EditPullRequestComment(ctx context.Context, args EditPullR
 	}
 
 	// Convert to our Comment struct
-	prComment := &Comment{
+	prComment := &remote.Comment{
 		ID:      int(giteaComment.ID),
 		Content: giteaComment.Body,
 		Author:  giteaComment.Poster.UserName,

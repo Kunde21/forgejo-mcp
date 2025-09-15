@@ -4,14 +4,14 @@ import (
 	"context"
 
 	v "github.com/go-ozzo/ozzo-validation/v4"
-	"github.com/kunde21/forgejo-mcp/remote/gitea"
+	"github.com/kunde21/forgejo-mcp/remote"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
 // PullRequestList represents a collection of repository pull requests.
 // This struct is used as the result data for the pr_list tool.
 type PullRequestList struct {
-	PullRequests []gitea.PullRequest `json:"pull_requests,omitempty"`
+	PullRequests []remote.PullRequest `json:"pull_requests,omitempty"`
 }
 
 // PullRequestListArgs represents the arguments for listing pull requests with validation tags
@@ -53,7 +53,7 @@ func (s *Server) handlePullRequestList(ctx context.Context, request *mcp.CallToo
 	}
 
 	// Create pull request options
-	options := gitea.ListPullRequestsOptions{
+	options := remote.ListPullRequestsOptions{
 		State:  args.State,
 		Limit:  args.Limit,
 		Offset: args.Offset,

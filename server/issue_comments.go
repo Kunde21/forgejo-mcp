@@ -5,13 +5,13 @@ import (
 	"fmt"
 
 	v "github.com/go-ozzo/ozzo-validation/v4"
-	"github.com/kunde21/forgejo-mcp/remote/gitea"
+	"github.com/kunde21/forgejo-mcp/remote"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
 // CommentResult represents the result data for the create_issue_comment tool.
 type CommentResult struct {
-	Comment gitea.Comment `json:"comment,omitempty"`
+	Comment remote.Comment `json:"comment,omitempty"`
 }
 
 type IssueCommentArgs struct {
@@ -64,10 +64,10 @@ func (s *Server) handleIssueCommentCreate(ctx context.Context, request *mcp.Call
 
 // CommentListResult represents the result data for the list_issue_comments tool.
 type CommentListResult struct {
-	Comments []gitea.Comment `json:"comments,omitempty"`
-	Total    int             `json:"total,omitempty"`
-	Limit    int             `json:"limit,omitempty"`
-	Offset   int             `json:"offset,omitempty"`
+	Comments []remote.Comment `json:"comments,omitempty"`
+	Total    int              `json:"total,omitempty"`
+	Limit    int              `json:"limit,omitempty"`
+	Offset   int              `json:"offset,omitempty"`
 }
 
 type IssueCommentListArgs struct {
@@ -137,7 +137,7 @@ func (s *Server) handleIssueCommentList(ctx context.Context, request *mcp.CallTo
 
 // CommentEditResult represents the result data for the issue_comment_edit tool.
 type CommentEditResult struct {
-	Comment *gitea.Comment `json:"comment,omitempty"`
+	Comment *remote.Comment `json:"comment,omitempty"`
 }
 
 type IssueCommentEditArgs struct {
@@ -179,7 +179,7 @@ func (s *Server) handleIssueCommentEdit(ctx context.Context, request *mcp.CallTo
 	}
 
 	// Prepare arguments for service layer
-	serviceArgs := gitea.EditIssueCommentArgs{
+	serviceArgs := remote.EditIssueCommentArgs{
 		Repository:  args.Repository,
 		IssueNumber: args.IssueNumber,
 		CommentID:   args.CommentID,

@@ -4,14 +4,14 @@ import (
 	"context"
 
 	v "github.com/go-ozzo/ozzo-validation/v4"
-	"github.com/kunde21/forgejo-mcp/remote/gitea"
+	"github.com/kunde21/forgejo-mcp/remote"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
 // IssueList represents a collection of repository issues.
 // This struct is used as the result data for the list_issues tool.
 type IssueList struct {
-	Issues []gitea.Issue `json:"issues,omitempty"`
+	Issues []remote.Issue `json:"issues,omitempty"`
 }
 
 type IssueListArgs struct {

@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/kunde21/forgejo-mcp/config"
+	"github.com/kunde21/forgejo-mcp/remote"
 	"github.com/kunde21/forgejo-mcp/remote/gitea"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
@@ -18,7 +19,7 @@ import (
 type Server struct {
 	mcpServer *mcp.Server
 	config    *config.Config
-	remote    gitea.GiteaClientInterface
+	remote    remote.ClientInterface
 }
 
 // New creates a new MCP server instance with default configuration.
@@ -52,7 +53,7 @@ func NewFromConfig(cfg *config.Config) (*Server, error) {
 
 // NewFromService creates a new MCP server instance with the provided service.
 // This allows for dependency injection, particularly useful for testing with mock services.
-func NewFromService(service gitea.GiteaClientInterface, cfg *config.Config) (*Server, error) {
+func NewFromService(service remote.ClientInterface, cfg *config.Config) (*Server, error) {
 	if service == nil {
 		return nil, fmt.Errorf("service cannot be nil")
 	}
