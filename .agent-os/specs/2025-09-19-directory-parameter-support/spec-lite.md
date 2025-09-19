@@ -1,0 +1,3 @@
+# Spec Summary (Lite)
+
+Add a consistent directory parameter to all forgejo-mcp server tools that allows users to specify local directory paths containing git repositories, with automatic resolution to owner/repo format for Forgejo API calls. The implementation maintains backward compatibility with the existing repository parameter while providing a more intuitive interface that aligns with standard MCP tool conventions. Users can work directly with file system paths without manually extracting repository information, and existing workflows continue to work during the migration period.
