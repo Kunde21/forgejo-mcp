@@ -100,6 +100,101 @@ go run main.go
 
 The server will start and listen for MCP protocol messages on stdin/stdout.
 
+### Directory Parameter Support
+
+**New Feature**: All tools now support an optional `directory` parameter that automatically resolves to the repository information. This provides a more intuitive interface for working with local git repositories.
+
+When you provide a `directory` parameter pointing to a local git repository, the server will:
+1. Validate the directory exists and contains a `.git` folder
+2. Extract the remote repository URL from `.git/config`
+3. Parse the owner/repository information
+4. Use this information for API calls
+
+**Benefits:**
+- Work directly with file system paths
+- No need to manually specify repository names
+- Automatic repository detection from git configuration
+- Backward compatible with existing `repository` parameter
+
+**Usage Pattern:**
+```bash
+# Instead of manually specifying repository
+"repository": "myorg/myrepo"
+
+# You can now use directory path
+"directory": "/path/to/your/local/repo"
+```
+
+**Note**: The `directory` parameter takes precedence if both `repository` and `directory` are provided.
+
+### Migration Guide: From Repository to Directory Parameter
+
+#### Why Migrate?
+
+The `directory` parameter provides several advantages over manually specifying `repository`:
+
+1. **Automatic Resolution**: No need to remember or look up repository names
+2. **File System Integration**: Work directly with local project directories
+3. **Reduced Errors**: Eliminates typos in repository name specification
+4. **Git Integration**: Leverages existing git remote configuration
+
+#### Migration Steps
+
+1. **Identify Current Usage**: Find all places where you're using the `repository` parameter
+2. **Locate Local Repository**: Ensure you have a local clone of the repository
+3. **Replace Parameter**: Change `repository` to `directory` and provide the local path
+4. **Test**: Verify the tool still works as expected
+
+#### Before and After Examples
+
+**Before (Repository Parameter):**
+```json
+{
+  "method": "tools/call",
+  "params": {
+    "name": "issue_list",
+    "arguments": {
+      "repository": "myorg/myproject",
+      "limit": 10
+    }
+  }
+}
+```
+
+**After (Directory Parameter):**
+```json
+{
+  "method": "tools/call",
+  "params": {
+    "name": "issue_list",
+    "arguments": {
+      "directory": "/home/user/projects/myproject",
+      "limit": 10
+    }
+  }
+}
+```
+
+#### Backward Compatibility
+
+The `repository` parameter continues to work exactly as before. You can migrate gradually:
+
+- **Phase 1**: Continue using `repository` parameter
+- **Phase 2**: Start using `directory` parameter for new operations
+- **Phase 3**: Gradually migrate existing operations
+- **Phase 4**: Remove `repository` parameter usage (optional)
+
+#### Error Handling
+
+When using `directory` parameter, be aware of these validation rules:
+
+- Directory must exist
+- Directory must contain a `.git` folder
+- Git repository must have at least one remote configured
+- Remote URL must be parseable to extract owner/repo information
+
+If validation fails, you'll receive a clear error message indicating the specific issue.
+
 ### CLI Commands
 
 The application provides several CLI commands:
@@ -128,6 +223,7 @@ Example usage:
 
 #### List Issues
 
+**Using repository parameter:**
 ```json
 {
   "method": "tools/call",
@@ -135,6 +231,21 @@ Example usage:
     "name": "issue_list",
     "arguments": {
       "repository": "myorg/myrepo",
+      "limit": 10,
+      "offset": 0
+    }
+  }
+}
+```
+
+**Using directory parameter:**
+```json
+{
+  "method": "tools/call",
+  "params": {
+    "name": "issue_list",
+    "arguments": {
+      "directory": "/path/to/your/local/repo",
       "limit": 10,
       "offset": 0
     }
@@ -175,6 +286,7 @@ Response:
 
 #### Create Issue Comment
 
+**Using repository parameter:**
 ```json
 {
   "method": "tools/call",
@@ -182,6 +294,21 @@ Response:
     "name": "issue_comment_create",
     "arguments": {
       "repository": "myorg/myrepo",
+      "issue_number": 42,
+      "comment": "This is a helpful comment on the issue."
+    }
+  }
+}
+```
+
+**Using directory parameter:**
+```json
+{
+  "method": "tools/call",
+  "params": {
+    "name": "issue_comment_create",
+    "arguments": {
+      "directory": "/path/to/your/local/repo",
       "issue_number": 42,
       "comment": "This is a helpful comment on the issue."
     }
@@ -308,6 +435,7 @@ Response:
 
 #### List Pull Requests
 
+**Using repository parameter:**
 ```json
 {
   "method": "tools/call",
@@ -315,6 +443,22 @@ Response:
     "name": "pr_list",
     "arguments": {
       "repository": "myorg/myrepo",
+      "limit": 10,
+      "offset": 0,
+      "state": "open"
+    }
+  }
+}
+```
+
+**Using directory parameter:**
+```json
+{
+  "method": "tools/call",
+  "params": {
+    "name": "pr_list",
+    "arguments": {
+      "directory": "/path/to/your/local/repo",
       "limit": 10,
       "offset": 0,
       "state": "open"
@@ -548,7 +692,7 @@ Manage Pull Requests opened on your gitea repository
 
 Tools List:
 - `pr_list`: List pull requests from a repository with pagination and state filtering
-  - Parameters: repository (owner/repo), limit (1-100, default 15), offset (0-based, default 0), state (open/closed/all, default "open")
+  - Parameters: repository (owner/repo) OR directory (local path), limit (1-100, default 15), offset (0-based, default 0), state (open/closed/all, default "open")
   - Returns: Array of pull requests with ID, number, title, state, user, timestamps, and branch information
 - `pr_comment_create`: Create a comment on a repository pull request
   - Parameters: repository (owner/repo), pull_request_number (positive integer), comment (non-empty string)
@@ -567,7 +711,7 @@ Manage issues in your forgejo repository
 
  Tools List:
  - `issue_list`: List issues from a repository with pagination support
-   - Parameters: repository (owner/repo), limit (1-100), offset (0-based)
+   - Parameters: repository (owner/repo) OR directory (local path), limit (1-100), offset (0-based)
    - Returns: Array of issues with number, title, and status
  - `issue_comment_create`: Create a comment on a repository issue
    - Parameters: repository (owner/repo), issue_number (positive integer), comment (non-empty string)

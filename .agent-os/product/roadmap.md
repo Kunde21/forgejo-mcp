@@ -1,6 +1,6 @@
 # Product Roadmap
 
-> Last Updated: 2025-09-12
+> Last Updated: 2025-09-20
 > Version: 1.0.0
 > Status: Active Development
 
@@ -46,6 +46,10 @@
 - [x] PR comment functionality
 - [x] Issue comment functionality
 - [x] Issue comment editing functionality
+
+### Recent Enhancements
+
+- [x] Directory parameter support across all tools (2025-09-19) - Added `directory` parameter to all repository interaction tools for improved user experience and MCP convention alignment
 
 ## Phase 5: Advanced Operations (Q2 2026)
 
