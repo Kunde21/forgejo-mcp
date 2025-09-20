@@ -17,8 +17,8 @@ type CommentResult struct {
 }
 
 type IssueCommentArgs struct {
-	Repository  string `json:"repository"` // Repository path in "owner/repo" format
-	Directory   string `json:"directory"`  // Local directory path containing a git repository for automatic resolution
+	Repository  string `json:"repository,omitzero"` // Repository path in "owner/repo" format
+	Directory   string `json:"directory,omitzero"`  // Local directory path containing a git repository for automatic resolution
 	IssueNumber int    `json:"issue_number"`
 	Comment     string `json:"comment"`
 }
@@ -101,16 +101,16 @@ func (s *Server) handleIssueCommentCreate(ctx context.Context, request *mcp.Call
 type CommentListResult struct {
 	Comments []remote.Comment `json:"comments,omitempty"`
 	Total    int              `json:"total,omitempty"`
-	Limit    int              `json:"limit,omitempty"`
-	Offset   int              `json:"offset,omitempty"`
+	Limit    int              `json:"limit,omitzero"`
+	Offset   int              `json:"offset,omitzero"`
 }
 
 type IssueCommentListArgs struct {
-	Repository  string `json:"repository"` // Repository path in "owner/repo" format
-	Directory   string `json:"directory"`  // Local directory path containing a git repository for automatic resolution
+	Repository  string `json:"repository,omitzero"` // Repository path in "owner/repo" format
+	Directory   string `json:"directory,omitzero"`  // Local directory path containing a git repository for automatic resolution
 	IssueNumber int    `json:"issue_number"`
-	Limit       int    `json:"limit"`
-	Offset      int    `json:"offset"`
+	Limit       int    `json:"limit,omitzero"`
+	Offset      int    `json:"offset,omitzero"`
 }
 
 // handleIssueCommentList handles the "issue_comment_list" tool request.
@@ -214,8 +214,8 @@ type CommentEditResult struct {
 }
 
 type IssueCommentEditArgs struct {
-	Repository  string `json:"repository"` // Repository path in "owner/repo" format
-	Directory   string `json:"directory"`  // Local directory path containing a git repository for automatic resolution
+	Repository  string `json:"repository,omitzero"` // Repository path in "owner/repo" format
+	Directory   string `json:"directory,omitzero"`  // Local directory path containing a git repository for automatic resolution
 	IssueNumber int    `json:"issue_number"`
 	CommentID   int    `json:"comment_id"`
 	NewContent  string `json:"new_content"`

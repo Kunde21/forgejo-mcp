@@ -17,10 +17,10 @@ type IssueList struct {
 }
 
 type IssueListArgs struct {
-	Repository string `json:"repository"` // Repository path in "owner/repo" format
-	Directory  string `json:"directory"`  // Local directory path containing a git repository for automatic resolution
-	Limit      int    `json:"limit"`
-	Offset     int    `json:"offset"`
+	Repository string `json:"repository,omitzero"` // Repository path in "owner/repo" format
+	Directory  string `json:"directory,omitzero"`  // Local directory path containing a git repository for automatic resolution
+	Limit      int    `json:"limit,omitzero"`
+	Offset     int    `json:"offset,omitzero"`
 }
 
 // handleIssueList handles the "issue_list" tool request.

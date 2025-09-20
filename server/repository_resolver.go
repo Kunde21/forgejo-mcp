@@ -119,10 +119,10 @@ func (e *InvalidRemoteURLError) Is(target error) bool {
 
 // RepositoryResolution represents the result of resolving a directory to repository information
 type RepositoryResolution struct {
-	Directory  string `json:"directory"`   // The original directory path
-	Repository string `json:"repository"`  // The resolved repository in "owner/repo" format
-	RemoteURL  string `json:"remote_url"`  // The full remote URL
-	RemoteName string `json:"remote_name"` // The name of the remote (e.g., "origin", "upstream")
+	Directory  string `json:"directory,omitzero"`  // The original directory path
+	Repository string `json:"repository,omitzero"` // The resolved repository in "owner/repo" format
+	RemoteURL  string `json:"remote_url"`          // The full remote URL
+	RemoteName string `json:"remote_name"`         // The name of the remote (e.g., "origin", "upstream")
 }
 
 // RepositoryResolver handles directory-to-repository resolution

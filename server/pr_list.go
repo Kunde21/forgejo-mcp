@@ -18,10 +18,10 @@ type PullRequestList struct {
 
 // PullRequestListArgs represents the arguments for listing pull requests with validation tags
 type PullRequestListArgs struct {
-	Repository string `json:"repository"` // Repository path in "owner/repo" format
-	Directory  string `json:"directory"`  // Local directory path containing a git repository for automatic resolution
-	Limit      int    `json:"limit"`
-	Offset     int    `json:"offset"`
+	Repository string `json:"repository,omitzero"` // Repository path in "owner/repo" format
+	Directory  string `json:"directory,omitzero"`  // Local directory path containing a git repository for automatic resolution
+	Limit      int    `json:"limit,omitzero"`
+	Offset     int    `json:"offset,omitzero"`
 	State      string `json:"state"`
 }
 

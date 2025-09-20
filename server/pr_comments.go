@@ -19,11 +19,11 @@ type PullRequestCommentList struct {
 
 // PullRequestCommentListArgs represents the arguments for listing pull request comments with validation tags
 type PullRequestCommentListArgs struct {
-	Repository        string `json:"repository"` // Repository path in "owner/repo" format
-	Directory         string `json:"directory"`  // Local directory path containing a git repository for automatic resolution
+	Repository        string `json:"repository,omitzero"` // Repository path in "owner/repo" format
+	Directory         string `json:"directory,omitzero"`  // Local directory path containing a git repository for automatic resolution
 	PullRequestNumber int    `json:"pull_request_number" validate:"required,min=1"`
-	Limit             int    `json:"limit" validate:"min=1,max=100"`
-	Offset            int    `json:"offset" validate:"min=0"`
+	Limit             int    `json:"limit,omitzero" validate:"min=1,max=100"`
+	Offset            int    `json:"offset,omitzero" validate:"min=0"`
 }
 
 // handlePullRequestCommentList handles the "pr_comment_list" tool request.
@@ -117,8 +117,8 @@ func (s *Server) handlePullRequestCommentList(ctx context.Context, request *mcp.
 
 // PullRequestCommentCreateArgs represents the arguments for creating a pull request comment with validation tags
 type PullRequestCommentCreateArgs struct {
-	Repository        string `json:"repository"` // Repository path in "owner/repo" format
-	Directory         string `json:"directory"`  // Local directory path containing a git repository for automatic resolution
+	Repository        string `json:"repository,omitzero"` // Repository path in "owner/repo" format
+	Directory         string `json:"directory,omitzero"`  // Local directory path containing a git repository for automatic resolution
 	PullRequestNumber int    `json:"pull_request_number" validate:"required,min=1"`
 	Comment           string `json:"comment" validate:"required,min=1"`
 }
@@ -206,8 +206,8 @@ func (s *Server) handlePullRequestCommentCreate(ctx context.Context, request *mc
 
 // PullRequestCommentEditArgs represents the arguments for editing a pull request comment with validation tags
 type PullRequestCommentEditArgs struct {
-	Repository        string `json:"repository"` // Repository path in "owner/repo" format
-	Directory         string `json:"directory"`  // Local directory path containing a git repository for automatic resolution
+	Repository        string `json:"repository,omitzero"` // Repository path in "owner/repo" format
+	Directory         string `json:"directory,omitzero"`  // Local directory path containing a git repository for automatic resolution
 	PullRequestNumber int    `json:"pull_request_number" validate:"required,min=1"`
 	CommentID         int    `json:"comment_id" validate:"required,min=1"`
 	NewContent        string `json:"new_content" validate:"required,min=1"`
