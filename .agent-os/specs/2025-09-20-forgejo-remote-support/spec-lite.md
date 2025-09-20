@@ -1,0 +1,3 @@
+# Spec Summary (Lite)
+
+Add official Forgejo SDK support to the MCP server while maintaining backward compatibility with the existing Gitea SDK implementation. Users can configure the client type to use either Gitea, Forgejo, or auto-detection, with Gitea remaining the default for backward compatibility. The implementation includes a new ForgejoClient that mirrors the existing GiteaClient functionality, automatic remote type detection using the `/api/v1/version` endpoint, configuration support for client selection, and comprehensive testing to ensure identical behavior across both SDKs.
