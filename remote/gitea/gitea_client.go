@@ -3,6 +3,7 @@ package gitea
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"strings"
 
 	"code.gitea.io/sdk/gitea"
@@ -16,7 +17,20 @@ type GiteaClient struct {
 
 // NewGiteaClient creates a new Gitea client
 func NewGiteaClient(url, token string) (*GiteaClient, error) {
-	client, err := gitea.NewClient(url, gitea.SetToken(token))
+	return NewGiteaClientWithHTTPClient(url, token, nil)
+}
+
+// NewGiteaClientWithHTTPClient creates a new Gitea client with a custom HTTP client
+func NewGiteaClientWithHTTPClient(url, token string, httpClient *http.Client) (*GiteaClient, error) {
+	var client *gitea.Client
+	var err error
+
+	if httpClient != nil {
+		client, err = gitea.NewClient(url, gitea.SetToken(token), gitea.SetHTTPClient(httpClient))
+	} else {
+		client, err = gitea.NewClient(url, gitea.SetToken(token))
+	}
+
 	if err != nil {
 		return nil, fmt.Errorf("failed to create Gitea client: %w", err)
 	}

@@ -36,49 +36,49 @@
    - [x] 4.8 Implement EditPullRequestComment method
    - [x] 4.9 Verify all tests pass
 
-- [ ] 5. Extend Configuration System
-  - [ ] 5.1 Write tests for configuration extension
-  - [ ] 5.2 Add ClientType field to Config struct
-  - [ ] 5.3 Implement validation for "gitea", "forgejo", "auto" values
-  - [ ] 5.4 Update environment variable handling
-  - [ ] 5.5 Verify all tests pass
+- [x] 5. Extend Configuration System
+   - [x] 5.1 Write tests for configuration extension
+   - [x] 5.2 Add ClientType field to Config struct
+   - [x] 5.3 Implement validation for "gitea", "forgejo", "auto" values
+   - [x] 5.4 Update environment variable handling
+   - [x] 5.5 Verify all tests pass
 
-- [ ] 6. Implement Automatic Remote Type Detection
-  - [ ] 6.1 Write tests for version detection functionality
-  - [ ] 6.2 Implement detectRemoteType function
-  - [ ] 6.3 Add HTTP client for /api/v1/version endpoint
-  - [ ] 6.4 Implement version string parsing logic
-  - [ ] 6.5 Add error handling and fallback strategies
-  - [ ] 6.6 Verify all tests pass
+- [x] 6. Implement Automatic Remote Type Detection
+   - [x] 6.1 Write tests for version detection functionality
+   - [x] 6.2 Implement detectRemoteType function
+   - [x] 6.3 Add HTTP client for /api/v1/version endpoint
+   - [x] 6.4 Implement version string parsing logic
+   - [x] 6.5 Add error handling and fallback strategies
+   - [x] 6.6 Verify all tests pass
 
-- [ ] 7. Update Client Factory Logic
-  - [ ] 7.1 Write tests for client factory with auto-detection
-  - [ ] 7.2 Modify NewFromConfig to support client type selection
-  - [ ] 7.3 Integrate automatic detection for "auto" client type
-  - [ ] 7.4 Add error handling for invalid client types
-  - [ ] 7.5 Ensure backward compatibility with existing behavior
-  - [ ] 7.6 Verify all tests pass
+- [x] 7. Update Client Factory Logic
+   - [x] 7.1 Write tests for client factory with auto-detection
+   - [x] 7.2 Modify NewFromConfig to support client type selection
+   - [x] 7.3 Integrate automatic detection for "auto" client type
+   - [x] 7.4 Add error handling for invalid client types
+   - [x] 7.5 Ensure backward compatibility with existing behavior
+   - [x] 7.6 Verify all tests pass
 
-- [ ] 8. Create Comprehensive Test Suite
-  - [ ] 8.1 Write integration tests for ForgejoClient
-  - [ ] 8.2 Create tests for version detection with real API responses
-  - [ ] 8.3 Test all three client types (gitea, forgejo, auto)
-  - [ ] 8.4 Test error scenarios and edge cases
-  - [ ] 8.5 Verify backward compatibility with existing tests
-  - [ ] 8.6 Verify all tests pass
+- [x] 8. Create Comprehensive Test Suite
+   - [x] 8.1 Write integration tests for ForgejoClient
+   - [x] 8.2 Create tests for version detection with real API responses
+   - [x] 8.3 Test all three client types (gitea, forgejo, auto)
+   - [x] 8.4 Test error scenarios and edge cases
+   - [x] 8.5 Verify backward compatibility with existing tests
+   - [x] 8.6 Verify all tests pass
 
-- [ ] 9. Update Documentation and Examples
-  - [ ] 9.1 Update README.md with Forgejo support documentation
-  - [ ] 9.2 Update config.example.yaml with ClientType examples
-  - [ ] 9.3 Create migration guide for Gitea to Forgejo
-  - [ ] 9.4 Document automatic detection behavior
-  - [ ] 9.5 Update AGENTS.md with new build/test commands
-  - [ ] 9.6 Verify all documentation is accurate
+ - [x] 9. Update Documentation and Examples
+   - [x] 9.1 Update README.md with Forgejo support documentation
+   - [x] 9.2 Update config.example.yaml with ClientType examples
+   - [x] 9.3 Create migration guide for Gitea to Forgejo
+   - [x] 9.4 Document automatic detection behavior
+   - [x] 9.5 Update AGENTS.md with new build/test commands
+   - [x] 9.6 Verify all documentation is accurate
 
-- [ ] 10. Final Validation and Deployment
-  - [ ] 10.1 Run complete test suite (unit, integration, existing)
-  - [ ] 10.2 Test end-to-end workflow with all client types
-  - [ ] 10.3 Verify identical functionality between Gitea and Forgejo clients
-  - [ ] 10.4 Test performance and memory usage
-  - [ ] 10.5 Validate code quality and style compliance
-  - [ ] 10.6 Verify all tests pass
+ - [x] 10. Final Validation and Deployment
+   - [x] 10.1 Run complete test suite (unit, integration, existing)
+   - [x] 10.2 Test end-to-end workflow with all client types
+   - [x] 10.3 Verify identical functionality between Gitea and Forgejo clients
+   - [x] 10.4 Test performance and memory usage
+   - [x] 10.5 Validate code quality and style compliance
+   - [x] 10.6 Verify all tests pass

@@ -6,6 +6,7 @@ import (
 
 	"github.com/kunde21/forgejo-mcp/config"
 	"github.com/kunde21/forgejo-mcp/remote"
+	"github.com/kunde21/forgejo-mcp/remote/forgejo"
 	"github.com/kunde21/forgejo-mcp/remote/gitea"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
@@ -45,11 +46,38 @@ func NewFromConfig(cfg *config.Config) (*Server, error) {
 	if err := cfg.Validate(); err != nil {
 		return nil, fmt.Errorf("configuration validation failed: %w", err)
 	}
-	giteaClient, err := gitea.NewGiteaClient(cfg.RemoteURL, cfg.AuthToken)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create Gitea client: %w", err)
+
+	// Auto-detect if ClientType is "auto" or empty
+	if cfg.ClientType == "auto" || cfg.ClientType == "" {
+		detectedType, err := remote.DetectRemoteType(cfg.RemoteURL, cfg.AuthToken)
+		if err != nil {
+			// If detection fails (e.g., in tests or unreachable server), default to Gitea
+			// This maintains backward compatibility
+			cfg.ClientType = "gitea"
+		} else {
+			cfg.ClientType = detectedType
+		}
 	}
-	return NewFromService(giteaClient, cfg)
+
+	// Create appropriate client based on type
+	var client remote.ClientInterface
+	var err error
+	switch cfg.ClientType {
+	case "forgejo":
+		client, err = forgejo.NewForgejoClient(cfg.RemoteURL, cfg.AuthToken)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create Forgejo client: %w", err)
+		}
+	case "gitea":
+		client, err = gitea.NewGiteaClient(cfg.RemoteURL, cfg.AuthToken)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create Gitea client: %w", err)
+		}
+	default:
+		return nil, fmt.Errorf("unsupported client type: %s", cfg.ClientType)
+	}
+
+	return NewFromService(client, cfg)
 }
 
 // NewFromService creates a new MCP server instance with the provided service.
@@ -149,3 +177,7 @@ func (s *Server) Stop() error {
 // Migration Note: Returns the official SDK's *mcp.Server instead of the
 // previous third-party library's server type.
 func (s *Server) MCPServer() *mcp.Server { return s.mcpServer }
+
+// Config returns the server configuration.
+// This provides access to the configuration used by the server.
+func (s *Server) Config() *config.Config { return s.config }
