@@ -17,9 +17,10 @@ import (
 // Migration Note: Updated from mark3labs/mcp-go to github.com/modelcontextprotocol/go-sdk/mcp v0.4.0
 // for official protocol compliance and long-term stability.
 type Server struct {
-	mcpServer *mcp.Server
-	config    *config.Config
-	remote    remote.ClientInterface
+	mcpServer          *mcp.Server
+	config             *config.Config
+	remote             remote.ClientInterface
+	repositoryResolver *RepositoryResolver
 }
 
 // New creates a new MCP server instance with default configuration.
@@ -62,8 +63,9 @@ func NewFromService(service remote.ClientInterface, cfg *config.Config) (*Server
 	}
 
 	s := &Server{
-		config: cfg,
-		remote: service,
+		config:             cfg,
+		remote:             service,
+		repositoryResolver: NewRepositoryResolver(),
 	}
 	mcpServer := mcp.NewServer(&mcp.Implementation{
 		Name:    "forgejo-mcp",

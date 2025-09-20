@@ -3,6 +3,8 @@ package servertest
 import (
 	"context"
 	"fmt"
+	"os"
+	"strings"
 	"testing"
 	"time"
 
@@ -29,6 +31,7 @@ type prListTestCase struct {
 	name           string
 	category       TestCategory
 	setupMock      func(*MockGiteaServer)
+	setupDir       func(t *testing.T) string // Optional function to set up a temporary directory
 	arguments      map[string]any
 	expect         *mcp.CallToolResult
 	expectError    bool
@@ -62,12 +65,12 @@ func TestPullRequestsList(t *testing.T) {
 				StructuredContent: map[string]any{
 					"pull_requests": []any{
 						map[string]any{
-							"id":         float64(1),
-							"number":     float64(1),
-							"title":      "Feature: Add dark mode",
-							"body":       "",
-							"state":      "open",
-							"user":       "testuser",
+							"id":      float64(1),
+							"number":  float64(1),
+							"title":   "Feature: Add dark mode",
+							"body":    "",
+							"state":   "open",
+							"user":    "testuser",
 							"created": "2025-09-11T10:30:00Z",
 							"updated": "2025-09-11T10:30:00Z",
 							"head": map[string]any{
@@ -80,12 +83,12 @@ func TestPullRequestsList(t *testing.T) {
 							},
 						},
 						map[string]any{
-							"id":         float64(2),
-							"number":     float64(2),
-							"title":      "Fix: Memory leak",
-							"body":       "",
-							"state":      "open",
-							"user":       "testuser",
+							"id":      float64(2),
+							"number":  float64(2),
+							"title":   "Fix: Memory leak",
+							"body":    "",
+							"state":   "open",
+							"user":    "testuser",
 							"created": "2025-09-11T10:30:00Z",
 							"updated": "2025-09-11T10:30:00Z",
 							"head": map[string]any{
@@ -130,12 +133,12 @@ func TestPullRequestsList(t *testing.T) {
 						var prs []any
 						for i := 1; i <= 10; i++ {
 							prs = append(prs, map[string]any{
-								"id":         float64(i),
-								"number":     float64(i),
-								"title":      fmt.Sprintf("Pull Request %d", i),
-								"body":       "",
-								"state":      "open",
-								"user":       "testuser",
+								"id":      float64(i),
+								"number":  float64(i),
+								"title":   fmt.Sprintf("Pull Request %d", i),
+								"body":    "",
+								"state":   "open",
+								"user":    "testuser",
 								"created": "2025-09-11T10:30:00Z",
 								"updated": "2025-09-11T10:30:00Z",
 								"head": map[string]any{
@@ -178,7 +181,7 @@ func TestPullRequestsList(t *testing.T) {
 			},
 			expect: &mcp.CallToolResult{
 				Content: []mcp.Content{
-					&mcp.TextContent{Text: "Invalid request: repository: cannot be blank."},
+					&mcp.TextContent{Text: "Invalid request: directory: at least one of directory or repository must be provided; repository: at least one of directory or repository must be provided."},
 				},
 				StructuredContent: map[string]any{},
 				IsError:           true,
@@ -245,12 +248,12 @@ func TestPullRequestsList(t *testing.T) {
 				StructuredContent: map[string]any{
 					"pull_requests": []any{
 						map[string]any{
-							"id":         float64(1),
-							"number":     float64(1),
-							"title":      "Default Test PR",
-							"body":       "",
-							"state":      "open",
-							"user":       "testuser",
+							"id":      float64(1),
+							"number":  float64(1),
+							"title":   "Default Test PR",
+							"body":    "",
+							"state":   "open",
+							"user":    "testuser",
 							"created": "2025-09-11T10:30:00Z",
 							"updated": "2025-09-11T10:30:00Z",
 							"head": map[string]any{
@@ -311,12 +314,12 @@ func TestPullRequestsList(t *testing.T) {
 				StructuredContent: map[string]any{
 					"pull_requests": []any{
 						map[string]any{
-							"id":         float64(1),
-							"number":     float64(1),
-							"title":      "Feature: Add dark mode",
-							"body":       "",
-							"state":      "open",
-							"user":       "testuser",
+							"id":      float64(1),
+							"number":  float64(1),
+							"title":   "Feature: Add dark mode",
+							"body":    "",
+							"state":   "open",
+							"user":    "testuser",
 							"created": "2025-09-11T10:30:00Z",
 							"updated": "2025-09-11T10:30:00Z",
 							"head": map[string]any{
@@ -329,12 +332,12 @@ func TestPullRequestsList(t *testing.T) {
 							},
 						},
 						map[string]any{
-							"id":         float64(2),
-							"number":     float64(2),
-							"title":      "Fix: Memory leak",
-							"body":       "",
-							"state":      "open",
-							"user":       "testuser",
+							"id":      float64(2),
+							"number":  float64(2),
+							"title":   "Fix: Memory leak",
+							"body":    "",
+							"state":   "open",
+							"user":    "testuser",
 							"created": "2025-09-11T10:30:00Z",
 							"updated": "2025-09-11T10:30:00Z",
 							"head": map[string]any{
@@ -368,12 +371,12 @@ func TestPullRequestsList(t *testing.T) {
 				StructuredContent: map[string]any{
 					"pull_requests": []any{
 						map[string]any{
-							"id":         float64(1),
-							"number":     float64(1),
-							"title":      "Test PR 1",
-							"body":       "",
-							"state":      "open",
-							"user":       "testuser",
+							"id":      float64(1),
+							"number":  float64(1),
+							"title":   "Test PR 1",
+							"body":    "",
+							"state":   "open",
+							"user":    "testuser",
 							"created": "2025-09-11T10:30:00Z",
 							"updated": "2025-09-11T10:30:00Z",
 							"head": map[string]any{
@@ -386,12 +389,12 @@ func TestPullRequestsList(t *testing.T) {
 							},
 						},
 						map[string]any{
-							"id":         float64(2),
-							"number":     float64(2),
-							"title":      "Test PR 2",
-							"body":       "",
-							"state":      "open",
-							"user":       "testuser",
+							"id":      float64(2),
+							"number":  float64(2),
+							"title":   "Test PR 2",
+							"body":    "",
+							"state":   "open",
+							"user":    "testuser",
 							"created": "2025-09-11T10:30:00Z",
 							"updated": "2025-09-11T10:30:00Z",
 							"head": map[string]any{
@@ -428,12 +431,12 @@ func TestPullRequestsList(t *testing.T) {
 				StructuredContent: map[string]any{
 					"pull_requests": []any{
 						map[string]any{
-							"id":         float64(1),
-							"number":     float64(1),
-							"title":      "Test PR 1",
-							"body":       "",
-							"state":      "open",
-							"user":       "testuser",
+							"id":      float64(1),
+							"number":  float64(1),
+							"title":   "Test PR 1",
+							"body":    "",
+							"state":   "open",
+							"user":    "testuser",
 							"created": "2025-09-11T10:30:00Z",
 							"updated": "2025-09-11T10:30:00Z",
 							"head": map[string]any{
@@ -446,12 +449,12 @@ func TestPullRequestsList(t *testing.T) {
 							},
 						},
 						map[string]any{
-							"id":         float64(2),
-							"number":     float64(2),
-							"title":      "Test PR 2",
-							"body":       "",
-							"state":      "open",
-							"user":       "testuser",
+							"id":      float64(2),
+							"number":  float64(2),
+							"title":   "Test PR 2",
+							"body":    "",
+							"state":   "open",
+							"user":    "testuser",
 							"created": "2025-09-11T10:30:00Z",
 							"updated": "2025-09-11T10:30:00Z",
 							"head": map[string]any{
@@ -505,12 +508,12 @@ func TestPullRequestsList(t *testing.T) {
 				StructuredContent: map[string]any{
 					"pull_requests": []any{
 						map[string]any{
-							"id":         float64(1),
-							"number":     float64(1),
-							"title":      "Test PR 1",
-							"body":       "",
-							"state":      "open",
-							"user":       "testuser",
+							"id":      float64(1),
+							"number":  float64(1),
+							"title":   "Test PR 1",
+							"body":    "",
+							"state":   "open",
+							"user":    "testuser",
 							"created": "2025-09-11T10:30:00Z",
 							"updated": "2025-09-11T10:30:00Z",
 							"head": map[string]any{
@@ -523,12 +526,12 @@ func TestPullRequestsList(t *testing.T) {
 							},
 						},
 						map[string]any{
-							"id":         float64(2),
-							"number":     float64(2),
-							"title":      "Test PR 2",
-							"body":       "",
-							"state":      "open",
-							"user":       "testuser",
+							"id":      float64(2),
+							"number":  float64(2),
+							"title":   "Test PR 2",
+							"body":    "",
+							"state":   "open",
+							"user":    "testuser",
 							"created": "2025-09-11T10:30:00Z",
 							"updated": "2025-09-11T10:30:00Z",
 							"head": map[string]any{
@@ -567,12 +570,12 @@ func TestPullRequestsList(t *testing.T) {
 				StructuredContent: map[string]any{
 					"pull_requests": []any{
 						map[string]any{
-							"id":         float64(1),
-							"number":     float64(1),
-							"title":      "Open PR 1",
-							"body":       "",
-							"state":      "open",
-							"user":       "testuser",
+							"id":      float64(1),
+							"number":  float64(1),
+							"title":   "Open PR 1",
+							"body":    "",
+							"state":   "open",
+							"user":    "testuser",
 							"created": "2025-09-11T10:30:00Z",
 							"updated": "2025-09-11T10:30:00Z",
 							"head": map[string]any{
@@ -585,12 +588,12 @@ func TestPullRequestsList(t *testing.T) {
 							},
 						},
 						map[string]any{
-							"id":         float64(2),
-							"number":     float64(2),
-							"title":      "Open PR 2",
-							"body":       "",
-							"state":      "open",
-							"user":       "testuser",
+							"id":      float64(2),
+							"number":  float64(2),
+							"title":   "Open PR 2",
+							"body":    "",
+							"state":   "open",
+							"user":    "testuser",
 							"created": "2025-09-11T10:30:00Z",
 							"updated": "2025-09-11T10:30:00Z",
 							"head": map[string]any{
@@ -629,12 +632,12 @@ func TestPullRequestsList(t *testing.T) {
 				StructuredContent: map[string]any{
 					"pull_requests": []any{
 						map[string]any{
-							"id":         float64(3),
-							"number":     float64(3),
-							"title":      "Closed PR 1",
-							"body":       "",
-							"state":      "closed",
-							"user":       "testuser",
+							"id":      float64(3),
+							"number":  float64(3),
+							"title":   "Closed PR 1",
+							"body":    "",
+							"state":   "closed",
+							"user":    "testuser",
 							"created": "2025-09-11T10:30:00Z",
 							"updated": "2025-09-11T10:30:00Z",
 							"head": map[string]any{
@@ -647,12 +650,12 @@ func TestPullRequestsList(t *testing.T) {
 							},
 						},
 						map[string]any{
-							"id":         float64(4),
-							"number":     float64(4),
-							"title":      "Closed PR 2",
-							"body":       "",
-							"state":      "closed",
-							"user":       "testuser",
+							"id":      float64(4),
+							"number":  float64(4),
+							"title":   "Closed PR 2",
+							"body":    "",
+							"state":   "closed",
+							"user":    "testuser",
 							"created": "2025-09-11T10:30:00Z",
 							"updated": "2025-09-11T10:30:00Z",
 							"head": map[string]any{
@@ -691,12 +694,12 @@ func TestPullRequestsList(t *testing.T) {
 				StructuredContent: map[string]any{
 					"pull_requests": []any{
 						map[string]any{
-							"id":         float64(1),
-							"number":     float64(1),
-							"title":      "Open PR 1",
-							"body":       "",
-							"state":      "open",
-							"user":       "testuser",
+							"id":      float64(1),
+							"number":  float64(1),
+							"title":   "Open PR 1",
+							"body":    "",
+							"state":   "open",
+							"user":    "testuser",
 							"created": "2025-09-11T10:30:00Z",
 							"updated": "2025-09-11T10:30:00Z",
 							"head": map[string]any{
@@ -709,12 +712,12 @@ func TestPullRequestsList(t *testing.T) {
 							},
 						},
 						map[string]any{
-							"id":         float64(2),
-							"number":     float64(2),
-							"title":      "Open PR 2",
-							"body":       "",
-							"state":      "open",
-							"user":       "testuser",
+							"id":      float64(2),
+							"number":  float64(2),
+							"title":   "Open PR 2",
+							"body":    "",
+							"state":   "open",
+							"user":    "testuser",
 							"created": "2025-09-11T10:30:00Z",
 							"updated": "2025-09-11T10:30:00Z",
 							"head": map[string]any{
@@ -727,12 +730,12 @@ func TestPullRequestsList(t *testing.T) {
 							},
 						},
 						map[string]any{
-							"id":         float64(3),
-							"number":     float64(3),
-							"title":      "Closed PR 1",
-							"body":       "",
-							"state":      "closed",
-							"user":       "testuser",
+							"id":      float64(3),
+							"number":  float64(3),
+							"title":   "Closed PR 1",
+							"body":    "",
+							"state":   "closed",
+							"user":    "testuser",
 							"created": "2025-09-11T10:30:00Z",
 							"updated": "2025-09-11T10:30:00Z",
 							"head": map[string]any{
@@ -745,12 +748,12 @@ func TestPullRequestsList(t *testing.T) {
 							},
 						},
 						map[string]any{
-							"id":         float64(4),
-							"number":     float64(4),
-							"title":      "Closed PR 2",
-							"body":       "",
-							"state":      "closed",
-							"user":       "testuser",
+							"id":      float64(4),
+							"number":  float64(4),
+							"title":   "Closed PR 2",
+							"body":    "",
+							"state":   "closed",
+							"user":    "testuser",
 							"created": "2025-09-11T10:30:00Z",
 							"updated": "2025-09-11T10:30:00Z",
 							"head": map[string]any{
@@ -788,12 +791,12 @@ func TestPullRequestsList(t *testing.T) {
 				StructuredContent: map[string]any{
 					"pull_requests": []any{
 						map[string]any{
-							"id":         float64(1),
-							"number":     float64(1),
-							"title":      "Open PR 1",
-							"body":       "",
-							"state":      "open",
-							"user":       "testuser",
+							"id":      float64(1),
+							"number":  float64(1),
+							"title":   "Open PR 1",
+							"body":    "",
+							"state":   "open",
+							"user":    "testuser",
 							"created": "2025-09-11T10:30:00Z",
 							"updated": "2025-09-11T10:30:00Z",
 							"head": map[string]any{
@@ -806,12 +809,12 @@ func TestPullRequestsList(t *testing.T) {
 							},
 						},
 						map[string]any{
-							"id":         float64(2),
-							"number":     float64(2),
-							"title":      "Open PR 2",
-							"body":       "",
-							"state":      "open",
-							"user":       "testuser",
+							"id":      float64(2),
+							"number":  float64(2),
+							"title":   "Open PR 2",
+							"body":    "",
+							"state":   "open",
+							"user":    "testuser",
 							"created": "2025-09-11T10:30:00Z",
 							"updated": "2025-09-11T10:30:00Z",
 							"head": map[string]any{
@@ -856,12 +859,12 @@ func TestPullRequestsList(t *testing.T) {
 						var prs []any
 						for i := 1; i <= 10; i++ {
 							prs = append(prs, map[string]any{
-								"id":         float64(i),
-								"number":     float64(i),
-								"title":      fmt.Sprintf("Pull Request %d", i),
-								"body":       "",
-								"state":      "open",
-								"user":       "testuser",
+								"id":      float64(i),
+								"number":  float64(i),
+								"title":   fmt.Sprintf("Pull Request %d", i),
+								"body":    "",
+								"state":   "open",
+								"user":    "testuser",
 								"created": "2025-09-11T10:30:00Z",
 								"updated": "2025-09-11T10:30:00Z",
 								"head": map[string]any{
@@ -908,12 +911,12 @@ func TestPullRequestsList(t *testing.T) {
 						var prs []any
 						for i := 11; i <= 20; i++ {
 							prs = append(prs, map[string]any{
-								"id":         float64(i),
-								"number":     float64(i),
-								"title":      fmt.Sprintf("Pull Request %d", i),
-								"body":       "",
-								"state":      "open",
-								"user":       "testuser",
+								"id":      float64(i),
+								"number":  float64(i),
+								"title":   fmt.Sprintf("Pull Request %d", i),
+								"body":    "",
+								"state":   "open",
+								"user":    "testuser",
 								"created": "2025-09-11T10:30:00Z",
 								"updated": "2025-09-11T10:30:00Z",
 								"head": map[string]any{
@@ -960,12 +963,12 @@ func TestPullRequestsList(t *testing.T) {
 						var prs []any
 						for i := 21; i <= 25; i++ {
 							prs = append(prs, map[string]any{
-								"id":         float64(i),
-								"number":     float64(i),
-								"title":      fmt.Sprintf("Pull Request %d", i),
-								"body":       "",
-								"state":      "open",
-								"user":       "testuser",
+								"id":      float64(i),
+								"number":  float64(i),
+								"title":   fmt.Sprintf("Pull Request %d", i),
+								"body":    "",
+								"state":   "open",
+								"user":    "testuser",
 								"created": "2025-09-11T10:30:00Z",
 								"updated": "2025-09-11T10:30:00Z",
 								"head": map[string]any{
@@ -1037,12 +1040,12 @@ func TestPullRequestsList(t *testing.T) {
 				StructuredContent: map[string]any{
 					"pull_requests": []any{
 						map[string]any{
-							"id":         float64(1),
-							"number":     float64(1),
-							"title":      "Pull Request 1",
-							"body":       "",
-							"state":      "open",
-							"user":       "testuser",
+							"id":      float64(1),
+							"number":  float64(1),
+							"title":   "Pull Request 1",
+							"body":    "",
+							"state":   "open",
+							"user":    "testuser",
 							"created": "2025-09-11T10:30:00Z",
 							"updated": "2025-09-11T10:30:00Z",
 							"head": map[string]any{
@@ -1087,12 +1090,12 @@ func TestPullRequestsList(t *testing.T) {
 						var prs []any
 						for i := 1; i <= 25; i++ {
 							prs = append(prs, map[string]any{
-								"id":         float64(i),
-								"number":     float64(i),
-								"title":      fmt.Sprintf("Pull Request %d", i),
-								"body":       "",
-								"state":      "open",
-								"user":       "testuser",
+								"id":      float64(i),
+								"number":  float64(i),
+								"title":   fmt.Sprintf("Pull Request %d", i),
+								"body":    "",
+								"state":   "open",
+								"user":    "testuser",
 								"created": "2025-09-11T10:30:00Z",
 								"updated": "2025-09-11T10:30:00Z",
 								"head": map[string]any{
@@ -1140,6 +1143,156 @@ func TestPullRequestsList(t *testing.T) {
 				StructuredContent: map[string]any{},
 			},
 		},
+		{
+			name: "directory parameter - valid git repository",
+			setupMock: func(mock *MockGiteaServer) {
+				mock.AddPullRequests("testuser", "testrepo", []MockPullRequest{
+					{ID: 1, Number: 1, Title: "Directory-based PR", State: "open"},
+				})
+			},
+			setupDir: func(t *testing.T) string {
+				return createTempGitRepo(t, "testuser", "testrepo")
+			},
+			arguments: map[string]any{
+				"directory": "", // Will be set dynamically
+				"limit":     10,
+				"offset":    0,
+				"state":     "open",
+			},
+			expect: &mcp.CallToolResult{
+				Content: []mcp.Content{
+					&mcp.TextContent{Text: "Found 1 pull requests"},
+				},
+				StructuredContent: map[string]any{
+					"pull_requests": []any{
+						map[string]any{
+							"id":      float64(1),
+							"number":  float64(1),
+							"title":   "Directory-based PR",
+							"body":    "",
+							"state":   "open",
+							"user":    "testuser",
+							"created": "2025-09-11T10:30:00Z",
+							"updated": "2025-09-11T10:30:00Z",
+							"head": map[string]any{
+								"ref": "feature-branch",
+								"sha": "abc123",
+							},
+							"base": map[string]any{
+								"ref": "main",
+								"sha": "def456",
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "directory parameter - non-existent directory",
+			arguments: map[string]any{
+				"directory": "/non/existent/directory",
+				"limit":     10,
+				"offset":    0,
+				"state":     "open",
+			},
+			expect: &mcp.CallToolResult{
+				Content: []mcp.Content{
+					&mcp.TextContent{Text: "Invalid request: directory: invalid directory."},
+				},
+				StructuredContent: map[string]any{},
+				IsError:           true,
+			},
+		},
+		{
+			name: "directory parameter - directory without git",
+			setupDir: func(t *testing.T) string {
+				tempDir, err := os.MkdirTemp("", "forgejo-test-no-git-*")
+				if err != nil {
+					t.Fatalf("Failed to create temp directory: %v", err)
+				}
+				// Don't create .git directory - this should fail validation
+				t.Cleanup(func() {
+					os.RemoveAll(tempDir)
+				})
+				return tempDir
+			},
+			arguments: map[string]any{
+				"directory": "", // Will be set dynamically
+				"limit":     10,
+				"offset":    0,
+				"state":     "open",
+			},
+			expect: &mcp.CallToolResult{
+				Content: []mcp.Content{
+					&mcp.TextContent{Text: "Invalid request: directory: invalid directory."},
+				},
+				StructuredContent: map[string]any{},
+				IsError:           true,
+			},
+		},
+		{
+			name: "both directory and repository provided (directory takes precedence)",
+			setupMock: func(mock *MockGiteaServer) {
+				mock.AddPullRequests("testuser", "testrepo", []MockPullRequest{
+					{ID: 1, Number: 1, Title: "Test PR", State: "open"},
+				})
+			},
+			arguments: map[string]any{
+				"directory":  "/tmp/test-repo",
+				"repository": "testuser/testrepo",
+				"limit":      10,
+				"offset":     0,
+				"state":      "open",
+			},
+			expect: &mcp.CallToolResult{
+				Content: []mcp.Content{
+					&mcp.TextContent{Text: "Failed to resolve directory: repository validate failed for /tmp/test-repo: directory does not exist"},
+				},
+				StructuredContent: map[string]any{},
+				IsError:           true,
+			},
+		},
+		{
+			name: "repository parameter test",
+			setupMock: func(mock *MockGiteaServer) {
+				mock.AddPullRequests("testuser", "testrepo", []MockPullRequest{
+					{ID: 1, Number: 1, Title: "Legacy repository PR", State: "open"},
+				})
+			},
+			arguments: map[string]any{
+				"repository": "testuser/testrepo",
+				"limit":      10,
+				"offset":     0,
+				"state":      "open",
+			},
+			expect: &mcp.CallToolResult{
+				Content: []mcp.Content{
+					&mcp.TextContent{Text: "Found 1 pull requests"},
+				},
+				StructuredContent: map[string]any{
+					"pull_requests": []any{
+						map[string]any{
+							"id":      float64(1),
+							"number":  float64(1),
+							"title":   "Legacy repository PR",
+							"body":    "",
+							"state":   "open",
+							"user":    "testuser",
+							"created": "2025-09-11T10:30:00Z",
+							"updated": "2025-09-11T10:30:00Z",
+							"head": map[string]any{
+								"ref": "feature-branch",
+								"sha": "abc123",
+							},
+							"base": map[string]any{
+								"ref": "main",
+								"sha": "def456",
+							},
+						},
+					},
+				},
+			},
+		},
 	}
 
 	for _, tc := range testCases {
@@ -1148,6 +1301,22 @@ func TestPullRequestsList(t *testing.T) {
 			if tc.setupMock != nil {
 				tc.setupMock(mock)
 			}
+
+			// Set up temporary directory if needed
+			var tempDir string
+			if tc.setupDir != nil {
+				tempDir = tc.setupDir(t)
+				// Update arguments with the actual temp directory path
+				args := make(map[string]any)
+				for k, v := range tc.arguments {
+					args[k] = v
+				}
+				if dir, ok := args["directory"].(string); ok && dir == "" {
+					args["directory"] = tempDir
+				}
+				tc.arguments = args
+			}
+
 			ts := NewTestServer(t, t.Context(), map[string]string{
 				"FORGEJO_REMOTE_URL": mock.URL(),
 				"FORGEJO_AUTH_TOKEN": "mock-token",
@@ -1163,8 +1332,20 @@ func TestPullRequestsList(t *testing.T) {
 			if err != nil {
 				t.Fatalf("Failed to call pr_list tool: %v", err)
 			}
-			if !cmp.Equal(tc.expect, result) {
-				t.Error(cmp.Diff(tc.expect, result))
+
+			// Special handling for directory without git test (dynamic path)
+			if tc.name == "directory parameter - directory without git" {
+				if !result.IsError {
+					t.Errorf("Expected error result for test case: %s", tc.name)
+				}
+				textContent := GetTextContent(result.Content)
+				if !strings.Contains(textContent, "Failed to resolve directory: not a git repository:") {
+					t.Errorf("Expected error message containing 'Failed to resolve directory: not a git repository:', got: %s", textContent)
+				}
+			} else {
+				if !cmp.Equal(tc.expect, result) {
+					t.Error(cmp.Diff(tc.expect, result))
+				}
 			}
 		})
 	}

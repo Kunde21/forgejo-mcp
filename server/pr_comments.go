@@ -3,6 +3,8 @@ package server
 import (
 	"context"
 	"fmt"
+	"os"
+	"path/filepath"
 
 	v "github.com/go-ozzo/ozzo-validation/v4"
 	"github.com/kunde21/forgejo-mcp/remote"
@@ -17,7 +19,8 @@ type PullRequestCommentList struct {
 
 // PullRequestCommentListArgs represents the arguments for listing pull request comments with validation tags
 type PullRequestCommentListArgs struct {
-	Repository        string `json:"repository" validate:"required,regexp=^[a-zA-Z0-9._-]+/[a-zA-Z0-9._-]+$"`
+	Repository        string `json:"repository"` // Repository path in "owner/repo" format
+	Directory         string `json:"directory"`  // Local directory path containing a git repository for automatic resolution
 	PullRequestNumber int    `json:"pull_request_number" validate:"required,min=1"`
 	Limit             int    `json:"limit" validate:"min=1,max=100"`
 	Offset            int    `json:"offset" validate:"min=0"`
@@ -28,9 +31,13 @@ type PullRequestCommentListArgs struct {
 //
 // Parameters:
 //   - repository: The repository path in "owner/repo" format
+//   - directory: Local directory path containing a git repository for automatic resolution
 //   - pull_request_number: The pull request number to get comments from (must be positive)
 //   - limit: Maximum number of comments to return (1-100, default 15)
 //   - offset: Number of comments to skip for pagination (default 0)
+//
+// Note: At least one of repository or directory must be provided. If both are provided,
+// directory takes precedence for automatic repository resolution.
 //
 // Returns:
 //   - Success: List of pull request comments with pagination metadata
@@ -38,6 +45,7 @@ type PullRequestCommentListArgs struct {
 //
 // Migration Note: Implements MCP SDK v0.4.0 handler signature with ozzo-validation
 // for parameter validation and structured error responses.
+// Added directory parameter support with automatic repository resolution.
 func (s *Server) handlePullRequestCommentList(ctx context.Context, request *mcp.CallToolRequest, args PullRequestCommentListArgs) (*mcp.CallToolResult, *PullRequestCommentList, error) {
 	// Set default values if not provided
 	if args.Limit == 0 {
@@ -46,7 +54,26 @@ func (s *Server) handlePullRequestCommentList(ctx context.Context, request *mcp.
 
 	// Validate input arguments using ozzo-validation
 	if err := v.ValidateStruct(&args,
-		v.Field(&args.Repository, v.Required, v.Match(repoReg).Error("repository must be in format 'owner/repo'")),
+		v.Field(&args.Repository, v.When(args.Directory == "",
+			v.Required.Error("at least one of directory or repository must be provided"),
+			v.Match(repoReg).Error("repository must be in format 'owner/repo'"),
+		)),
+		v.Field(&args.Directory, v.When(args.Repository == "",
+			v.Required.Error("at least one of directory or repository must be provided"),
+			v.By(func(any) error {
+				if !filepath.IsAbs(args.Directory) {
+					return v.NewError("abs_dir", "directory must be an absolute path")
+				}
+				stat, err := os.Stat(args.Directory)
+				if err != nil {
+					return v.NewError("abs_dir", "invalid directory")
+				}
+				if !stat.IsDir() {
+					return v.NewError("abs_dir", "does not exist")
+				}
+				return nil
+			}),
+		)),
 		v.Field(&args.PullRequestNumber, v.Required.Error("must be no less than 1"), v.Min(1)),
 		v.Field(&args.Limit, v.Min(1), v.Max(100)),
 		v.Field(&args.Offset, v.Min(0)),
@@ -54,16 +81,29 @@ func (s *Server) handlePullRequestCommentList(ctx context.Context, request *mcp.
 		return TextErrorf("Invalid request: %v", err), nil, nil
 	}
 
+	repository := args.Repository
+	if args.Directory != "" {
+		// Resolve directory to repository (takes precedence if both provided)
+		resolution, err := s.repositoryResolver.ResolveRepository(args.Directory)
+		if err != nil {
+			return TextErrorf("Failed to resolve directory: %v", err), nil, nil
+		}
+		repository = resolution.Repository
+	}
+
 	// Fetch pull request comments from the Gitea/Forgejo repository
-	commentList, err := s.remote.ListPullRequestComments(ctx, args.Repository, args.PullRequestNumber, args.Limit, args.Offset)
+	commentList, err := s.remote.ListPullRequestComments(ctx, repository, args.PullRequestNumber, args.Limit, args.Offset)
 	if err != nil {
 		return TextErrorf("Failed to list pull request comments: %v", err), nil, nil
 	}
 
-	responseText := "Found 0 comments"
-	if len(commentList.Comments) != 0 {
+	var responseText string
+
+	if len(commentList.Comments) == 0 {
+		responseText += "Found 0 comments"
+	} else {
 		endIndex := min(args.Offset+len(commentList.Comments), commentList.Total)
-		responseText = fmt.Sprintf("Found %d comments (showing %d-%d):\n",
+		responseText += fmt.Sprintf("Found %d comments (showing %d-%d):\n",
 			commentList.Total,
 			args.Offset+1,
 			endIndex)
@@ -77,7 +117,8 @@ func (s *Server) handlePullRequestCommentList(ctx context.Context, request *mcp.
 
 // PullRequestCommentCreateArgs represents the arguments for creating a pull request comment with validation tags
 type PullRequestCommentCreateArgs struct {
-	Repository        string `json:"repository" validate:"required,regexp=^[a-zA-Z0-9._-]+/[a-zA-Z0-9._-]+$"`
+	Repository        string `json:"repository"` // Repository path in "owner/repo" format
+	Directory         string `json:"directory"`  // Local directory path containing a git repository for automatic resolution
 	PullRequestNumber int    `json:"pull_request_number" validate:"required,min=1"`
 	Comment           string `json:"comment" validate:"required,min=1"`
 }
@@ -92,8 +133,12 @@ type PullRequestCommentCreateResult struct {
 //
 // Parameters:
 //   - repository: The repository path in "owner/repo" format
+//   - directory: Local directory path containing a git repository for automatic resolution
 //   - pull_request_number: The pull request number to comment on (must be positive)
 //   - comment: The comment content (cannot be empty)
+//
+// Note: At least one of repository or directory must be provided. If both are provided,
+// directory takes precedence for automatic repository resolution.
 //
 // Returns:
 //   - Success: Comment creation confirmation with metadata
@@ -101,6 +146,7 @@ type PullRequestCommentCreateResult struct {
 //
 // Migration Note: Implements MCP SDK v0.4.0 handler signature with ozzo-validation
 // for parameter validation and structured error responses.
+// Added directory parameter support with automatic repository resolution.
 func (s *Server) handlePullRequestCommentCreate(ctx context.Context, request *mcp.CallToolRequest, args PullRequestCommentCreateArgs) (*mcp.CallToolResult, *PullRequestCommentCreateResult, error) {
 	// Validate context - required for proper request handling
 	if ctx == nil {
@@ -109,15 +155,44 @@ func (s *Server) handlePullRequestCommentCreate(ctx context.Context, request *mc
 
 	// Validate input arguments using ozzo-validation
 	if err := v.ValidateStruct(&args,
-		v.Field(&args.Repository, v.Required, v.Match(repoReg).Error("repository must be in format 'owner/repo'")),
+		v.Field(&args.Repository, v.When(args.Directory == "",
+			v.Required.Error("at least one of directory or repository must be provided"),
+			v.Match(repoReg).Error("repository must be in format 'owner/repo'"),
+		)),
+		v.Field(&args.Directory, v.When(args.Repository == "",
+			v.Required.Error("at least one of directory or repository must be provided"),
+			v.By(func(any) error {
+				if !filepath.IsAbs(args.Directory) {
+					return v.NewError("abs_dir", "directory must be an absolute path")
+				}
+				stat, err := os.Stat(args.Directory)
+				if err != nil {
+					return v.NewError("abs_dir", "invalid directory")
+				}
+				if !stat.IsDir() {
+					return v.NewError("abs_dir", "does not exist")
+				}
+				return nil
+			}),
+		)),
 		v.Field(&args.PullRequestNumber, v.Required.Error("must be no less than 1"), v.Min(1)),
 		v.Field(&args.Comment, v.Required, v.Match(emptyReg).Error("cannot be blank")),
 	); err != nil {
 		return TextErrorf("Invalid request: %v", err), nil, nil
 	}
 
+	repository := args.Repository
+	if args.Directory != "" {
+		// Resolve directory to repository (takes precedence if both provided)
+		resolution, err := s.repositoryResolver.ResolveRepository(args.Directory)
+		if err != nil {
+			return TextErrorf("Failed to resolve directory: %v", err), nil, nil
+		}
+		repository = resolution.Repository
+	}
+
 	// Create the comment using the service layer
-	comment, err := s.remote.CreatePullRequestComment(ctx, args.Repository, args.PullRequestNumber, args.Comment)
+	comment, err := s.remote.CreatePullRequestComment(ctx, repository, args.PullRequestNumber, args.Comment)
 	if err != nil {
 		return TextErrorf("Failed to create pull request comment: %v", err), nil, nil
 	}
@@ -131,7 +206,8 @@ func (s *Server) handlePullRequestCommentCreate(ctx context.Context, request *mc
 
 // PullRequestCommentEditArgs represents the arguments for editing a pull request comment with validation tags
 type PullRequestCommentEditArgs struct {
-	Repository        string `json:"repository" validate:"required,regexp=^[a-zA-Z0-9._-]+/[a-zA-Z0-9._-]+$"`
+	Repository        string `json:"repository"` // Repository path in "owner/repo" format
+	Directory         string `json:"directory"`  // Local directory path containing a git repository for automatic resolution
 	PullRequestNumber int    `json:"pull_request_number" validate:"required,min=1"`
 	CommentID         int    `json:"comment_id" validate:"required,min=1"`
 	NewContent        string `json:"new_content" validate:"required,min=1"`
@@ -147,9 +223,13 @@ type PullRequestCommentEditResult struct {
 //
 // Parameters:
 //   - repository: The repository path in "owner/repo" format
+//   - directory: Local directory path containing a git repository for automatic resolution
 //   - pull_request_number: The pull request number containing the comment (must be positive)
 //   - comment_id: The ID of the comment to edit (must be positive)
 //   - new_content: The updated comment content (cannot be empty)
+//
+// Note: At least one of repository or directory must be provided. If both are provided,
+// directory takes precedence for automatic repository resolution.
 //
 // Returns:
 //   - Success: Comment edit confirmation with updated metadata
@@ -157,33 +237,55 @@ type PullRequestCommentEditResult struct {
 //
 // Migration Note: Implements MCP SDK v0.4.0 handler signature with ozzo-validation
 // for parameter validation and structured error responses.
+// Added directory parameter support with automatic repository resolution.
 func (s *Server) handlePullRequestCommentEdit(ctx context.Context, request *mcp.CallToolRequest, args PullRequestCommentEditArgs) (*mcp.CallToolResult, *PullRequestCommentEditResult, error) {
 	// Validate context - required for proper request handling
 	if ctx == nil {
 		return TextError("Context is required"), nil, nil
 	}
 
-	// Explicit validation for integer fields (ozzo-validation v.Min doesn't work well with zero values)
-	if args.PullRequestNumber < 1 {
-		return TextError("Invalid request: pull_request_number: must be no less than 1."), nil, nil
-	}
-	if args.CommentID < 1 {
-		return TextError("Invalid request: comment_id: must be no less than 1."), nil, nil
-	}
-
 	// Validate input arguments using ozzo-validation
 	if err := v.ValidateStruct(&args,
-		v.Field(&args.Repository, v.Required, v.Match(repoReg).Error("repository must be in format 'owner/repo'")),
-		v.Field(&args.PullRequestNumber, v.Min(1)),
-		v.Field(&args.CommentID, v.Min(1)),
+		v.Field(&args.Repository, v.When(args.Directory == "",
+			v.Required.Error("at least one of directory or repository must be provided"),
+			v.Match(repoReg).Error("repository must be in format 'owner/repo'"),
+		)),
+		v.Field(&args.Directory, v.When(args.Repository == "",
+			v.Required.Error("at least one of directory or repository must be provided"),
+			v.By(func(any) error {
+				if !filepath.IsAbs(args.Directory) {
+					return v.NewError("abs_dir", "directory must be an absolute path")
+				}
+				stat, err := os.Stat(args.Directory)
+				if err != nil {
+					return v.NewError("abs_dir", "invalid directory")
+				}
+				if !stat.IsDir() {
+					return v.NewError("abs_dir", "does not exist")
+				}
+				return nil
+			}),
+		)),
+		v.Field(&args.PullRequestNumber, v.Required.Error("must be no less than 1"), v.Min(1)),
+		v.Field(&args.CommentID, v.Required.Error("must be no less than 1"), v.Min(1)),
 		v.Field(&args.NewContent, v.Required, v.Match(emptyReg).Error("cannot be blank")),
 	); err != nil {
 		return TextErrorf("Invalid request: %v", err), nil, nil
 	}
 
+	repository := args.Repository
+	if args.Directory != "" {
+		// Resolve directory to repository (takes precedence if both provided)
+		resolution, err := s.repositoryResolver.ResolveRepository(args.Directory)
+		if err != nil {
+			return TextErrorf("Failed to resolve directory: %v", err), nil, nil
+		}
+		repository = resolution.Repository
+	}
+
 	// Edit the comment using the service layer
 	editArgs := remote.EditPullRequestCommentArgs{
-		Repository:        args.Repository,
+		Repository:        repository,
 		PullRequestNumber: args.PullRequestNumber,
 		CommentID:         args.CommentID,
 		NewContent:        args.NewContent,

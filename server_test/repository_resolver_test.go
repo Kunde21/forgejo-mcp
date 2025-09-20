@@ -5,16 +5,17 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/kunde21/forgejo-mcp/server"
 )
 
 // Test cases for repository resolver functionality
 type repositoryResolverTestCase struct {
-	name        string
-	setup       func(*testing.T) string
-	expectError bool
-	errorMsg    string
-	expectRepo  *server.RepositoryResolution
+	name       string
+	setup      func(*testing.T) string
+	wantError  error
+	expectRepo *server.RepositoryResolution
 }
 
 func TestRepositoryResolver_ValidateDirectory(t *testing.T) {
@@ -31,15 +32,14 @@ func TestRepositoryResolver_ValidateDirectory(t *testing.T) {
 				}
 				return dir
 			},
-			expectError: false,
+			wantError: nil,
 		},
 		{
 			name: "nonexistent_directory",
 			setup: func(t *testing.T) string {
 				return "/nonexistent/directory"
 			},
-			expectError: true,
-			errorMsg:    "directory does not exist",
+			wantError: server.NewDirectoryNotFoundError("/nonexistent/directory"),
 		},
 		{
 			name: "directory_without_git",
@@ -51,8 +51,7 @@ func TestRepositoryResolver_ValidateDirectory(t *testing.T) {
 				}
 				return dir
 			},
-			expectError: true,
-			errorMsg:    "not a git repository",
+			wantError: &server.NotGitRepositoryError{},
 		},
 		{
 			name: "git_directory_is_file",
@@ -64,8 +63,7 @@ func TestRepositoryResolver_ValidateDirectory(t *testing.T) {
 				}
 				return dir
 			},
-			expectError: true,
-			errorMsg:    "not a git repository",
+			wantError: &server.NotGitRepositoryError{},
 		},
 	}
 
@@ -73,19 +71,10 @@ func TestRepositoryResolver_ValidateDirectory(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			resolver := server.NewRepositoryResolver()
 			dir := tc.setup(t)
-
 			err := resolver.ValidateDirectory(dir)
 
-			if tc.expectError {
-				if err == nil {
-					t.Errorf("Expected error but got none")
-				} else if tc.errorMsg != "" && !contains(err.Error(), tc.errorMsg) {
-					t.Errorf("Expected error containing '%s', got: %v", tc.errorMsg, err)
-				}
-			} else {
-				if err != nil {
-					t.Errorf("Expected no error but got: %v", err)
-				}
+			if !cmp.Equal(tc.wantError, err, cmpopts.EquateErrors()) {
+				t.Error(cmp.Diff(tc.wantError, err, cmpopts.EquateErrors()))
 			}
 		})
 	}
@@ -95,11 +84,10 @@ func TestRepositoryResolver_ExtractRemoteInfo(t *testing.T) {
 	t.Parallel()
 
 	testCases := []struct {
-		name        string
-		setupGit    func(*testing.T, string)
-		expectError bool
-		errorMsg    string
-		expectRepo  string
+		name       string
+		setupGit   func(*testing.T, string)
+		wantError  error
+		expectRepo string
 	}{
 		{
 			name: "valid_https_remote",
@@ -116,8 +104,8 @@ func TestRepositoryResolver_ExtractRemoteInfo(t *testing.T) {
 					t.Fatalf("Failed to create git config: %v", err)
 				}
 			},
-			expectError: false,
-			expectRepo:  "owner/repo",
+			wantError:  nil,
+			expectRepo: "owner/repo",
 		},
 		{
 			name: "valid_ssh_remote",
@@ -134,8 +122,8 @@ func TestRepositoryResolver_ExtractRemoteInfo(t *testing.T) {
 					t.Fatalf("Failed to create git config: %v", err)
 				}
 			},
-			expectError: false,
-			expectRepo:  "owner/repo",
+			wantError:  nil,
+			expectRepo: "owner/repo",
 		},
 		{
 			name: "no_remote_configured",
@@ -149,8 +137,7 @@ func TestRepositoryResolver_ExtractRemoteInfo(t *testing.T) {
 					t.Fatalf("Failed to create git config: %v", err)
 				}
 			},
-			expectError: true,
-			errorMsg:    "no configured remotes",
+			wantError: &server.NoRemotesConfiguredError{},
 		},
 		{
 			name: "invalid_remote_url",
@@ -167,8 +154,7 @@ func TestRepositoryResolver_ExtractRemoteInfo(t *testing.T) {
 					t.Fatalf("Failed to create git config: %v", err)
 				}
 			},
-			expectError: true,
-			errorMsg:    "failed to parse remote URL",
+			wantError: &server.InvalidRemoteURLError{},
 		},
 		{
 			name: "non_origin_remote",
@@ -185,8 +171,8 @@ func TestRepositoryResolver_ExtractRemoteInfo(t *testing.T) {
 					t.Fatalf("Failed to create git config: %v", err)
 				}
 			},
-			expectError: false,
-			expectRepo:  "owner/repo",
+			wantError:  nil,
+			expectRepo: "owner/repo",
 		},
 	}
 
@@ -197,19 +183,11 @@ func TestRepositoryResolver_ExtractRemoteInfo(t *testing.T) {
 			tc.setupGit(t, dir)
 
 			repo, err := resolver.ExtractRemoteInfo(dir)
-
-			if tc.expectError {
-				if err == nil {
-					t.Errorf("Expected error but got none")
-				} else if tc.errorMsg != "" && !contains(err.Error(), tc.errorMsg) {
-					t.Errorf("Expected error containing '%s', got: %v", tc.errorMsg, err)
-				}
-			} else {
-				if err != nil {
-					t.Errorf("Expected no error but got: %v", err)
-				} else if repo != tc.expectRepo {
-					t.Errorf("Expected repo '%s', got '%s'", tc.expectRepo, repo)
-				}
+			if !cmp.Equal(tc.wantError, err, cmpopts.EquateErrors()) {
+				t.Error(cmp.Diff(tc.wantError, err, cmpopts.EquateErrors()))
+			}
+			if !cmp.Equal(tc.expectRepo, repo) {
+				t.Error(cmp.Diff(tc.expectRepo, repo))
 			}
 		})
 	}
@@ -219,11 +197,10 @@ func TestRepositoryResolver_ResolveRepository(t *testing.T) {
 	t.Parallel()
 
 	testCases := []struct {
-		name        string
-		setupGit    func(*testing.T, string)
-		expectError bool
-		errorMsg    string
-		expectRepo  *server.RepositoryResolution
+		name       string
+		setupGit   func(*testing.T, string)
+		wantError  error
+		expectRepo func(string) *server.RepositoryResolution
 	}{
 		{
 			name: "successful_resolution",
@@ -240,12 +217,14 @@ func TestRepositoryResolver_ResolveRepository(t *testing.T) {
 					t.Fatalf("Failed to create git config: %v", err)
 				}
 			},
-			expectError: false,
-			expectRepo: &server.RepositoryResolution{
-				Directory:  "",
-				Repository: "owner/repo",
-				RemoteURL:  "https://forgejo.example.com/owner/repo.git",
-				RemoteName: "origin",
+			wantError: nil,
+			expectRepo: func(dir string) *server.RepositoryResolution {
+				return &server.RepositoryResolution{
+					Directory:  dir,
+					Repository: "owner/repo",
+					RemoteURL:  "https://forgejo.example.com/owner/repo.git",
+					RemoteName: "origin",
+				}
 			},
 		},
 		{
@@ -254,8 +233,7 @@ func TestRepositoryResolver_ResolveRepository(t *testing.T) {
 				// Use a non-existent path
 				dir = "/nonexistent/path/that/does/not/exist"
 			},
-			expectError: true,
-			errorMsg:    "directory does not exist",
+			wantError: &server.DirectoryNotFoundError{},
 		},
 		{
 			name: "no_remote_configured",
@@ -269,8 +247,7 @@ func TestRepositoryResolver_ResolveRepository(t *testing.T) {
 					t.Fatalf("Failed to create git config: %v", err)
 				}
 			},
-			expectError: true,
-			errorMsg:    "no configured remotes",
+			wantError: &server.NoRemotesConfiguredError{},
 		},
 	}
 
@@ -287,110 +264,16 @@ func TestRepositoryResolver_ResolveRepository(t *testing.T) {
 			}
 
 			result, err := resolver.ResolveRepository(dir)
-
-			if tc.expectError {
-				if err == nil {
-					t.Errorf("Expected error but got none")
-				} else if tc.errorMsg != "" && !contains(err.Error(), tc.errorMsg) {
-					t.Errorf("Expected error containing '%s', got: %v", tc.errorMsg, err)
-				}
-			} else {
-				if err != nil {
-					t.Errorf("Expected no error but got: %v", err)
-				} else {
-					// Update expected directory to match actual
-					tc.expectRepo.Directory = dir
-					if result.Directory != tc.expectRepo.Directory {
-						t.Errorf("Expected directory '%s', got '%s'", tc.expectRepo.Directory, result.Directory)
-					}
-					if result.Repository != tc.expectRepo.Repository {
-						t.Errorf("Expected repository '%s', got '%s'", tc.expectRepo.Repository, result.Repository)
-					}
-					if result.RemoteURL != tc.expectRepo.RemoteURL {
-						t.Errorf("Expected remote URL '%s', got '%s'", tc.expectRepo.RemoteURL, result.RemoteURL)
-					}
-					if result.RemoteName != tc.expectRepo.RemoteName {
-						t.Errorf("Expected remote name '%s', got '%s'", tc.expectRepo.RemoteName, result.RemoteName)
-					}
-				}
+			if !cmp.Equal(tc.wantError, err, cmpopts.EquateErrors()) {
+				t.Error(cmp.Diff(tc.wantError, err, cmpopts.EquateErrors()))
+			}
+			var expectedRepo *server.RepositoryResolution
+			if tc.expectRepo != nil {
+				expectedRepo = tc.expectRepo(dir)
+			}
+			if !cmp.Equal(expectedRepo, result) {
+				t.Error(cmp.Diff(expectedRepo, result))
 			}
 		})
 	}
-}
-
-func TestRepositoryResolver_ParameterValidation(t *testing.T) {
-	t.Parallel()
-
-	testCases := []struct {
-		name        string
-		directory   string
-		repository  string
-		expectError bool
-		errorMsg    string
-	}{
-		{
-			name:        "both_parameters_empty",
-			directory:   "",
-			repository:  "",
-			expectError: true,
-			errorMsg:    "exactly one of directory or repository must be provided",
-		},
-		{
-			name:        "both_parameters_provided",
-			directory:   "/some/path",
-			repository:  "owner/repo",
-			expectError: true,
-			errorMsg:    "exactly one of directory or repository must be provided",
-		},
-		{
-			name:        "only_directory_provided",
-			directory:   "/some/path",
-			repository:  "",
-			expectError: false,
-		},
-		{
-			name:        "only_repository_provided",
-			directory:   "",
-			repository:  "owner/repo",
-			expectError: false,
-		},
-	}
-
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			resolver := server.NewRepositoryResolver()
-
-			err := resolver.ValidateParameters(tc.directory, tc.repository)
-
-			if tc.expectError {
-				if err == nil {
-					t.Errorf("Expected error but got none")
-				} else if tc.errorMsg != "" && !contains(err.Error(), tc.errorMsg) {
-					t.Errorf("Expected error containing '%s', got: %v", tc.errorMsg, err)
-				}
-			} else {
-				if err != nil {
-					t.Errorf("Expected no error but got: %v", err)
-				}
-			}
-		})
-	}
-}
-
-// Helper function to check if a string contains a substring
-func contains(s, substr string) bool {
-	return len(s) >= len(substr) && (s == substr ||
-		(len(s) > len(substr) &&
-			(s[:len(substr)] == substr ||
-				s[len(s)-len(substr):] == substr ||
-				findSubstring(s, substr))))
-}
-
-func findSubstring(s, substr string) bool {
-	for i := 0; i <= len(s)-len(substr); i++ {
-		if s[i:i+len(substr)] == substr {
-			return true
-		}
-	}
-	return false
 }

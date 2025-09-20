@@ -9,6 +9,114 @@ import (
 	"strings"
 )
 
+// RepositoryError represents a base error type for repository resolution operations
+type RepositoryError struct {
+	Op   string // Operation that failed
+	Path string // Path involved in the error
+	Err  error  // Underlying error
+}
+
+func (e *RepositoryError) Error() string {
+	if e.Err != nil {
+		return fmt.Sprintf("repository %s failed for %s: %v", e.Op, e.Path, e.Err)
+	}
+	return fmt.Sprintf("repository %s failed for %s", e.Op, e.Path)
+}
+
+func (e *RepositoryError) Unwrap() error {
+	return e.Err
+}
+
+// DirectoryNotFoundError indicates that a directory does not exist
+type DirectoryNotFoundError struct {
+	RepositoryError
+}
+
+func NewDirectoryNotFoundError(path string) error {
+	return &DirectoryNotFoundError{
+		RepositoryError: RepositoryError{
+			Op:   "validate",
+			Path: path,
+			Err:  fmt.Errorf("directory does not exist"),
+		},
+	}
+}
+
+func (e *DirectoryNotFoundError) Is(target error) bool {
+	_, ok := target.(*DirectoryNotFoundError)
+	return ok
+}
+
+// NotGitRepositoryError indicates that a directory is not a git repository
+type NotGitRepositoryError struct {
+	RepositoryError
+	Reason string
+}
+
+func NewNotGitRepositoryError(path, reason string) error {
+	return &NotGitRepositoryError{
+		RepositoryError: RepositoryError{
+			Op:   "validate",
+			Path: path,
+		},
+		Reason: reason,
+	}
+}
+
+func (e *NotGitRepositoryError) Error() string {
+	return fmt.Sprintf("not a git repository: %s (%s)", e.Path, e.Reason)
+}
+
+func (e *NotGitRepositoryError) Is(target error) bool {
+	_, ok := target.(*NotGitRepositoryError)
+	return ok
+}
+
+// NoRemotesConfiguredError indicates that no git remotes are configured
+type NoRemotesConfiguredError struct {
+	RepositoryError
+}
+
+func NewNoRemotesConfiguredError(path string) error {
+	return &NoRemotesConfiguredError{
+		RepositoryError: RepositoryError{
+			Op:   "extract",
+			Path: path,
+			Err:  fmt.Errorf("no configured remotes"),
+		},
+	}
+}
+
+func (e *NoRemotesConfiguredError) Is(target error) bool {
+	_, ok := target.(*NoRemotesConfiguredError)
+	return ok
+}
+
+// InvalidRemoteURLError indicates that a remote URL cannot be parsed
+type InvalidRemoteURLError struct {
+	RepositoryError
+	URL string
+}
+
+func NewInvalidRemoteURLError(url string) error {
+	return &InvalidRemoteURLError{
+		RepositoryError: RepositoryError{
+			Op:   "parse",
+			Path: url,
+		},
+		URL: url,
+	}
+}
+
+func (e *InvalidRemoteURLError) Error() string {
+	return fmt.Sprintf("failed to parse remote URL: %s", e.URL)
+}
+
+func (e *InvalidRemoteURLError) Is(target error) bool {
+	_, ok := target.(*InvalidRemoteURLError)
+	return ok
+}
+
 // RepositoryResolution represents the result of resolving a directory to repository information
 type RepositoryResolution struct {
 	Directory  string `json:"directory"`   // The original directory path
@@ -31,20 +139,24 @@ func NewRepositoryResolver() *RepositoryResolver {
 func (r *RepositoryResolver) ValidateDirectory(directory string) error {
 	// Check if directory exists
 	if _, err := os.Stat(directory); os.IsNotExist(err) {
-		return fmt.Errorf("directory does not exist: %s", directory)
+		return NewDirectoryNotFoundError(directory)
 	}
 
 	// Check if .git directory exists
 	gitDir := filepath.Join(directory, ".git")
-	if gitInfo, err := os.Stat(gitDir); err != nil {
-		if os.IsNotExist(err) {
-			return fmt.Errorf("not a git repository: %s", directory)
+	gitInfo, err := os.Stat(gitDir)
+	switch {
+	case os.IsNotExist(err):
+		return NewNotGitRepositoryError(directory, "no .git directory found")
+	case err != nil:
+		return &RepositoryError{
+			Op:   "validate",
+			Path: gitDir,
+			Err:  fmt.Errorf("failed to access .git directory: %w", err),
 		}
-		return fmt.Errorf("failed to access .git directory: %w", err)
-	} else if !gitInfo.IsDir() {
-		return fmt.Errorf("not a git repository: .git is not a directory in %s", directory)
+	case !gitInfo.IsDir():
+		return NewNotGitRepositoryError(directory, ".git is not a directory")
 	}
-
 	return nil
 }
 
@@ -55,7 +167,11 @@ func (r *RepositoryResolver) ExtractRemoteInfo(directory string) (string, error)
 	// Read git config file
 	file, err := os.Open(gitConfigPath)
 	if err != nil {
-		return "", fmt.Errorf("failed to read git config: %w", err)
+		return "", &RepositoryError{
+			Op:   "extract",
+			Path: gitConfigPath,
+			Err:  fmt.Errorf("failed to read git config: %w", err),
+		}
 	}
 	defer file.Close()
 
@@ -87,11 +203,15 @@ func (r *RepositoryResolver) ExtractRemoteInfo(directory string) (string, error)
 	}
 
 	if err := scanner.Err(); err != nil {
-		return "", fmt.Errorf("failed to parse git config: %w", err)
+		return "", &RepositoryError{
+			Op:   "extract",
+			Path: gitConfigPath,
+			Err:  fmt.Errorf("failed to parse git config: %w", err),
+		}
 	}
 
 	if remoteURL == "" {
-		return "", fmt.Errorf("no configured remotes found in %s", directory)
+		return "", NewNoRemotesConfiguredError(directory)
 	}
 
 	// Parse the remote URL to extract owner/repo
@@ -118,7 +238,7 @@ func (r *RepositoryResolver) parseRemoteURL(remoteURL string) (string, error) {
 		return fmt.Sprintf("%s/%s", matches[1], matches[2]), nil
 	}
 
-	return "", fmt.Errorf("failed to parse remote URL: %s", remoteURL)
+	return "", NewInvalidRemoteURLError(remoteURL)
 }
 
 // ResolveRepository performs the complete directory to repository resolution
@@ -184,20 +304,4 @@ func (r *RepositoryResolver) ResolveRepository(directory string) (*RepositoryRes
 		RemoteURL:  remoteURL,
 		RemoteName: remoteName,
 	}, nil
-}
-
-// ValidateParameters validates mutual exclusivity between directory and repository parameters
-func (r *RepositoryResolver) ValidateParameters(directory, repository string) error {
-	directoryProvided := directory != ""
-	repositoryProvided := repository != ""
-
-	if !directoryProvided && !repositoryProvided {
-		return fmt.Errorf("exactly one of directory or repository must be provided")
-	}
-
-	if directoryProvided && repositoryProvided {
-		return fmt.Errorf("exactly one of directory or repository must be provided")
-	}
-
-	return nil
 }

@@ -46,9 +46,9 @@ func TestEditPullRequestComment(t *testing.T) {
 				},
 				StructuredContent: map[string]any{
 					"comment": map[string]any{
-						"id":         float64(123),
-						"body":       "Updated comment content",
-						"user":       "testuser",
+						"id":      float64(123),
+						"body":    "Updated comment content",
+						"user":    "testuser",
 						"created": "2025-09-10T10:00:00Z",
 						"updated": "2025-09-10T10:00:00Z",
 					},
@@ -86,7 +86,7 @@ func TestEditPullRequestComment(t *testing.T) {
 			},
 			expect: &mcp.CallToolResult{
 				Content: []mcp.Content{
-					&mcp.TextContent{Text: "Invalid request: repository: cannot be blank."},
+					&mcp.TextContent{Text: "Invalid request: directory: at least one of directory or repository must be provided; repository: at least one of directory or repository must be provided."},
 				},
 				StructuredContent: map[string]any{},
 				IsError:           true,
@@ -749,7 +749,7 @@ func TestPullRequestCommentEditValidationErrors(t *testing.T) {
 				"new_content":         "test content",
 			},
 			wantError:   true,
-			errorSubstr: "repository: cannot be blank",
+			errorSubstr: "at least one of directory or repository must be provided",
 		},
 		{
 			name: "invalid repository format",
@@ -760,7 +760,7 @@ func TestPullRequestCommentEditValidationErrors(t *testing.T) {
 				"new_content":         "test content",
 			},
 			wantError:   true,
-			errorSubstr: "repository must be in format 'owner/repo'",
+			errorSubstr: "repository: repository must be in format 'owner/repo'",
 		},
 		{
 			name: "missing new content",
@@ -967,6 +967,193 @@ func TestPullRequestCommentEditSuccessfulParameters(t *testing.T) {
 			// Verify updated comment body is included
 			if !strings.Contains(textContent.Text, tt.expected) {
 				t.Errorf("Expected updated comment body '%s' in response, got: %s", tt.expected, textContent.Text)
+			}
+		})
+	}
+}
+
+// TestPullRequestCommentEditDirectoryParameter tests directory parameter functionality
+func TestPullRequestCommentEditDirectoryParameter(t *testing.T) {
+	t.Parallel()
+	testCases := []prCommentEditTestCase{
+		{
+			name: "directory parameter with valid git repo",
+			setupMock: func(mock *MockGiteaServer) {
+				mock.AddComments("testuser", "testrepo", []MockComment{
+					{
+						ID:      123,
+						Content: "Original comment content",
+						Author:  "testuser",
+						Created: "2025-09-10T10:00:00Z",
+					},
+				})
+			},
+			arguments: map[string]any{
+				"directory":           createTempGitRepo(t, "testuser", "testrepo"),
+				"pull_request_number": 1,
+				"comment_id":          123,
+				"new_content":         "Updated comment content",
+			},
+			expect: &mcp.CallToolResult{
+				Content: []mcp.Content{
+					&mcp.TextContent{Text: "Pull request comment edited successfully. ID: 123, Updated: 2025-09-10T10:00:00Z\nComment body: Updated comment content"},
+				},
+				StructuredContent: map[string]any{
+					"comment": map[string]any{
+						"id":      float64(123),
+						"body":    "Updated comment content",
+						"user":    "testuser",
+						"created": "2025-09-10T10:00:00Z",
+						"updated": "2025-09-10T10:00:00Z",
+					},
+				},
+			},
+		},
+		{
+			name: "directory parameter with invalid git repo",
+			setupMock: func(mock *MockGiteaServer) {
+				// No mock setup needed for error case
+			},
+			arguments: map[string]any{
+				"directory":           "/nonexistent/path",
+				"pull_request_number": 1,
+				"comment_id":          123,
+				"new_content":         "test content",
+			},
+			expect: &mcp.CallToolResult{
+				Content: []mcp.Content{
+					&mcp.TextContent{Text: "Invalid request: directory: invalid directory."},
+				},
+				StructuredContent: map[string]any{},
+				IsError:           true,
+			},
+		},
+		{
+			name: "directory parameter with valid git repo and mock setup",
+			setupMock: func(mock *MockGiteaServer) {
+				mock.AddComments("testuser", "testrepo", []MockComment{
+					{
+						ID:      123,
+						Content: "Original comment content",
+						Author:  "testuser",
+						Created: "2025-09-10T10:00:00Z",
+					},
+				})
+			},
+			arguments: map[string]any{
+				"directory":           createTempGitRepo(t, "testuser", "testrepo"),
+				"pull_request_number": 1,
+				"comment_id":          123,
+				"new_content":         "test content",
+			},
+			expect: &mcp.CallToolResult{
+				Content: []mcp.Content{
+					&mcp.TextContent{Text: "Pull request comment edited successfully. ID: 123, Updated: 2025-09-10T10:00:00Z\nComment body: test content"},
+				},
+				StructuredContent: map[string]any{
+					"comment": map[string]any{
+						"id":      float64(123),
+						"body":    "test content",
+						"user":    "testuser",
+						"created": "2025-09-10T10:00:00Z",
+						"updated": "2025-09-10T10:00:00Z",
+					},
+				},
+			},
+		},
+		{
+			name: "directory parameter with both directory and repository provided (directory takes precedence)",
+			setupMock: func(mock *MockGiteaServer) {
+				mock.AddComments("testuser", "testrepo", []MockComment{
+					{ID: 123, Content: "Original comment", Author: "testuser", Created: "2025-09-09T10:30:00Z"},
+				})
+			},
+			arguments: map[string]any{
+				"directory":           createTempGitRepo(t, "testuser", "testrepo"),
+				"repository":          "different/repo",
+				"pull_request_number": 1,
+				"comment_id":          123,
+				"new_content":         "Updated comment content",
+			},
+			expect: &mcp.CallToolResult{
+				Content: []mcp.Content{
+					&mcp.TextContent{Text: "Pull request comment edited successfully. ID: 123, Updated: 2025-09-10T10:00:00Z\nComment body: Updated comment content"},
+				},
+				StructuredContent: map[string]any{
+					"comment": map[string]any{
+						"id":      float64(123),
+						"body":    "Updated comment content",
+						"user":    "testuser",
+						"created": "2025-09-10T10:00:00Z",
+						"updated": "2025-09-10T10:00:00Z",
+					},
+				},
+				IsError: false,
+			},
+		},
+		{
+			name: "directory parameter with empty string",
+			setupMock: func(mock *MockGiteaServer) {
+				// No mock setup needed for error case
+			},
+			arguments: map[string]any{
+				"directory":           "",
+				"pull_request_number": 1,
+				"comment_id":          123,
+				"new_content":         "test content",
+			},
+			expect: &mcp.CallToolResult{
+				Content: []mcp.Content{
+					&mcp.TextContent{Text: "Invalid request: directory: at least one of directory or repository must be provided; repository: at least one of directory or repository must be provided."},
+				},
+				StructuredContent: map[string]any{},
+				IsError:           true,
+			},
+		},
+		{
+			name: "directory parameter with whitespace only",
+			setupMock: func(mock *MockGiteaServer) {
+				// No mock setup needed for error case
+			},
+			arguments: map[string]any{
+				"directory":           "   \n\t   ",
+				"pull_request_number": 1,
+				"comment_id":          123,
+				"new_content":         "test content",
+			},
+			expect: &mcp.CallToolResult{
+				Content: []mcp.Content{
+					&mcp.TextContent{Text: "Invalid request: directory: directory must be an absolute path."},
+				},
+				StructuredContent: map[string]any{},
+				IsError:           true,
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			mock := NewMockGiteaServer(t)
+			if tc.setupMock != nil {
+				tc.setupMock(mock)
+			}
+			ts := NewTestServer(t, t.Context(), map[string]string{
+				"FORGEJO_REMOTE_URL": mock.URL(),
+				"FORGEJO_AUTH_TOKEN": "mock-token",
+			})
+			if err := ts.Initialize(); err != nil {
+				t.Fatalf("Failed to initialize test server: %v", err)
+			}
+
+			result, err := ts.Client().CallTool(context.Background(), &mcp.CallToolParams{
+				Name:      "pr_comment_edit",
+				Arguments: tc.arguments,
+			})
+			if err != nil {
+				t.Fatalf("Failed to call pr_comment_edit tool: %v", err)
+			}
+			if !cmp.Equal(tc.expect, result) {
+				t.Error(cmp.Diff(tc.expect, result))
 			}
 		})
 	}

@@ -38,16 +38,16 @@ func TestListIssueComments(t *testing.T) {
 				StructuredContent: map[string]any{
 					"comments": []any{
 						map[string]any{
-							"id":         float64(1),
-							"body":       "Test comment 1",
-							"user":       "testuser",
+							"id":      float64(1),
+							"body":    "Test comment 1",
+							"user":    "testuser",
 							"created": "2025-09-09T10:30:00Z",
 							"updated": "2025-09-09T10:30:00Z",
 						},
 						map[string]any{
-							"id":         float64(2),
-							"body":       "Test comment 2",
-							"user":       "testuser",
+							"id":      float64(2),
+							"body":    "Test comment 2",
+							"user":    "testuser",
 							"created": "2025-09-09T10:31:00Z",
 							"updated": "2025-09-09T10:31:00Z",
 						},
@@ -89,7 +89,7 @@ func TestListIssueComments(t *testing.T) {
 			},
 		},
 		{
-			name: "missing repository",
+			name: "missing repository and directory",
 			setupMock: func(mock *MockGiteaServer) {
 				// No mock setup needed for error case
 			},
@@ -100,7 +100,7 @@ func TestListIssueComments(t *testing.T) {
 			},
 			expect: &mcp.CallToolResult{
 				Content: []mcp.Content{
-					&mcp.TextContent{Text: "Invalid request: repository: cannot be blank."},
+					&mcp.TextContent{Text: "Invalid request: directory: at least one of directory or repository must be provided; repository: at least one of directory or repository must be provided."},
 				},
 				StructuredContent: map[string]any{},
 				IsError:           true,
@@ -166,9 +166,9 @@ func TestListIssueComments(t *testing.T) {
 				StructuredContent: map[string]any{
 					"comments": []any{
 						map[string]any{
-							"id":         float64(1),
-							"body":       "Default test comment",
-							"user":       "testuser",
+							"id":      float64(1),
+							"body":    "Default test comment",
+							"user":    "testuser",
 							"created": "2024-01-01T00:00:00Z",
 							"updated": "2024-01-01T00:00:00Z",
 						},
@@ -194,6 +194,103 @@ func TestListIssueComments(t *testing.T) {
 			expect: &mcp.CallToolResult{
 				Content: []mcp.Content{
 					&mcp.TextContent{Text: "Invalid request: offset: must be no less than 0."},
+				},
+				StructuredContent: map[string]any{},
+				IsError:           true,
+			},
+		},
+		// Directory parameter tests
+		{
+			name: "directory parameter - directory does not exist",
+			arguments: map[string]any{
+				"directory":    "/home/user/projects/testrepo",
+				"issue_number": 1,
+				"limit":        10,
+				"offset":       0,
+			},
+			expect: &mcp.CallToolResult{
+				Content: []mcp.Content{
+					&mcp.TextContent{Text: "Invalid request: directory: invalid directory."},
+				},
+				StructuredContent: map[string]any{},
+				IsError:           true,
+			},
+		},
+		{
+			name: "directory parameter - SSH directory does not exist",
+			arguments: map[string]any{
+				"directory":    "/home/user/projects/testrepo-ssh",
+				"issue_number": 1,
+				"limit":        10,
+				"offset":       0,
+			},
+			expect: &mcp.CallToolResult{
+				Content: []mcp.Content{
+					&mcp.TextContent{Text: "Invalid request: directory: invalid directory."},
+				},
+				StructuredContent: map[string]any{},
+				IsError:           true,
+			},
+		},
+		{
+			name: "directory parameter - invalid directory path",
+			arguments: map[string]any{
+				"directory":    "/nonexistent/path",
+				"issue_number": 1,
+				"limit":        10,
+				"offset":       0,
+			},
+			expect: &mcp.CallToolResult{
+				Content: []mcp.Content{
+					&mcp.TextContent{Text: "Invalid request: directory: invalid directory."},
+				},
+				StructuredContent: map[string]any{},
+				IsError:           true,
+			},
+		},
+		{
+			name: "directory parameter - missing directory",
+			arguments: map[string]any{
+				"issue_number": 1,
+				"limit":        10,
+				"offset":       0,
+			},
+			expect: &mcp.CallToolResult{
+				Content: []mcp.Content{
+					&mcp.TextContent{Text: "Invalid request: directory: at least one of directory or repository must be provided; repository: at least one of directory or repository must be provided."},
+				},
+				StructuredContent: map[string]any{},
+				IsError:           true,
+			},
+		},
+		{
+			name: "directory parameter - both directory and repository provided",
+			arguments: map[string]any{
+				"directory":    "/home/user/projects/testrepo",
+				"repository":   "testuser/testrepo",
+				"issue_number": 1,
+				"limit":        10,
+				"offset":       0,
+			},
+			expect: &mcp.CallToolResult{
+				Content: []mcp.Content{
+					&mcp.TextContent{Text: "Failed to resolve directory: repository validate failed for /home/user/projects/testrepo: directory does not exist"},
+				},
+				StructuredContent: map[string]any{},
+				IsError:           true,
+			},
+		},
+		{
+			name: "directory parameter - empty comments list",
+			arguments: map[string]any{
+				"directory":    "/home/user/projects/testrepo",
+				"issue_number": 1,
+				"limit":        10,
+				"offset":       0,
+			},
+			expect: &mcp.CallToolResult{
+				Content: []mcp.Content{
+					&mcp.TextContent{Text: "Invalid request: directory: invalid directory."},
 				},
 				StructuredContent: map[string]any{},
 				IsError:           true,

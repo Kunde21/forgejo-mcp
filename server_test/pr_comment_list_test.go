@@ -131,7 +131,7 @@ func TestListPullRequestComments(t *testing.T) {
 			},
 		},
 		{
-			name: "missing repository",
+			name: "missing repository and directory",
 			setupMock: func(mock *MockGiteaServer) {
 				// No mock setup needed for error case
 			},
@@ -142,7 +142,7 @@ func TestListPullRequestComments(t *testing.T) {
 			},
 			expect: &mcp.CallToolResult{
 				Content: []mcp.Content{
-					&mcp.TextContent{Text: "Invalid request: repository: cannot be blank."},
+					&mcp.TextContent{Text: "Invalid request: directory: at least one of directory or repository must be provided; repository: at least one of directory or repository must be provided."},
 				},
 				StructuredContent: map[string]any{},
 				IsError:           true,

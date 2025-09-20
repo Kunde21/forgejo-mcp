@@ -51,9 +51,9 @@ func TestCreatePullRequestComment(t *testing.T) {
 				},
 				StructuredContent: map[string]any{
 					"comment": map[string]any{
-						"id":         float64(1),
-						"body":       "This is a helpful comment on the pull request.",
-						"user":       "testuser",
+						"id":      float64(1),
+						"body":    "This is a helpful comment on the pull request.",
+						"user":    "testuser",
 						"created": "2024-01-01T00:00:00Z",
 						"updated": "2024-01-01T00:00:00Z",
 					},
@@ -82,9 +82,9 @@ Overall, great work on this feature!`,
 				},
 				StructuredContent: map[string]any{
 					"comment": map[string]any{
-						"id":         float64(1),
-						"body":       "I've reviewed your changes and have a few suggestions:\n\n1. Consider adding error handling for the edge case where the input is empty\n2. The function could benefit from more descriptive variable names\n3. Add unit tests for the new functionality\n\nOverall, great work on this feature!",
-						"user":       "testuser",
+						"id":      float64(1),
+						"body":    "I've reviewed your changes and have a few suggestions:\n\n1. Consider adding error handling for the edge case where the input is empty\n2. The function could benefit from more descriptive variable names\n3. Add unit tests for the new functionality\n\nOverall, great work on this feature!",
+						"user":    "testuser",
 						"created": "2024-01-01T00:00:00Z",
 						"updated": "2024-01-01T00:00:00Z",
 					},
@@ -110,7 +110,7 @@ Overall, great work on this feature!`,
 			},
 		},
 		{
-			name: "missing repository",
+			name: "missing repository and directory",
 			setupMock: func(mock *MockGiteaServer) {
 				// No mock setup needed for error case
 			},
@@ -120,7 +120,7 @@ Overall, great work on this feature!`,
 			},
 			expect: &mcp.CallToolResult{
 				Content: []mcp.Content{
-					&mcp.TextContent{Text: "Invalid request: repository: cannot be blank."},
+					&mcp.TextContent{Text: "Invalid request: directory: at least one of directory or repository must be provided; repository: at least one of directory or repository must be provided."},
 				},
 				StructuredContent: map[string]any{},
 				IsError:           true,
@@ -193,6 +193,115 @@ Overall, great work on this feature!`,
 			expect: &mcp.CallToolResult{
 				Content: []mcp.Content{
 					&mcp.TextContent{Text: "Invalid request: pull_request_number: must be no less than 1."},
+				},
+				StructuredContent: map[string]any{},
+				IsError:           true,
+			},
+		},
+		// Directory parameter tests
+		{
+			name: "directory parameter - non-existent directory",
+			setupMock: func(mock *MockGiteaServer) {
+				// No mock setup needed for error case
+			},
+			arguments: map[string]any{
+				"directory":           "/home/user/projects/testrepo",
+				"pull_request_number": 1,
+				"comment":             "Test comment using directory parameter",
+			},
+			expect: &mcp.CallToolResult{
+				Content: []mcp.Content{
+					&mcp.TextContent{Text: "Invalid request: directory: invalid directory."},
+				},
+				StructuredContent: map[string]any{},
+				IsError:           true,
+			},
+		},
+		{
+			name: "directory parameter - non-existent SSH directory",
+			setupMock: func(mock *MockGiteaServer) {
+				// No mock setup needed for error case
+			},
+			arguments: map[string]any{
+				"directory":           "/home/user/projects/testrepo-ssh",
+				"pull_request_number": 42,
+				"comment":             "Test comment using directory parameter with SSH remote",
+			},
+			expect: &mcp.CallToolResult{
+				Content: []mcp.Content{
+					&mcp.TextContent{Text: "Invalid request: directory: invalid directory."},
+				},
+				StructuredContent: map[string]any{},
+				IsError:           true,
+			},
+		},
+		{
+			name: "directory parameter - invalid directory path",
+			arguments: map[string]any{
+				"directory":           "/nonexistent/path",
+				"pull_request_number": 1,
+				"comment":             "Test comment",
+			},
+			expect: &mcp.CallToolResult{
+				Content: []mcp.Content{
+					&mcp.TextContent{Text: "Invalid request: directory: invalid directory."},
+				},
+				StructuredContent: map[string]any{},
+				IsError:           true,
+			},
+		},
+		{
+			name: "directory parameter - missing directory and repository",
+			arguments: map[string]any{
+				"pull_request_number": 1,
+				"comment":             "Test comment",
+			},
+			expect: &mcp.CallToolResult{
+				Content: []mcp.Content{
+					&mcp.TextContent{Text: "Invalid request: directory: at least one of directory or repository must be provided; repository: at least one of directory or repository must be provided."},
+				},
+				StructuredContent: map[string]any{},
+				IsError:           true,
+			},
+		},
+		{
+			name: "directory parameter - both directory and repository provided (directory takes precedence)",
+			setupMock: func(mock *MockGiteaServer) {
+				mock.AddComments("testuser", "testrepo", []MockComment{}) // Start with no comments
+			},
+			arguments: map[string]any{
+				"directory":           "/home/user/projects/testrepo",
+				"repository":          "testuser/testrepo",
+				"pull_request_number": 1,
+				"comment":             "Test comment",
+			},
+			expect: &mcp.CallToolResult{
+				Content: []mcp.Content{
+					&mcp.TextContent{Text: "Failed to resolve directory: repository validate failed for /home/user/projects/testrepo: directory does not exist"},
+				},
+				StructuredContent: map[string]any{},
+				IsError:           true,
+			},
+		},
+		{
+			name: "directory parameter - real world scenario with non-existent directory",
+			setupMock: func(mock *MockGiteaServer) {
+				// No mock setup needed for error case
+			},
+			arguments: map[string]any{
+				"directory":           "/home/user/projects/testrepo",
+				"pull_request_number": 7,
+				"comment": `I've reviewed your changes and have a few suggestions:
+
+1. Consider adding error handling for the edge case where input is empty
+2. The function could benefit from more descriptive variable names  
+3. Add unit tests for the new functionality
+
+Overall, great work on this feature!`,
+			},
+			expect: &mcp.CallToolResult{
+				Content: []mcp.Content{
+					&mcp.TextContent{Text: "Invalid request: directory: invalid directory."},
 				},
 				StructuredContent: map[string]any{},
 				IsError:           true,
@@ -350,11 +459,11 @@ func TestPullRequestCommentCreationPerformance(t *testing.T) {
 		},
 		StructuredContent: map[string]any{
 			"comment": map[string]any{
-				"body":       largeComment,
+				"body":    largeComment,
 				"created": "2024-01-01T00:00:00Z",
-				"id":         float64(1),
+				"id":      float64(1),
 				"updated": "2024-01-01T00:00:00Z",
-				"user":       "testuser",
+				"user":    "testuser",
 			},
 		},
 		IsError: false,
@@ -567,13 +676,13 @@ func TestPullRequestCommentCreateValidationErrors(t *testing.T) {
 		errorSubstr string
 	}{
 		{
-			name: "missing repository",
+			name: "missing repository and directory",
 			args: map[string]any{
 				"pull_request_number": 1,
 				"comment":             "Test comment",
 			},
 			wantError:   true,
-			errorSubstr: "repository: cannot be blank",
+			errorSubstr: "at least one of directory or repository must be provided",
 		},
 		{
 			name: "invalid repository format",
@@ -583,7 +692,7 @@ func TestPullRequestCommentCreateValidationErrors(t *testing.T) {
 				"comment":             "Test comment",
 			},
 			wantError:   true,
-			errorSubstr: "repository must be in format 'owner/repo'",
+			errorSubstr: "repository: repository must be in format 'owner/repo'",
 		},
 		{
 			name: "invalid pull request number",

@@ -150,7 +150,7 @@ func TestIssueCommentEdit(t *testing.T) {
 			expect: &mcp.CallToolResult{
 				Content: []mcp.Content{
 					&mcp.TextContent{
-						Text: "Invalid request: repository: cannot be blank.",
+						Text: "Invalid request: directory: at least one of directory or repository must be provided; repository: at least one of directory or repository must be provided.",
 					},
 				},
 				StructuredContent: map[string]any{},
@@ -487,6 +487,115 @@ func TestIssueCommentEdit(t *testing.T) {
 					},
 				},
 				IsError: false,
+			},
+		},
+		// Directory parameter tests
+		{
+			name: "directory parameter - directory does not exist",
+			arguments: map[string]any{
+				"directory":    "/home/user/projects/testrepo",
+				"issue_number": 1,
+				"comment_id":   456,
+				"new_content":  "Updated comment using directory parameter",
+			},
+			expect: &mcp.CallToolResult{
+				Content: []mcp.Content{
+					&mcp.TextContent{
+						Text: "Invalid request: directory: invalid directory.",
+					},
+				},
+				StructuredContent: map[string]any{},
+				IsError:           true,
+			},
+		},
+		{
+			name: "directory parameter - SSH directory does not exist",
+			arguments: map[string]any{
+				"directory":    "/home/user/projects/testrepo-ssh",
+				"issue_number": 1,
+				"comment_id":   789,
+				"new_content":  "Updated comment using directory parameter with SSH remote",
+			},
+			expect: &mcp.CallToolResult{
+				Content: []mcp.Content{
+					&mcp.TextContent{
+						Text: "Invalid request: directory: invalid directory.",
+					},
+				},
+				StructuredContent: map[string]any{},
+				IsError:           true,
+			},
+		},
+		{
+			name: "directory parameter - invalid directory path",
+			arguments: map[string]any{
+				"directory":    "/nonexistent/path",
+				"issue_number": 1,
+				"comment_id":   123,
+				"new_content":  "Test content",
+			},
+			expect: &mcp.CallToolResult{
+				Content: []mcp.Content{
+					&mcp.TextContent{
+						Text: "Invalid request: directory: invalid directory.",
+					},
+				},
+				StructuredContent: map[string]any{},
+				IsError:           true,
+			},
+		},
+		{
+			name: "directory parameter - missing directory",
+			arguments: map[string]any{
+				"issue_number": 1,
+				"comment_id":   123,
+				"new_content":  "Test content",
+			},
+			expect: &mcp.CallToolResult{
+				Content: []mcp.Content{
+					&mcp.TextContent{
+						Text: "Invalid request: directory: at least one of directory or repository must be provided; repository: at least one of directory or repository must be provided.",
+					},
+				},
+				StructuredContent: map[string]any{},
+				IsError:           true,
+			},
+		},
+		{
+			name: "directory parameter - both directory and repository provided (directory takes precedence but does not exist)",
+			arguments: map[string]any{
+				"directory":    "/home/user/projects/testrepo",
+				"repository":   "testuser/testrepo",
+				"issue_number": 1,
+				"comment_id":   123,
+				"new_content":  "Test content with both parameters",
+			},
+			expect: &mcp.CallToolResult{
+				Content: []mcp.Content{
+					&mcp.TextContent{
+						Text: "Failed to resolve directory: repository validate failed for /home/user/projects/testrepo: directory does not exist",
+					},
+				},
+				StructuredContent: map[string]any{},
+				IsError:           true,
+			},
+		},
+		{
+			name: "directory parameter - real world scenario with code review update (directory does not exist)",
+			arguments: map[string]any{
+				"directory":    "/home/user/projects/testrepo",
+				"issue_number": 7,
+				"comment_id":   999,
+				"new_content":  "Updated code review: After further testing, I found that the implementation works well. The performance is good and the code is clean. Ready to merge!",
+			},
+			expect: &mcp.CallToolResult{
+				Content: []mcp.Content{
+					&mcp.TextContent{
+						Text: "Invalid request: directory: invalid directory.",
+					},
+				},
+				StructuredContent: map[string]any{},
+				IsError:           true,
 			},
 		},
 	}

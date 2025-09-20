@@ -114,9 +114,9 @@ func TestCreateIssueComment(t *testing.T) {
 				},
 				StructuredContent: map[string]any{
 					"comment": map[string]any{
-						"id":         float64(1),
-						"body":       "This is a test comment",
-						"user":       "testuser",
+						"id":      float64(1),
+						"body":    "This is a test comment",
+						"user":    "testuser",
 						"created": "2024-01-01T00:00:00Z",
 						"updated": "2024-01-01T00:00:00Z",
 					},
@@ -138,18 +138,18 @@ func TestCreateIssueComment(t *testing.T) {
 				},
 				StructuredContent: map[string]any{
 					"comment": map[string]any{
-						"body":       "",
+						"body":    "",
 						"created": "",
-						"id":         float64(0),
+						"id":      float64(0),
 						"updated": "",
-						"user":       "",
+						"user":    "",
 					},
 				},
 				IsError: true,
 			},
 		},
 		{
-			name:      "missing repository",
+			name:      "missing repository and directory",
 			category:  Validation,
 			setupMock: func(mock *MockGiteaServer) {},
 			arguments: map[string]any{
@@ -158,15 +158,15 @@ func TestCreateIssueComment(t *testing.T) {
 			},
 			expect: &mcp.CallToolResult{
 				Content: []mcp.Content{
-					&mcp.TextContent{Text: "Invalid request: repository: cannot be blank."},
+					&mcp.TextContent{Text: "Invalid request: directory: at least one of directory or repository must be provided; repository: at least one of directory or repository must be provided."},
 				},
 				StructuredContent: map[string]any{
 					"comment": map[string]any{
-						"body":       "",
+						"body":    "",
 						"created": "",
-						"id":         float64(0),
+						"id":      float64(0),
 						"updated": "",
-						"user":       "",
+						"user":    "",
 					},
 				},
 				IsError: true,
@@ -187,11 +187,11 @@ func TestCreateIssueComment(t *testing.T) {
 				},
 				StructuredContent: map[string]any{
 					"comment": map[string]any{
-						"body":       "",
+						"body":    "",
 						"created": "",
-						"id":         float64(0),
+						"id":      float64(0),
 						"updated": "",
-						"user":       "",
+						"user":    "",
 					},
 				},
 				IsError: true,
@@ -212,11 +212,11 @@ func TestCreateIssueComment(t *testing.T) {
 				},
 				StructuredContent: map[string]any{
 					"comment": map[string]any{
-						"body":       "",
+						"body":    "",
 						"created": "",
-						"id":         float64(0),
+						"id":      float64(0),
 						"updated": "",
-						"user":       "",
+						"user":    "",
 					},
 				},
 				IsError: true,
@@ -237,11 +237,11 @@ func TestCreateIssueComment(t *testing.T) {
 				},
 				StructuredContent: map[string]any{
 					"comment": map[string]any{
-						"body":       "",
+						"body":    "",
 						"created": "",
-						"id":         float64(0),
+						"id":      float64(0),
 						"updated": "",
-						"user":       "",
+						"user":    "",
 					},
 				},
 				IsError: true,
@@ -262,11 +262,11 @@ func TestCreateIssueComment(t *testing.T) {
 				},
 				StructuredContent: map[string]any{
 					"comment": map[string]any{
-						"body":       "",
+						"body":    "",
 						"created": "",
-						"id":         float64(0),
+						"id":      float64(0),
 						"updated": "",
-						"user":       "",
+						"user":    "",
 					},
 				},
 				IsError: true,
@@ -292,9 +292,9 @@ func TestCreateIssueComment(t *testing.T) {
 				},
 				StructuredContent: map[string]any{
 					"comment": map[string]any{
-						"id":         float64(1),
-						"body":       mockFactory.CreateRealisticComment("code_review"),
-						"user":       "testuser",
+						"id":      float64(1),
+						"body":    mockFactory.CreateRealisticComment("code_review"),
+						"user":    "testuser",
 						"created": "2024-01-01T00:00:00Z",
 						"updated": "2024-01-01T00:00:00Z",
 					},
@@ -320,9 +320,9 @@ func TestCreateIssueComment(t *testing.T) {
 				},
 				StructuredContent: map[string]any{
 					"comment": map[string]any{
-						"id":         float64(1),
-						"body":       mockFactory.CreateRealisticComment("status_update"),
-						"user":       "testuser",
+						"id":      float64(1),
+						"body":    mockFactory.CreateRealisticComment("status_update"),
+						"user":    "testuser",
 						"created": "2024-01-01T00:00:00Z",
 						"updated": "2024-01-01T00:00:00Z",
 					},
@@ -348,9 +348,9 @@ func TestCreateIssueComment(t *testing.T) {
 				},
 				StructuredContent: map[string]any{
 					"comment": map[string]any{
-						"id":         float64(1),
-						"body":       mockFactory.CreateRealisticComment("bug_report"),
-						"user":       "testuser",
+						"id":      float64(1),
+						"body":    mockFactory.CreateRealisticComment("bug_report"),
+						"user":    "testuser",
 						"created": "2024-01-01T00:00:00Z",
 						"updated": "2024-01-01T00:00:00Z",
 					},
@@ -373,11 +373,11 @@ func TestCreateIssueComment(t *testing.T) {
 				},
 				StructuredContent: map[string]any{
 					"comment": map[string]any{
-						"body":       "",
+						"body":    "",
 						"created": "",
-						"id":         float64(0),
+						"id":      float64(0),
 						"updated": "",
-						"user":       "",
+						"user":    "",
 					},
 				},
 				IsError: true,
@@ -398,9 +398,9 @@ func TestCreateIssueComment(t *testing.T) {
 				},
 				StructuredContent: map[string]any{
 					"comment": map[string]any{
-						"id":         float64(1),
-						"body":       "Test comment",
-						"user":       "testuser",
+						"id":      float64(1),
+						"body":    "Test comment",
+						"user":    "testuser",
 						"created": "2024-01-01T00:00:00Z",
 						"updated": "2024-01-01T00:00:00Z",
 					},
@@ -422,9 +422,9 @@ func TestCreateIssueComment(t *testing.T) {
 				},
 				StructuredContent: map[string]any{
 					"comment": map[string]any{
-						"id":         float64(1),
-						"body":       "Test comment",
-						"user":       "testuser",
+						"id":      float64(1),
+						"body":    "Test comment",
+						"user":    "testuser",
 						"created": "2024-01-01T00:00:00Z",
 						"updated": "2024-01-01T00:00:00Z",
 					},
@@ -494,6 +494,157 @@ func TestCreateIssueComment(t *testing.T) {
 				if result.IsError {
 					t.Errorf("Expected success, got error: %s", GetTextContent(result.Content))
 				}
+			},
+		},
+		// Directory parameter tests
+		{
+			name:      "directory parameter - non-existent HTTPS directory",
+			category:  Validation,
+			setupMock: func(mock *MockGiteaServer) {},
+			arguments: map[string]any{
+				"directory":    "/home/user/projects/testrepo",
+				"issue_number": 1,
+				"comment":      "Test comment using directory parameter",
+			},
+			expect: &mcp.CallToolResult{
+				Content: []mcp.Content{
+					&mcp.TextContent{Text: "Invalid request: directory: invalid directory."},
+				},
+				StructuredContent: map[string]any{
+					"comment": map[string]any{
+						"body":    "",
+						"created": "",
+						"id":      float64(0),
+						"updated": "",
+						"user":    "",
+					},
+				},
+				IsError: true,
+			},
+		},
+		{
+			name:      "directory parameter - successful comment creation with SSH remote",
+			category:  Validation,
+			setupMock: func(mock *MockGiteaServer) {},
+			arguments: map[string]any{
+				"directory":    "/home/user/projects/testrepo-ssh",
+				"issue_number": 42,
+				"comment":      "Test comment using directory parameter with SSH remote",
+			},
+			expect: &mcp.CallToolResult{
+				Content: []mcp.Content{
+					&mcp.TextContent{Text: "Invalid request: directory: invalid directory."},
+				},
+				StructuredContent: map[string]any{
+					"comment": map[string]any{
+						"body":    "",
+						"created": "",
+						"id":      float64(0),
+						"updated": "",
+						"user":    "",
+					},
+				},
+				IsError: true,
+			},
+		},
+		{
+			name:      "directory parameter - invalid directory path",
+			category:  Validation,
+			setupMock: func(mock *MockGiteaServer) {},
+			arguments: map[string]any{
+				"directory":    "/nonexistent/path",
+				"issue_number": 1,
+				"comment":      "Test comment",
+			},
+			expect: &mcp.CallToolResult{
+				Content: []mcp.Content{
+					&mcp.TextContent{Text: "Invalid request: directory: invalid directory."},
+				},
+				StructuredContent: map[string]any{
+					"comment": map[string]any{
+						"body":    "",
+						"created": "",
+						"id":      float64(0),
+						"updated": "",
+						"user":    "",
+					},
+				},
+				IsError: true,
+			},
+		},
+		{
+			name:      "directory parameter - missing directory and repository",
+			category:  Validation,
+			setupMock: func(mock *MockGiteaServer) {},
+			arguments: map[string]any{
+				"issue_number": 1,
+				"comment":      "Test comment",
+			},
+			expect: &mcp.CallToolResult{
+				Content: []mcp.Content{
+					&mcp.TextContent{Text: "Invalid request: directory: at least one of directory or repository must be provided; repository: at least one of directory or repository must be provided."},
+				},
+				StructuredContent: map[string]any{
+					"comment": map[string]any{
+						"body":    "",
+						"created": "",
+						"id":      float64(0),
+						"updated": "",
+						"user":    "",
+					},
+				},
+				IsError: true,
+			},
+		},
+		{
+			name:      "directory parameter - both directory and repository provided (directory takes precedence)",
+			category:  Validation,
+			setupMock: func(mock *MockGiteaServer) {},
+			arguments: map[string]any{
+				"directory":    "/home/user/projects/testrepo",
+				"repository":   "testuser/testrepo",
+				"issue_number": 1,
+				"comment":      "Test comment",
+			},
+			expect: &mcp.CallToolResult{
+				Content: []mcp.Content{
+					&mcp.TextContent{Text: "Failed to resolve directory: repository validate failed for /home/user/projects/testrepo: directory does not exist"},
+				},
+				StructuredContent: map[string]any{
+					"comment": map[string]any{
+						"body":    "",
+						"created": "",
+						"id":      float64(0),
+						"updated": "",
+						"user":    "",
+					},
+				},
+				IsError: true,
+			},
+		},
+		{
+			name:      "directory parameter - real world scenario with code review",
+			category:  Validation,
+			setupMock: func(mock *MockGiteaServer) {},
+			arguments: map[string]any{
+				"directory":    "/home/user/projects/testrepo",
+				"issue_number": 7,
+				"comment":      mockFactory.CreateRealisticComment("code_review"),
+			},
+			expect: &mcp.CallToolResult{
+				Content: []mcp.Content{
+					&mcp.TextContent{Text: "Invalid request: directory: invalid directory."},
+				},
+				StructuredContent: map[string]any{
+					"comment": map[string]any{
+						"body":    "",
+						"created": "",
+						"id":      float64(0),
+						"updated": "",
+						"user":    "",
+					},
+				},
+				IsError: true,
 			},
 		},
 	}
