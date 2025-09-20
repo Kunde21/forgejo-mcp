@@ -7,10 +7,11 @@ import (
 )
 
 type Config struct {
-	Host      string `mapstructure:"host"`
-	Port      int    `mapstructure:"port"`
-	RemoteURL string `mapstructure:"remote_url"`
-	AuthToken string `mapstructure:"auth_token"`
+	Host       string `mapstructure:"host"`
+	Port       int    `mapstructure:"port"`
+	RemoteURL  string `mapstructure:"remote_url"`
+	AuthToken  string `mapstructure:"auth_token"`
+	ClientType string `mapstructure:"client_type"`
 }
 
 func Load() (*Config, error) {
@@ -18,12 +19,14 @@ func Load() (*Config, error) {
 	viper.SetDefault("port", 3000)
 	viper.SetDefault("remote_url", "")
 	viper.SetDefault("auth_token", "")
+	viper.SetDefault("client_type", "auto") // Default to auto-detection
 
 	// Environment variables
 	viper.BindEnv("host", "MCP_HOST")
 	viper.BindEnv("port", "MCP_PORT")
 	viper.BindEnv("remote_url", "FORGEJO_REMOTE_URL")
 	viper.BindEnv("auth_token", "FORGEJO_AUTH_TOKEN")
+	viper.BindEnv("client_type", "FORGEJO_CLIENT_TYPE")
 
 	// Config file support (optional)
 	viper.SetConfigName("config")
@@ -49,6 +52,9 @@ func (c *Config) Validate() error {
 	}
 	if c.AuthToken == "" {
 		return &ValidationError{Field: "AuthToken", Message: "FORGEJO_AUTH_TOKEN environment variable or config file auth_token is required"}
+	}
+	if c.ClientType != "" && c.ClientType != "gitea" && c.ClientType != "forgejo" && c.ClientType != "auto" {
+		return &ValidationError{Field: "ClientType", Message: "ClientType must be one of: 'gitea', 'forgejo', 'auto' (or empty for auto-detection)"}
 	}
 	return nil
 }

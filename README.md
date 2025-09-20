@@ -36,6 +36,51 @@ If you're upgrading from a version using the third-party `mark3labs/mcp-go` SDK:
 - None for end users - all existing functionality preserved
 - Internal API changes only affect custom integrations
 
+## Migration from Gitea to Forgejo
+
+If you're migrating from a Gitea instance to Forgejo, the server provides seamless support through automatic detection:
+
+### Automatic Migration (Recommended)
+
+1. **Update Environment Variables**: Change your `FORGEJO_REMOTE_URL` to point to your new Forgejo instance
+2. **No Configuration Changes**: The server will automatically detect Forgejo and use the appropriate SDK
+3. **Test Connection**: Use the `config` command to verify connectivity:
+
+```bash
+./forgejo-mcp config
+```
+
+### Manual Migration
+
+If you prefer explicit control:
+
+1. **Update Environment Variables**:
+   ```bash
+   export FORGEJO_REMOTE_URL="https://your-new-forgejo.instance"
+   export FORGEJO_CLIENT_TYPE="forgejo"  # Explicitly use Forgejo SDK
+   ```
+
+2. **Update Configuration File** (if using config.yaml):
+   ```yaml
+   remote_url: "https://your-new-forgejo.instance"
+   client_type: "forgejo"
+   ```
+
+### Migration Benefits
+
+- **Zero Downtime**: Automatic detection ensures compatibility during transition
+- **Feature Parity**: All existing tools work identically with both platforms
+- **Performance**: Forgejo SDK may provide better performance for Forgejo instances
+- **Future-Proof**: Ready for any future platform-specific optimizations
+
+### Verification Steps
+
+After migration, verify everything works:
+
+1. **Test Tool Calls**: Run any existing MCP tool calls - they should work unchanged
+2. **Check Logs**: Look for "Detected Forgejo" in server logs during startup
+3. **Validate Responses**: Ensure all API responses maintain the same structure
+
 ## Installation
 
 ```bash
@@ -58,12 +103,47 @@ The application can be configured through environment variables or a configurati
 
 - `FORGEJO_REMOTE_URL` - URL of your Forgejo/Gitea instance (required)
 - `FORGEJO_AUTH_TOKEN` - Authentication token for Forgejo/Gitea API (required)
+- `FORGEJO_CLIENT_TYPE` - Client type: "gitea", "forgejo", or "auto" (default: "auto")
 - `MCP_HOST` - Host for MCP server (default: localhost)
 - `MCP_PORT` - Port for MCP server (default: 3000)
 
 ### Configuration File
 
 The server uses environment variables for configuration. No configuration file is currently supported.
+
+### Client Type Configuration
+
+The server supports three client types for connecting to different Git hosting platforms:
+
+- **`gitea`** - Use the Gitea SDK for Gitea instances
+- **`forgejo`** - Use the Forgejo SDK for Forgejo instances
+- **`auto`** - Automatically detect the platform by querying `/api/v1/version` (default)
+
+#### Automatic Detection
+
+When using `auto` mode (the default), the server will:
+
+1. Query the `/api/v1/version` endpoint of your instance
+2. Parse the version string to determine if it's Forgejo or Gitea
+3. Select the appropriate SDK automatically
+4. Fall back to Gitea if detection fails
+
+This provides seamless compatibility with both platforms without manual configuration.
+
+#### Manual Configuration
+
+For specific requirements, you can explicitly set the client type:
+
+```bash
+# Force Gitea client
+export FORGEJO_CLIENT_TYPE="gitea"
+
+# Force Forgejo client
+export FORGEJO_CLIENT_TYPE="forgejo"
+
+# Use automatic detection (default)
+export FORGEJO_CLIENT_TYPE="auto"
+```
 
 ## Usage
 

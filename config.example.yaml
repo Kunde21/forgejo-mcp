@@ -13,3 +13,10 @@ port: 3000
 # Forgejo/Gitea configuration (API integration settings)
 remote_url: "https://your-forgejo-instance.com"
 auth_token: "your-auth-token-here"
+
+# Client type configuration (optional, defaults to "auto")
+# Options: "gitea", "forgejo", "auto"
+# - "gitea": Use Gitea SDK for Gitea instances
+# - "forgejo": Use Forgejo SDK for Forgejo instances
+# - "auto": Automatically detect platform by querying /api/v1/version (recommended)
+client_type: "auto"

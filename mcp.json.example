@@ -4,8 +4,9 @@
       "command": "./forgejo-mcp",
       "args": ["serve"],
       "env": {
-	"FORGEJO_REMOTE_URL": "",
-	"FORGEJO_AUTH_TOKEN": "",
+ 	"FORGEJO_REMOTE_URL": "",
+ 	"FORGEJO_AUTH_TOKEN": "",
+ 	"FORGEJO_CLIENT_TYPE": "auto"
       }
     }
   }

@@ -2,8 +2,11 @@
 
 ## Build/Test Commands
 - `go build ./...` - Build all packages
-- `go test ./...` - Run all tests
+- `go test ./...` - Run all tests (includes Forgejo/Gitea integration tests)
 - `go test ./path/to/package -run TestName` - Run single test
+- `go test -run Integration ./...` - Run integration tests only
+- `go test -v ./...` - Run tests with verbose output
+- `go test -cover ./...` - Run tests with coverage report
 - `go mod tidy` - Clean up dependencies
 - `go vet ./...` - Static analysis
 - `goimports -w .` - Format code
