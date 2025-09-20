@@ -1,40 +1,40 @@
 # Spec Tasks
 
-- [ ] 1. Add Forgejo SDK Dependency and Integration
-  - [ ] 1.1 Write tests for dependency integration
-  - [ ] 1.2 Add Forgejo SDK to go.mod dependencies
-  - [ ] 1.3 Run go mod tidy to resolve dependencies
-  - [ ] 1.4 Verify all existing tests still pass with new dependency
-  - [ ] 1.5 Verify all tests pass
+- [x] 1. Add Forgejo SDK Dependency and Integration
+  - [x] 1.1 Write tests for dependency integration
+  - [x] 1.2 Add Forgejo SDK to go.mod dependencies
+  - [x] 1.3 Run go mod tidy to resolve dependencies
+  - [x] 1.4 Verify all existing tests still pass with new dependency
+  - [x] 1.5 Verify all tests pass
 
 - [ ] 2. Implement ForgejoClient Structure
-  - [ ] 2.1 Write tests for ForgejoClient basic structure
-  - [ ] 2.2 Create remote/forgejo directory structure
-  - [ ] 2.3 Implement ForgejoClient struct and constructor
-  - [ ] 2.4 Add necessary imports and basic error handling
-  - [ ] 2.5 Verify all tests pass
+  - [x] 2.1 Write tests for ForgejoClient basic structure
+  - [x] 2.2 Create remote/forgejo directory structure
+  - [x] 2.3 Implement ForgejoClient struct and constructor
+  - [x] 2.4 Add necessary imports and basic error handling
+  - [x] 2.5 Verify all tests pass
 
-- [ ] 3. Implement ForgejoClient Issue Management Methods
-  - [ ] 3.1 Write tests for ListIssues method
-  - [ ] 3.2 Implement ListIssues method with Forgejo SDK
-  - [ ] 3.3 Write tests for CreateIssueComment method
-  - [ ] 3.4 Implement CreateIssueComment method
-  - [ ] 3.5 Write tests for ListIssueComments method
-  - [ ] 3.6 Implement ListIssueComments method
-  - [ ] 3.7 Write tests for EditIssueComment method
-  - [ ] 3.8 Implement EditIssueComment method
-  - [ ] 3.9 Verify all tests pass
+- [x] 3. Implement ForgejoClient Issue Management Methods
+   - [x] 3.1 Write tests for ListIssues method
+   - [x] 3.2 Implement ListIssues method with Forgejo SDK
+   - [x] 3.3 Write tests for CreateIssueComment method
+   - [x] 3.4 Implement CreateIssueComment method
+   - [x] 3.5 Write tests for ListIssueComments method
+   - [x] 3.6 Implement ListIssueComments method
+   - [x] 3.7 Write tests for EditIssueComment method
+   - [x] 3.8 Implement EditIssueComment method
+   - [x] 3.9 Verify all tests pass
 
-- [ ] 4. Implement ForgejoClient Pull Request Methods
-  - [ ] 4.1 Write tests for ListPullRequests method
-  - [ ] 4.2 Implement ListPullRequests method
-  - [ ] 4.3 Write tests for ListPullRequestComments method
-  - [ ] 4.4 Implement ListPullRequestComments method
-  - [ ] 4.5 Write tests for CreatePullRequestComment method
-  - [ ] 4.6 Implement CreatePullRequestComment method
-  - [ ] 4.7 Write tests for EditPullRequestComment method
-  - [ ] 4.8 Implement EditPullRequestComment method
-  - [ ] 4.9 Verify all tests pass
+- [x] 4. Implement ForgejoClient Pull Request Methods
+   - [x] 4.1 Write tests for ListPullRequests method
+   - [x] 4.2 Implement ListPullRequests method
+   - [x] 4.3 Write tests for ListPullRequestComments method
+   - [x] 4.4 Implement ListPullRequestComments method
+   - [x] 4.5 Write tests for CreatePullRequestComment method
+   - [x] 4.6 Implement CreatePullRequestComment method
+   - [x] 4.7 Write tests for EditPullRequestComment method
+   - [x] 4.8 Implement EditPullRequestComment method
+   - [x] 4.9 Verify all tests pass
 
 - [ ] 5. Extend Configuration System
   - [ ] 5.1 Write tests for configuration extension

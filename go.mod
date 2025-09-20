@@ -4,6 +4,7 @@ go 1.25.1
 
 require (
 	code.gitea.io/sdk/gitea v0.22.0
+	codeberg.org/mvdkleijn/forgejo-sdk/forgejo/v2 v2.0.0
 	github.com/go-ozzo/ozzo-validation/v4 v4.3.0
 	github.com/google/go-cmp v0.7.0
 	github.com/modelcontextprotocol/go-sdk v0.4.0

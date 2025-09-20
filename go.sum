@@ -1,5 +1,7 @@
 code.gitea.io/sdk/gitea v0.22.0 h1:HCKq7bX/HQ85Nw7c/HAhWgRye+vBp5nQOE8Md1+9Ef0=
 code.gitea.io/sdk/gitea v0.22.0/go.mod h1:yyF5+GhljqvA30sRDreoyHILruNiy4ASufugzYg0VHM=
+codeberg.org/mvdkleijn/forgejo-sdk/forgejo/v2 v2.0.0 h1:DMrDRx/7ke6+IReKtbZ1ZwfuaXQfG4P3yn9O/z9a08Y=
+codeberg.org/mvdkleijn/forgejo-sdk/forgejo/v2 v2.0.0/go.mod h1:9iyacQPbTwXp9klusoNOat2ZeFsWe+mmaDdZKywK220=
 github.com/42wim/httpsig v1.2.3 h1:xb0YyWhkYj57SPtfSttIobJUPJZB9as1nsfo7KWVcEs=
 github.com/42wim/httpsig v1.2.3/go.mod h1:nZq9OlYKDrUBhptd77IHx4/sZZD+IxTBADvAPI9G/EM=
 github.com/asaskevich/govalidator v0.0.0-20200108200545-475eaeb16496 h1:zV3ejI06GQ59hwDQAvmK1qxOQGB3WuVTRoY0okPTAv0=
