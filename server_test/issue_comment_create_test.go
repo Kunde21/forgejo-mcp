@@ -95,7 +95,7 @@ func (f *MockDataFactory) CreateRealisticComments(count int) []MockComment {
 var mockFactory = &MockDataFactory{}
 
 func TestCreateIssueComment(t *testing.T) {
-	t.Parallel()
+	// Note: t.Parallel() disabled due to incompatibility with t.Setenv() used in test harness
 	testCases := []IssueCommentCreateTestCase{
 		{
 			name:     "successful comment creation",
@@ -651,7 +651,7 @@ func TestCreateIssueComment(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			t.Parallel()
+			// Note: t.Parallel() disabled due to incompatibility with t.Setenv() used in test harness
 
 			// Set up context with timeout
 			timeout := tc.timeout
@@ -798,7 +798,7 @@ func TestIssueCommentLifecycle(t *testing.T) {
 
 // TestIssueCommentCreateConcurrent tests concurrent comment creation for thread safety
 func TestIssueCommentCreateConcurrent(t *testing.T) {
-	t.Parallel()
+	// Note: t.Parallel() disabled due to incompatibility with t.Setenv() used in test harness
 
 	const numGoroutines = 10
 	const numRequests = 5
@@ -902,7 +902,7 @@ func TestIssueCommentCreateStress(t *testing.T) {
 		t.Skip("Skipping stress test in short mode")
 	}
 
-	t.Parallel()
+	// Note: t.Parallel() disabled due to incompatibility with t.Setenv() used in test harness
 
 	const totalRequests = 100
 	const concurrentWorkers = 20

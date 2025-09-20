@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"maps"
 	"net/http"
 	"net/http/httptest"
 	"strconv"
@@ -235,6 +234,42 @@ func (m *MockGiteaServer) SetServerErrorCommentEdit(commentID int) {
 func (m *MockGiteaServer) handleVersion(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]string{"version": "1.20.0"})
+}
+
+// createGiteaHandler creates an HTTP handler that responds as a Gitea server
+func (m *MockGiteaServer) createGiteaHandler() http.Handler {
+	handler := http.NewServeMux()
+	handler.HandleFunc("/api/v1/version", m.handleGiteaVersion)
+	handler.HandleFunc("GET /api/v1/repos/{owner}/{repo}/pulls", m.handlePullRequests)
+	handler.HandleFunc("GET /api/v1/repos/{owner}/{repo}/issues", m.handleIssues)
+	handler.HandleFunc("POST /api/v1/repos/{owner}/{repo}/issues/{number}/comments", m.handleCreateComment)
+	handler.HandleFunc("GET /api/v1/repos/{owner}/{repo}/issues/{number}/comments", m.handleListComments)
+	handler.HandleFunc("PATCH /api/v1/repos/{owner}/{repo}/issues/comments/{id}", m.handleEditComment)
+	return handler
+}
+
+// createForgejoHandler creates an HTTP handler that responds as a Forgejo server
+func (m *MockGiteaServer) createForgejoHandler() http.Handler {
+	handler := http.NewServeMux()
+	handler.HandleFunc("/api/v1/version", m.handleForgejoVersion)
+	handler.HandleFunc("GET /api/v1/repos/{owner}/{repo}/pulls", m.handlePullRequests)
+	handler.HandleFunc("GET /api/v1/repos/{owner}/{repo}/issues", m.handleIssues)
+	handler.HandleFunc("POST /api/v1/repos/{owner}/{repo}/issues/{number}/comments", m.handleCreateComment)
+	handler.HandleFunc("GET /api/v1/repos/{owner}/{repo}/issues/{number}/comments", m.handleListComments)
+	handler.HandleFunc("PATCH /api/v1/repos/{owner}/{repo}/issues/comments/{id}", m.handleEditComment)
+	return handler
+}
+
+// handleGiteaVersion handles the version endpoint for Gitea
+func (m *MockGiteaServer) handleGiteaVersion(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]string{"version": "1.20.0"})
+}
+
+// handleForgejoVersion handles the version endpoint for Forgejo
+func (m *MockGiteaServer) handleForgejoVersion(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]string{"version": "12.0.0"})
 }
 
 // handlePullRequests handles pull requests endpoint
@@ -650,17 +685,17 @@ func NewTestServer(t *testing.T, ctx context.Context, env map[string]string) *Te
 	// Create a context with timeout for safety
 	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 
-	defaults := map[string]string{
-		"FORGEJO_REMOTE_URL": "http://change-me.now.localhost",
-		"FORGEJO_AUTH_TOKEN": "test-token",
+	// Set environment variables for config loading
+	for key, value := range env {
+		t.Setenv(key, value)
 	}
-	maps.Copy(defaults, env)
 
 	// Use real client
-	srv, err := server.NewFromConfig(&config.Config{
-		RemoteURL: defaults["FORGEJO_REMOTE_URL"],
-		AuthToken: defaults["FORGEJO_AUTH_TOKEN"],
-	})
+	cfg, err := config.Load()
+	if err != nil {
+		t.Fatalf("Failed to load config: %v", err)
+	}
+	srv, err := server.NewFromConfig(cfg)
 	if err != nil {
 		t.Fatalf("Failed to create server from config: %v", err)
 	}

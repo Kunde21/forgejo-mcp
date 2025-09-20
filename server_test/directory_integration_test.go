@@ -12,7 +12,7 @@ import (
 // TestDirectoryParameterConsistency tests that directory parameter resolution
 // works consistently across all tools that support it
 func TestDirectoryParameterConsistency(t *testing.T) {
-	t.Parallel()
+	// Note: t.Parallel() disabled due to incompatibility with t.Setenv() used in test harness
 
 	// Create a temporary git repository for testing
 	tempDir := createTempGitRepo(t, "testuser", "testrepo")
@@ -109,7 +109,7 @@ func TestDirectoryParameterConsistency(t *testing.T) {
 // TestDirectoryParameterErrorConsistency tests that error handling is consistent
 // across all tools when directory resolution fails
 func TestDirectoryParameterErrorConsistency(t *testing.T) {
-	t.Parallel()
+	// Note: t.Parallel() disabled due to incompatibility with t.Setenv() used in test harness
 
 	mock := NewMockGiteaServer(t)
 	ts := NewTestServer(t, t.Context(), map[string]string{
@@ -213,7 +213,7 @@ func TestDirectoryParameterErrorConsistency(t *testing.T) {
 // TestRepositoryParameterBackwardCompatibility tests that repository parameter
 // still works for backward compatibility
 func TestRepositoryParameterBackwardCompatibility(t *testing.T) {
-	t.Parallel()
+	// Note: t.Parallel() disabled due to incompatibility with t.Setenv() used in test harness
 
 	mock := NewMockGiteaServer(t)
 
@@ -305,7 +305,7 @@ func TestRepositoryParameterBackwardCompatibility(t *testing.T) {
 
 // TestDirectoryParameterEdgeCases tests edge cases for directory parameter
 func TestDirectoryParameterEdgeCases(t *testing.T) {
-	t.Parallel()
+	// Note: t.Parallel() disabled due to incompatibility with t.Setenv() used in test harness
 
 	mock := NewMockGiteaServer(t)
 	ts := NewTestServer(t, t.Context(), map[string]string{
@@ -377,7 +377,7 @@ func TestDirectoryParameterEdgeCases(t *testing.T) {
 
 // TestDirectoryVsRepositoryParameter tests that both parameters cannot be provided simultaneously
 func TestDirectoryVsRepositoryParameter(t *testing.T) {
-	t.Parallel()
+	// Note: t.Parallel() disabled due to incompatibility with t.Setenv() used in test harness
 
 	mock := NewMockGiteaServer(t)
 	ts := NewTestServer(t, t.Context(), map[string]string{

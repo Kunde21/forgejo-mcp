@@ -57,7 +57,7 @@ func createTempGitRepo(t *testing.T, owner, repo string) string {
 }
 
 func TestListIssues(t *testing.T) {
-	t.Parallel()
+	// Note: t.Parallel() disabled due to incompatibility with t.Setenv() used in test harness
 	testCases := []issueListTestCase{
 		{
 			name: "acceptance - real world scenario",
@@ -410,7 +410,7 @@ func TestListIssues(t *testing.T) {
 }
 
 func TestListIssuesPerformance(t *testing.T) {
-	t.Parallel()
+	// Note: t.Parallel() disabled due to incompatibility with t.Setenv() used in test harness
 
 	// Create test context with timeout and proper cleanup
 	ctx, cancel := CreateStandardTestContext(t, 30)
@@ -463,7 +463,8 @@ func TestListIssuesPerformance(t *testing.T) {
 }
 
 func TestListIssuesConcurrent(t *testing.T) {
-	t.Parallel()
+	// Note: t.Parallel() is not compatible with t.Setenv() used in NewTestServer
+	// Concurrent testing can still be done without parallel execution
 
 	// Create test context with timeout and proper cleanup
 	ctx, cancel := CreateStandardTestContext(t, 15)

@@ -19,7 +19,7 @@ type repositoryResolverTestCase struct {
 }
 
 func TestRepositoryResolver_ValidateDirectory(t *testing.T) {
-	t.Parallel()
+	// Note: t.Parallel() disabled due to incompatibility with t.Setenv() used in test harness
 
 	testCases := []repositoryResolverTestCase{
 		{
@@ -81,7 +81,7 @@ func TestRepositoryResolver_ValidateDirectory(t *testing.T) {
 }
 
 func TestRepositoryResolver_ExtractRemoteInfo(t *testing.T) {
-	t.Parallel()
+	// Note: t.Parallel() disabled due to incompatibility with t.Setenv() used in test harness
 
 	testCases := []struct {
 		name       string
@@ -194,7 +194,7 @@ func TestRepositoryResolver_ExtractRemoteInfo(t *testing.T) {
 }
 
 func TestRepositoryResolver_ResolveRepository(t *testing.T) {
-	t.Parallel()
+	// Note: t.Parallel() disabled due to incompatibility with t.Setenv() used in test harness
 
 	testCases := []struct {
 		name       string

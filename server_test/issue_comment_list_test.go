@@ -15,7 +15,7 @@ type issueCommentListTestCase struct {
 }
 
 func TestListIssueComments(t *testing.T) {
-	t.Parallel()
+	// Note: t.Parallel() disabled due to incompatibility with t.Setenv() used in test harness
 	testCases := []issueCommentListTestCase{
 		{
 			name: "successful comment listing",

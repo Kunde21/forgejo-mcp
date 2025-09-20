@@ -17,7 +17,7 @@ type prCommentListTestCase struct {
 }
 
 func TestListPullRequestComments(t *testing.T) {
-	t.Parallel()
+	// Note: t.Parallel() disabled due to incompatibility with t.Setenv() used in test harness
 	testCases := []prCommentListTestCase{
 		{
 			name: "acceptance",

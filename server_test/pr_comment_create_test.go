@@ -33,7 +33,7 @@ type prCommentCreatePerformanceTestCase struct {
 }
 
 func TestCreatePullRequestComment(t *testing.T) {
-	t.Parallel()
+	// Note: t.Parallel() disabled due to incompatibility with t.Setenv() used in test harness
 	testCases := []prCommentCreateTestCase{
 		{
 			name: "successful comment creation",
@@ -311,7 +311,7 @@ Overall, great work on this feature!`,
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			t.Parallel()
+			// Note: t.Parallel() disabled due to incompatibility with t.Setenv() used in test harness
 			ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
 			t.Cleanup(cancel)
 
@@ -343,7 +343,7 @@ Overall, great work on this feature!`,
 // TestPullRequestCommentLifecycle tests the complete PR comment lifecycle: create, list
 // This test is kept as a multi-step acceptance test since it involves multiple tool calls
 func TestPullRequestCommentLifecycle(t *testing.T) {
-	t.Parallel()
+	// Note: t.Parallel() disabled due to incompatibility with t.Setenv() used in test harness
 	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
 	t.Cleanup(cancel)
 	mock := NewMockGiteaServer(t)
@@ -416,7 +416,7 @@ func TestPullRequestCommentLifecycle(t *testing.T) {
 // TestPullRequestCommentCreationPerformance tests performance and edge cases
 // This acceptance test focuses on end-to-end performance scenarios
 func TestPullRequestCommentCreationPerformance(t *testing.T) {
-	t.Parallel()
+	// Note: t.Parallel() disabled due to incompatibility with t.Setenv() used in test harness
 
 	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
 	t.Cleanup(cancel)
@@ -494,7 +494,7 @@ func TestPullRequestCommentCreationPerformance(t *testing.T) {
 // TestPullRequestCommentCreationConcurrentDifferentPRs tests concurrent request handling on different PRs
 // This acceptance test focuses on end-to-end concurrent behavior across different pull requests
 func TestPullRequestCommentCreationConcurrentDifferentPRs(t *testing.T) {
-	t.Parallel()
+	// Note: t.Parallel() disabled due to incompatibility with t.Setenv() used in test harness
 	ctx, cancel := context.WithTimeout(t.Context(), 15*time.Second)
 	t.Cleanup(cancel)
 
@@ -541,7 +541,7 @@ func TestPullRequestCommentCreationConcurrentDifferentPRs(t *testing.T) {
 }
 
 func TestCreatePullRequestCommentConcurrent(t *testing.T) {
-	t.Parallel()
+	// Note: t.Parallel() disabled due to incompatibility with t.Setenv() used in test harness
 	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
 	t.Cleanup(cancel)
 
@@ -587,7 +587,7 @@ func TestCreatePullRequestCommentConcurrent(t *testing.T) {
 
 // TestPullRequestCommentCreateCompleteWorkflow tests the complete pull request comment create workflow
 func TestPullRequestCommentCreateCompleteWorkflow(t *testing.T) {
-	t.Parallel()
+	// Note: t.Parallel() disabled due to incompatibility with t.Setenv() used in test harness
 	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
 	t.Cleanup(cancel)
 
@@ -655,7 +655,7 @@ func TestPullRequestCommentCreateCompleteWorkflow(t *testing.T) {
 
 // TestPullRequestCommentCreateValidationErrors tests validation error scenarios
 func TestPullRequestCommentCreateValidationErrors(t *testing.T) {
-	t.Parallel()
+	// Note: t.Parallel() disabled due to incompatibility with t.Setenv() used in test harness
 	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
 	t.Cleanup(cancel)
 
@@ -777,7 +777,7 @@ func TestPullRequestCommentCreateValidationErrors(t *testing.T) {
 
 // TestPullRequestCommentCreateSuccessfulParameters tests successful comment creation with valid parameters
 func TestPullRequestCommentCreateSuccessfulParameters(t *testing.T) {
-	t.Parallel()
+	// Note: t.Parallel() disabled due to incompatibility with t.Setenv() used in test harness
 	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
 	t.Cleanup(cancel)
 

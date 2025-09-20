@@ -20,7 +20,7 @@ type prCommentEditTestCase struct {
 }
 
 func TestEditPullRequestComment(t *testing.T) {
-	t.Parallel()
+	// Note: t.Parallel() disabled due to incompatibility with t.Setenv() used in test harness
 	testCases := []prCommentEditTestCase{
 		{
 			name: "successful comment edit",
@@ -974,7 +974,7 @@ func TestPullRequestCommentEditSuccessfulParameters(t *testing.T) {
 
 // TestPullRequestCommentEditDirectoryParameter tests directory parameter functionality
 func TestPullRequestCommentEditDirectoryParameter(t *testing.T) {
-	t.Parallel()
+	// Note: t.Parallel() disabled due to incompatibility with t.Setenv() used in test harness
 	testCases := []prCommentEditTestCase{
 		{
 			name: "directory parameter with valid git repo",

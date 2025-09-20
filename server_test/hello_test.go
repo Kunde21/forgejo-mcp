@@ -22,7 +22,7 @@ type TestCase struct {
 // TestHelloToolTableDriven tests the hello tool using table-driven pattern
 // This consolidates all basic functionality tests into a single, comprehensive test
 func TestHelloToolTableDriven(t *testing.T) {
-	t.Parallel()
+	// Note: t.Parallel() disabled due to incompatibility with t.Setenv() used in test harness
 
 	testCases := []TestCase{
 		{
@@ -113,7 +113,7 @@ func TestHelloToolTableDriven(t *testing.T) {
 
 // TestHelloToolErrorHandling tests error scenarios and edge cases
 func TestHelloToolErrorHandling(t *testing.T) {
-	t.Parallel()
+	// Note: t.Parallel() disabled due to incompatibility with t.Setenv() used in test harness
 
 	testCases := []TestCase{
 		{
@@ -180,7 +180,7 @@ func TestHelloToolErrorHandling(t *testing.T) {
 
 // TestHelloToolConcurrent tests concurrent hello tool calls following the style guide pattern
 func TestHelloToolConcurrent(t *testing.T) {
-	t.Parallel()
+	// Note: t.Parallel() disabled due to incompatibility with t.Setenv() used in test harness
 
 	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
 	t.Cleanup(cancel)
@@ -233,7 +233,7 @@ func TestHelloToolConcurrent(t *testing.T) {
 
 // TestHelloToolContextCancellation tests context cancellation behavior
 func TestHelloToolContextCancellation(t *testing.T) {
-	t.Parallel()
+	// Note: t.Parallel() disabled due to incompatibility with t.Setenv() used in test harness
 
 	ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
 	t.Cleanup(cancel)
@@ -264,7 +264,8 @@ func TestHelloToolContextCancellation(t *testing.T) {
 
 // TestHelloToolPerformance tests performance with multiple rapid calls
 func TestHelloToolPerformance(t *testing.T) {
-	t.Parallel()
+	// Note: t.Parallel() is not compatible with t.Setenv() used in NewTestServer
+	// Performance testing can still be done without parallel execution
 
 	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
 	t.Cleanup(cancel)
@@ -319,7 +320,7 @@ func TestHelloToolPerformance(t *testing.T) {
 
 // TestMCPInitialization tests MCP protocol initialization
 func TestMCPInitialization(t *testing.T) {
-	t.Parallel()
+	// Note: t.Parallel() disabled due to incompatibility with t.Setenv() used in test harness
 
 	ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
 	t.Cleanup(cancel)
