@@ -347,3 +347,114 @@ func (c *GiteaClient) EditPullRequestComment(ctx context.Context, args remote.Ed
 
 	return prComment, nil
 }
+
+// EditPullRequest edits an existing pull request
+func (c *GiteaClient) EditPullRequest(ctx context.Context, args remote.EditPullRequestArgs) (*remote.PullRequest, error) {
+	// Check if client is initialized
+	if c.client == nil {
+		return nil, fmt.Errorf("client not initialized")
+	}
+
+	// Parse repository string (format: "owner/repo")
+	owner, repoName, ok := strings.Cut(args.Repository, "/")
+	if !ok {
+		return nil, fmt.Errorf("invalid repository format: %s, expected 'owner/repo'", args.Repository)
+	}
+
+	if args.PullRequestNumber <= 0 {
+		return nil, fmt.Errorf("invalid pull request number: %d, must be positive", args.PullRequestNumber)
+	}
+
+	// Prepare edit options - only include fields that are provided
+	var editOptions gitea.EditPullRequestOption
+	hasChanges := false
+
+	if args.Title != "" {
+		editOptions.Title = args.Title
+		hasChanges = true
+	}
+
+	if args.Body != "" {
+		editOptions.Body = &args.Body
+		hasChanges = true
+	}
+
+	if args.State != "" {
+		// Convert state to Gitea SDK format
+		var state gitea.StateType
+		switch args.State {
+		case "open":
+			state = gitea.StateOpen
+		case "closed":
+			state = gitea.StateClosed
+		default:
+			return nil, fmt.Errorf("invalid state: %s, must be 'open' or 'closed'", args.State)
+		}
+		editOptions.State = &state
+		hasChanges = true
+	}
+
+	if args.BaseBranch != "" {
+		editOptions.Base = args.BaseBranch
+		hasChanges = true
+	}
+
+	if !hasChanges {
+		return nil, fmt.Errorf("no changes specified for pull request edit")
+	}
+
+	// Edit pull request using Gitea SDK
+	giteaPR, _, err := c.client.EditPullRequest(owner, repoName, int64(args.PullRequestNumber), editOptions)
+	if err != nil {
+		return nil, fmt.Errorf("failed to edit pull request: %w", err)
+	}
+
+	// Convert to our PullRequest struct
+	user := "unknown"
+	if giteaPR.Poster != nil {
+		user = giteaPR.Poster.UserName
+	}
+
+	createdAt := ""
+	if !giteaPR.Created.IsZero() {
+		createdAt = giteaPR.Created.Format("2006-01-02T15:04:05Z")
+	}
+
+	updatedAt := ""
+	if !giteaPR.Updated.IsZero() {
+		updatedAt = giteaPR.Updated.Format("2006-01-02T15:04:05Z")
+	}
+
+	// Convert head branch
+	var head remote.PullRequestBranch
+	if giteaPR.Head != nil {
+		head = remote.PullRequestBranch{
+			Ref: giteaPR.Head.Ref,
+			Sha: giteaPR.Head.Sha,
+		}
+	}
+
+	// Convert base branch
+	var base remote.PullRequestBranch
+	if giteaPR.Base != nil {
+		base = remote.PullRequestBranch{
+			Ref: giteaPR.Base.Ref,
+			Sha: giteaPR.Base.Sha,
+		}
+	}
+
+	pr := &remote.PullRequest{
+		ID:        int(giteaPR.ID),
+		Number:    int(giteaPR.Index),
+		Title:     giteaPR.Title,
+		Body:      giteaPR.Body,
+		State:     string(giteaPR.State),
+		User:      user,
+		CreatedAt: createdAt,
+		UpdatedAt: updatedAt,
+		Head:      head,
+		Base:      base,
+	}
+
+	return pr, nil
+}

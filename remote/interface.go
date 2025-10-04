@@ -142,7 +142,23 @@ type PullRequestCommentEditor interface {
 	EditPullRequestComment(ctx context.Context, args EditPullRequestCommentArgs) (*Comment, error)
 }
 
-// ClientInterface combines IssueLister, IssueCommenter, IssueCommentLister, IssueCommentEditor, PullRequestLister, PullRequestCommentLister, PullRequestCommenter, and PullRequestCommentEditor for complete Git operations
+// EditPullRequestArgs represents the arguments for editing a pull request
+type EditPullRequestArgs struct {
+	Repository        string `json:"repository"`
+	Directory         string `json:"directory"`
+	PullRequestNumber int    `json:"pull_request_number"`
+	Title             string `json:"title"`
+	Body              string `json:"body"`
+	State             string `json:"state"`
+	BaseBranch        string `json:"base_branch"`
+}
+
+// PullRequestEditor defines the interface for editing pull requests in Git repositories
+type PullRequestEditor interface {
+	EditPullRequest(ctx context.Context, args EditPullRequestArgs) (*PullRequest, error)
+}
+
+// ClientInterface combines IssueLister, IssueCommenter, IssueCommentLister, IssueCommentEditor, PullRequestLister, PullRequestCommentLister, PullRequestCommenter, PullRequestCommentEditor, and PullRequestEditor for complete Git operations
 type ClientInterface interface {
 	IssueLister
 	IssueCommenter
@@ -152,4 +168,5 @@ type ClientInterface interface {
 	PullRequestCommentLister
 	PullRequestCommenter
 	PullRequestCommentEditor
+	PullRequestEditor
 }

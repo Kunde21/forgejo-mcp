@@ -71,10 +71,13 @@ type MockCommentUser struct {
 
 // MockPullRequest represents a mock pull request for testing
 type MockPullRequest struct {
-	ID     int    `json:"id"`
-	Number int    `json:"number"`
-	Title  string `json:"title"`
-	State  string `json:"state"`
+	ID        int    `json:"id"`
+	Number    int    `json:"number"`
+	Title     string `json:"title"`
+	Body      string `json:"body"`
+	State     string `json:"state"`
+	BaseRef   string `json:"base_ref"`
+	UpdatedAt string `json:"updated_at"`
 }
 
 // GetTextContent extracts text content from MCP content slice
@@ -163,6 +166,7 @@ func NewMockGiteaServer(t *testing.T) *MockGiteaServer {
 
 	// Register individual handlers with method + path patterns
 	handler.HandleFunc("GET /api/v1/repos/{owner}/{repo}/pulls", mock.handlePullRequests)
+	handler.HandleFunc("PATCH /api/v1/repos/{owner}/{repo}/pulls/{number}", mock.handleEditPullRequest)
 	handler.HandleFunc("GET /api/v1/repos/{owner}/{repo}/issues", mock.handleIssues)
 	handler.HandleFunc("POST /api/v1/repos/{owner}/{repo}/issues/{number}/comments", mock.handleCreateComment)
 	handler.HandleFunc("GET /api/v1/repos/{owner}/{repo}/issues/{number}/comments", mock.handleListComments)
@@ -354,6 +358,117 @@ func (m *MockGiteaServer) handlePullRequests(w http.ResponseWriter, r *http.Requ
 	}
 
 	writeJSONResponse(w, giteaPRs, http.StatusOK)
+}
+
+// handleEditPullRequest handles pull request edit endpoint
+func (m *MockGiteaServer) handleEditPullRequest(w http.ResponseWriter, r *http.Request) {
+	// Check method
+	if r.Method != "PATCH" {
+		http.NotFound(w, r)
+		return
+	}
+
+	// Extract repository key and PR number from path
+	repoKey, err := getRepoKeyFromRequest(r)
+	if err != nil {
+		http.NotFound(w, r)
+		return
+	}
+
+	// Extract PR number from path
+	path := strings.TrimPrefix(r.URL.Path, "/api/v1/repos/")
+	parts := strings.Split(path, "/")
+	if len(parts) < 4 || parts[2] != "pulls" {
+		http.NotFound(w, r)
+		return
+	}
+	prNumber, err := strconv.Atoi(parts[3])
+	if err != nil {
+		http.NotFound(w, r)
+		return
+	}
+
+	// Check if repository is marked as not found
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	if m.notFoundRepos[repoKey] {
+		m.mu.Unlock()
+		http.NotFound(w, r)
+		return
+	}
+
+	pullRequests, exists := m.pullRequests[repoKey]
+	if !exists {
+		http.NotFound(w, r)
+		return
+	}
+
+	// Find the PR to edit
+	prIndex := -1
+	for i, pr := range pullRequests {
+		if pr.Number == prNumber {
+			prIndex = i
+			break
+		}
+	}
+	if prIndex == -1 {
+		http.NotFound(w, r)
+		return
+	}
+
+	// Parse request body for edit options
+	var editOptions struct {
+		Title string `json:"title"`
+		Body  string `json:"body"`
+		State string `json:"state"`
+		Base  string `json:"base"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&editOptions); err != nil {
+		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		return
+	}
+
+	// Update the PR
+	pr := &pullRequests[prIndex]
+	if editOptions.Title != "" {
+		pr.Title = editOptions.Title
+	}
+	if editOptions.Body != "" {
+		pr.Body = editOptions.Body
+	}
+	if editOptions.State != "" {
+		pr.State = editOptions.State
+	}
+	if editOptions.Base != "" {
+		pr.BaseRef = editOptions.Base
+	}
+	pr.UpdatedAt = "2025-10-04T12:00:00Z"
+
+	// Return the updated PR
+	giteaPR := map[string]any{
+		"id":     pr.ID,
+		"number": pr.Number,
+		"title":  pr.Title,
+		"body":   pr.Body,
+		"state":  pr.State,
+		"user": map[string]any{
+			"login": "testuser",
+		},
+		"created_at": "2025-09-11T10:30:00Z",
+		"updated_at": pr.UpdatedAt,
+		"head": map[string]any{
+			"ref": "feature-branch",
+			"sha": "abc123",
+		},
+		"base": map[string]any{
+			"ref": pr.BaseRef,
+			"sha": "def456",
+		},
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(giteaPR)
 }
 
 // handleIssues handles issues endpoint

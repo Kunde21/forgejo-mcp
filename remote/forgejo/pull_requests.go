@@ -305,3 +305,112 @@ func (c *ForgejoClient) EditPullRequestComment(ctx context.Context, args remote.
 
 	return comment, nil
 }
+
+// EditPullRequest edits an existing pull request
+func (c *ForgejoClient) EditPullRequest(ctx context.Context, args remote.EditPullRequestArgs) (*remote.PullRequest, error) {
+	// Check if client is initialized
+	if c.client == nil {
+		return nil, fmt.Errorf("client not initialized")
+	}
+
+	// Parse repository string (format: "owner/repo")
+	owner, repoName, ok := strings.Cut(args.Repository, "/")
+	if !ok {
+		return nil, fmt.Errorf("invalid repository format: %s, expected 'owner/repo'", args.Repository)
+	}
+
+	if args.PullRequestNumber <= 0 {
+		return nil, fmt.Errorf("invalid pull request number: %d, must be positive", args.PullRequestNumber)
+	}
+
+	// Prepare edit options - only include fields that are provided
+	var editOptions forgejo.EditPullRequestOption
+	hasChanges := false
+
+	if args.Title != "" {
+		editOptions.Title = args.Title
+		hasChanges = true
+	}
+
+	if args.Body != "" {
+		editOptions.Body = args.Body
+		hasChanges = true
+	}
+
+	if args.State != "" {
+		// Convert state to Forgejo SDK format
+		var state forgejo.StateType
+		switch args.State {
+		case "open":
+			state = forgejo.StateOpen
+		case "closed":
+			state = forgejo.StateClosed
+		default:
+			return nil, fmt.Errorf("invalid state: %s, must be 'open' or 'closed'", args.State)
+		}
+		editOptions.State = &state
+		hasChanges = true
+	}
+
+	if args.BaseBranch != "" {
+		editOptions.Base = args.BaseBranch
+		hasChanges = true
+	}
+
+	if !hasChanges {
+		return nil, fmt.Errorf("no changes specified for pull request edit")
+	}
+
+	// Edit pull request using Forgejo SDK
+	forgejoPR, _, err := c.client.EditPullRequest(owner, repoName, int64(args.PullRequestNumber), editOptions)
+	if err != nil {
+		return nil, fmt.Errorf("failed to edit pull request: %w", err)
+	}
+
+	// Convert to our PullRequest struct
+	user := "unknown"
+	if forgejoPR.Poster != nil {
+		user = forgejoPR.Poster.UserName
+	}
+
+	createdAt := ""
+	if forgejoPR.Created != nil {
+		createdAt = forgejoPR.Created.Format("2006-01-02T15:04:05Z")
+	}
+
+	updatedAt := ""
+	if forgejoPR.Updated != nil {
+		updatedAt = forgejoPR.Updated.Format("2006-01-02T15:04:05Z")
+	}
+
+	// Convert head branch
+	var head remote.PullRequestBranch
+	if forgejoPR.Head != nil {
+		head = remote.PullRequestBranch{
+			Ref: forgejoPR.Head.Ref,
+			Sha: forgejoPR.Head.Sha,
+		}
+	}
+
+	// Convert base branch
+	var base remote.PullRequestBranch
+	if forgejoPR.Base != nil {
+		base = remote.PullRequestBranch{
+			Ref: forgejoPR.Base.Ref,
+			Sha: forgejoPR.Base.Sha,
+		}
+	}
+
+	return &remote.PullRequest{
+		ID:        int(forgejoPR.ID),
+		Number:    int(forgejoPR.Index),
+		Title:     forgejoPR.Title,
+		Body:      forgejoPR.Body,
+		State:     string(forgejoPR.State),
+		User:      user,
+		CreatedAt: createdAt,
+		UpdatedAt: updatedAt,
+		Head:      head,
+		Base:      base,
+	}, nil
+}
