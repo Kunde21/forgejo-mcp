@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"path/filepath"
 
@@ -102,5 +103,16 @@ func (s *Server) handlePullRequestList(ctx context.Context, request *mcp.CallToo
 		return TextErrorf("Failed to list pull requests: %v", err), nil, nil
 	}
 
-	return TextResultf("Found %d pull requests", len(pullRequests)), &PullRequestList{PullRequests: pullRequests}, nil
+	// Build detailed text result for backwards compatibility
+	var resultText string
+	if len(pullRequests) == 0 {
+		resultText = "No pull requests found"
+	} else {
+		resultText = fmt.Sprintf("Found %d pull requests:\n", len(pullRequests))
+		for _, pr := range pullRequests {
+			resultText += fmt.Sprintf("- #%d: %s (%s)\n", pr.Number, pr.Title, pr.State)
+		}
+	}
+
+	return TextResult(resultText), &PullRequestList{PullRequests: pullRequests}, nil
 }
