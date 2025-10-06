@@ -65,10 +65,17 @@ func (c *GiteaClient) ListIssues(ctx context.Context, repo string, limit, offset
 	// Convert to our Issue struct
 	issues := make([]remote.Issue, len(giteaIssues))
 	for i, gi := range giteaIssues {
+		author := "unknown"
+		if gi.Poster != nil {
+			author = gi.Poster.UserName
+		}
+
 		issues[i] = remote.Issue{
+			ID:     int(gi.ID),
 			Number: int(gi.Index),
 			Title:  gi.Title,
 			State:  string(gi.State),
+			User:   author,
 		}
 	}
 
@@ -484,10 +491,17 @@ func (c *GiteaClient) CreateIssue(ctx context.Context, args remote.CreateIssueAr
 	}
 
 	// Convert to our Issue struct
+	author := "unknown"
+	if giteaIssue.Poster != nil {
+		author = giteaIssue.Poster.UserName
+	}
+
 	issue := &remote.Issue{
+		ID:     int(giteaIssue.ID),
 		Number: int(giteaIssue.Index),
 		Title:  giteaIssue.Title,
 		State:  string(giteaIssue.State),
+		User:   author,
 	}
 
 	return issue, nil
@@ -508,6 +522,82 @@ func (c *GiteaClient) CreateIssueWithAttachments(ctx context.Context, args remot
 	if len(args.Attachments) > 0 {
 		// Log that attachments were provided but not uploaded
 		// In a real implementation, this would upload each attachment
+	}
+
+	return issue, nil
+}
+
+// EditIssue edits an existing issue in the specified repository
+func (c *GiteaClient) EditIssue(ctx context.Context, args remote.EditIssueArgs) (*remote.Issue, error) {
+	// Check if client is initialized
+	if c.client == nil {
+		return nil, fmt.Errorf("client not initialized")
+	}
+
+	// Parse repository string (format: "owner/repo")
+	owner, repoName, ok := strings.Cut(args.Repository, "/")
+	if !ok {
+		return nil, fmt.Errorf("invalid repository format: %s, expected 'owner/repo'", args.Repository)
+	}
+
+	if args.IssueNumber <= 0 {
+		return nil, fmt.Errorf("invalid issue number: %d, must be positive", args.IssueNumber)
+	}
+
+	// Prepare edit options - only include fields that are provided
+	var editOptions gitea.EditIssueOption
+	hasChanges := false
+
+	if args.Title != "" {
+		editOptions.Title = args.Title
+		hasChanges = true
+	}
+
+	if args.Body != "" {
+		editOptions.Body = &args.Body
+		hasChanges = true
+	}
+
+	if args.State != "" {
+		// Convert state to Gitea SDK format
+		var state gitea.StateType
+		switch args.State {
+		case "open":
+			state = gitea.StateOpen
+		case "closed":
+			state = gitea.StateClosed
+		default:
+			return nil, fmt.Errorf("invalid state: %s, must be 'open' or 'closed'", args.State)
+		}
+		editOptions.State = &state
+		hasChanges = true
+	}
+
+	if !hasChanges {
+		return nil, fmt.Errorf("no changes specified")
+	}
+
+	// Edit the issue using Gitea SDK
+	giteaIssue, _, err := c.client.EditIssue(owner, repoName, int64(args.IssueNumber), editOptions)
+	if err != nil {
+		return nil, fmt.Errorf("failed to edit issue: %w", err)
+	}
+
+	// Convert to our Issue struct
+	author := "unknown"
+	if giteaIssue.Poster != nil {
+		author = giteaIssue.Poster.UserName
+	}
+
+	issue := &remote.Issue{
+		ID:      int(giteaIssue.ID),
+		Number:  int(giteaIssue.Index),
+		Title:   giteaIssue.Title,
+		State:   string(giteaIssue.State),
+		Body:    giteaIssue.Body,
+		User:    author,
+		Updated: giteaIssue.Updated.Format("2006-01-02T15:04:05Z07:00"),
+		Created: giteaIssue.Created.Format("2006-01-02T15:04:05Z07:00"),
 	}
 
 	return issue, nil

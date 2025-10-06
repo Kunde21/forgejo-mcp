@@ -31,7 +31,7 @@ func TestToolDiscovery(t *testing.T) {
 	}
 
 	// Validate total tool count
-	expectedToolCount := 11
+	expectedToolCount := 12
 	if len(tools.Tools) != expectedToolCount {
 		t.Fatalf("Expected %d tools, got %d", expectedToolCount, len(tools.Tools))
 	}
@@ -44,6 +44,7 @@ func TestToolDiscovery(t *testing.T) {
 		"issue_comment_create": "Create a comment on a Forgejo/Gitea repository issue",
 		"issue_comment_list":   "List comments from a Forgejo/Gitea repository issue with pagination support",
 		"issue_comment_edit":   "Edit an existing comment on a Forgejo/Gitea repository issue",
+		"issue_edit":           "Edit an existing issue in a Forgejo/Gitea repository",
 		"pr_list":              "List pull requests from a Forgejo/Gitea repository with pagination and state filtering",
 		"pr_comment_list":      "List comments from a Forgejo/Gitea repository pull request with pagination support",
 		"pr_comment_create":    "Create a comment on a Forgejo/Gitea repository pull request",

@@ -49,9 +49,12 @@ type MockGiteaServer struct {
 
 // MockIssue represents a mock issue for testing
 type MockIssue struct {
-	Index int    `json:"index"`
-	Title string `json:"title"`
-	State string `json:"state"`
+	Index   int    `json:"index"`
+	Title   string `json:"title"`
+	Body    string `json:"body"`
+	State   string `json:"state"`
+	Updated string `json:"updated_at"`
+	Created string `json:"created_at"`
 }
 
 // MockComment represents a mock comment for testing
@@ -162,12 +165,13 @@ func NewMockGiteaServer(t *testing.T) *MockGiteaServer {
 
 	// Create HTTP handler for mock API with modern routing
 	handler := http.NewServeMux()
-	handler.HandleFunc("/api/v1/version", mock.handleVersion)
+	handler.HandleFunc("/api/v1/version", mock.handleGiteaVersion)
 
 	// Register individual handlers with method + path patterns
 	handler.HandleFunc("GET /api/v1/repos/{owner}/{repo}/pulls", mock.handlePullRequests)
 	handler.HandleFunc("PATCH /api/v1/repos/{owner}/{repo}/pulls/{number}", mock.handleEditPullRequest)
 	handler.HandleFunc("GET /api/v1/repos/{owner}/{repo}/issues", mock.handleIssues)
+	handler.HandleFunc("PATCH /api/v1/repos/{owner}/{repo}/issues/{number}", mock.handleEditIssue)
 	handler.HandleFunc("POST /api/v1/repos/{owner}/{repo}/issues/{number}/comments", mock.handleCreateComment)
 	handler.HandleFunc("GET /api/v1/repos/{owner}/{repo}/issues/{number}/comments", mock.handleListComments)
 	handler.HandleFunc("PATCH /api/v1/repos/{owner}/{repo}/issues/comments/{id}", mock.handleEditComment)
@@ -189,6 +193,18 @@ func (m *MockGiteaServer) AddIssues(owner, repo string, issues []MockIssue) {
 
 	key := owner + "/" + repo
 	m.issues[key] = issues
+}
+
+// AddIssue adds a single mock issue for a repository
+func (m *MockGiteaServer) AddIssue(owner, repo string, issue MockIssue) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	key := owner + "/" + repo
+	if m.issues[key] == nil {
+		m.issues[key] = []MockIssue{}
+	}
+	m.issues[key] = append(m.issues[key], issue)
 }
 
 // AddComments adds mock comments for a repository
@@ -246,6 +262,7 @@ func (m *MockGiteaServer) createGiteaHandler() http.Handler {
 	handler.HandleFunc("/api/v1/version", m.handleGiteaVersion)
 	handler.HandleFunc("GET /api/v1/repos/{owner}/{repo}/pulls", m.handlePullRequests)
 	handler.HandleFunc("GET /api/v1/repos/{owner}/{repo}/issues", m.handleIssues)
+	handler.HandleFunc("PATCH /api/v1/repos/{owner}/{repo}/issues/{number}", m.handleEditIssue)
 	handler.HandleFunc("POST /api/v1/repos/{owner}/{repo}/issues/{number}/comments", m.handleCreateComment)
 	handler.HandleFunc("GET /api/v1/repos/{owner}/{repo}/issues/{number}/comments", m.handleListComments)
 	handler.HandleFunc("PATCH /api/v1/repos/{owner}/{repo}/issues/comments/{id}", m.handleEditComment)
@@ -258,6 +275,7 @@ func (m *MockGiteaServer) createForgejoHandler() http.Handler {
 	handler.HandleFunc("/api/v1/version", m.handleForgejoVersion)
 	handler.HandleFunc("GET /api/v1/repos/{owner}/{repo}/pulls", m.handlePullRequests)
 	handler.HandleFunc("GET /api/v1/repos/{owner}/{repo}/issues", m.handleIssues)
+	handler.HandleFunc("PATCH /api/v1/repos/{owner}/{repo}/issues/{number}", m.handleEditIssue)
 	handler.HandleFunc("POST /api/v1/repos/{owner}/{repo}/issues/{number}/comments", m.handleCreateComment)
 	handler.HandleFunc("GET /api/v1/repos/{owner}/{repo}/issues/{number}/comments", m.handleListComments)
 	handler.HandleFunc("PATCH /api/v1/repos/{owner}/{repo}/issues/comments/{id}", m.handleEditComment)
@@ -769,6 +787,115 @@ func (m *MockGiteaServer) handleEditComment(w http.ResponseWriter, r *http.Reque
 	}
 
 	writeJSONResponse(w, comment, http.StatusOK)
+}
+
+// handleEditIssue handles issue editing endpoint
+func (m *MockGiteaServer) handleEditIssue(w http.ResponseWriter, r *http.Request) {
+
+	// Check method
+	if r.Method != "PATCH" {
+		fmt.Printf("DEBUG: Method not PATCH, returning 404\n")
+		http.NotFound(w, r)
+		return
+	}
+
+	// Check authentication token
+	if !validateAuthToken(r) {
+		fmt.Printf("DEBUG: Auth validation failed\n")
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	// Extract repository key and issue number from path (same pattern as handleEditPullRequest)
+	repoKey, err := getRepoKeyFromRequest(r)
+	if err != nil {
+		http.NotFound(w, r)
+		return
+	}
+
+	// Extract issue number from path
+	path := strings.TrimPrefix(r.URL.Path, "/api/v1/repos/")
+	parts := strings.Split(path, "/")
+	if len(parts) < 4 || parts[2] != "issues" {
+		http.NotFound(w, r)
+		return
+	}
+	issueNumber, err := strconv.Atoi(parts[3])
+	if err != nil {
+		http.NotFound(w, r)
+		return
+	}
+
+	// Parse request body
+	var editReq struct {
+		Title *string `json:"title"`
+		Body  *string `json:"body"`
+		State *string `json:"state"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&editReq); err != nil {
+		http.Error(w, "Bad Request", http.StatusBadRequest)
+		return
+	}
+
+	// Check if repository is marked as not found
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	if m.notFoundRepos[repoKey] {
+		http.NotFound(w, r)
+		return
+	}
+
+	// Find and update the issue
+	storedIssues, exists := m.issues[repoKey]
+	if !exists {
+		http.NotFound(w, r)
+		return
+	}
+
+	issueFound := false
+	var updatedIssue MockIssue
+	for i := range storedIssues {
+		if storedIssues[i].Index == issueNumber {
+			// Update fields if provided (non-empty)
+			if editReq.Title != nil && *editReq.Title != "" {
+				storedIssues[i].Title = *editReq.Title
+			}
+			if editReq.Body != nil && *editReq.Body != "" {
+				storedIssues[i].Body = *editReq.Body
+			}
+			if editReq.State != nil && *editReq.State != "" {
+				storedIssues[i].State = *editReq.State
+			}
+			// Update timestamp
+			storedIssues[i].Updated = "2025-10-06T12:00:00Z"
+			updatedIssue = storedIssues[i]
+			issueFound = true
+			break
+		}
+	}
+
+	// If issue not found, return 404
+	if !issueFound {
+		http.NotFound(w, r)
+		return
+	}
+
+	// Create mock issue response that matches Forgejo SDK format
+	issue := map[string]any{
+		"id":         updatedIssue.Index,
+		"number":     updatedIssue.Index,
+		"title":      updatedIssue.Title,
+		"body":       updatedIssue.Body,
+		"state":      updatedIssue.State,
+		"created_at": updatedIssue.Created,
+		"updated_at": updatedIssue.Updated,
+		"user": map[string]any{
+			"login": "testuser",
+		},
+	}
+
+	writeJSONResponse(w, issue, http.StatusOK)
 }
 
 // NewTestServer creates a new TestServer instance with standardized setup

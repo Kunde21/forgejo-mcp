@@ -79,8 +79,8 @@ func TestListIssues(t *testing.T) {
 				},
 				StructuredContent: map[string]any{
 					"issues": []any{
-						map[string]any{"number": float64(1), "title": "Bug: Login fails", "state": "open"},
-						map[string]any{"number": float64(2), "title": "Feature: Add dark mode", "state": "open"},
+						map[string]any{"id": float64(1), "number": float64(1), "title": "Bug: Login fails", "state": "open", "user": "testuser"},
+						map[string]any{"id": float64(2), "number": float64(2), "title": "Feature: Add dark mode", "state": "open", "user": "testuser"},
 					},
 				},
 			},
@@ -112,9 +112,11 @@ func TestListIssues(t *testing.T) {
 						var issues []any
 						for i := 1; i <= 10; i++ { // Only first 10 due to limit
 							issues = append(issues, map[string]any{
+								"id":     float64(i),
 								"number": float64(i),
 								"title":  fmt.Sprintf("Issue %d", i),
 								"state":  "open",
+								"user":   "testuser",
 							})
 						}
 						return issues
@@ -237,7 +239,7 @@ func TestListIssues(t *testing.T) {
 				},
 				StructuredContent: map[string]any{
 					"issues": []any{
-						map[string]any{"number": float64(1), "title": "Directory-based issue", "state": "open"},
+						map[string]any{"id": float64(1), "number": float64(1), "title": "Directory-based issue", "state": "open", "user": "testuser"},
 					},
 				},
 			},
@@ -343,7 +345,7 @@ func TestListIssues(t *testing.T) {
 				},
 				StructuredContent: map[string]any{
 					"issues": []any{
-						map[string]any{"number": float64(1), "title": "Legacy repository issue", "state": "open"},
+						map[string]any{"id": float64(1), "number": float64(1), "title": "Legacy repository issue", "state": "open", "user": "testuser"},
 					},
 				},
 			},

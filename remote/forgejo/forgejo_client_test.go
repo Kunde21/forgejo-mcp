@@ -95,6 +95,7 @@ func TestForgejoClient_ZeroValue(t *testing.T) {
 	_, _ = client.CreateIssueComment(nil, "", 0, "")
 	_, _ = client.ListIssueComments(nil, "", 0, 0, 0)
 	_, _ = client.EditIssueComment(nil, remote.EditIssueCommentArgs{})
+	_, _ = client.EditIssue(nil, remote.EditIssueArgs{})
 	_, _ = client.ListPullRequests(nil, "", remote.ListPullRequestsOptions{})
 	_, _ = client.ListPullRequestComments(nil, "", 0, 0, 0)
 	_, _ = client.CreatePullRequestComment(nil, "", 0, "")
@@ -1014,6 +1015,114 @@ func TestForgejoClient_EditPullRequest_NilClient(t *testing.T) {
 
 	// This should return an error due to nil client, not panic
 	_, err := client.EditPullRequest(ctx, args)
+
+	if err == nil {
+		t.Error("expected error due to nil client, but no error occurred")
+	}
+
+	expectedErr := "client not initialized"
+	if err.Error() != expectedErr {
+		t.Errorf("expected error %q, got %q", expectedErr, err.Error())
+	}
+}
+
+func TestForgejoClient_EditIssue_Validation(t *testing.T) {
+	t.Parallel()
+
+	testCases := []struct {
+		name    string
+		args    remote.EditIssueArgs
+		wantErr bool
+	}{
+		{
+			name: "empty repository",
+			args: remote.EditIssueArgs{
+				Repository:  "",
+				IssueNumber: 1,
+				Title:       "Updated title",
+			},
+			wantErr: true,
+		},
+		{
+			name: "invalid repository format",
+			args: remote.EditIssueArgs{
+				Repository:  "invalid-repo",
+				IssueNumber: 1,
+				Title:       "Updated title",
+			},
+			wantErr: true,
+		},
+		{
+			name: "zero issue number",
+			args: remote.EditIssueArgs{
+				Repository:  "testuser/testrepo",
+				IssueNumber: 0,
+				Title:       "Updated title",
+			},
+			wantErr: true,
+		},
+		{
+			name: "negative issue number",
+			args: remote.EditIssueArgs{
+				Repository:  "testuser/testrepo",
+				IssueNumber: -1,
+				Title:       "Updated title",
+			},
+			wantErr: true,
+		},
+		{
+			name: "no changes",
+			args: remote.EditIssueArgs{
+				Repository:  "testuser/testrepo",
+				IssueNumber: 1,
+			},
+			wantErr: true,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			client := &ForgejoClient{}
+			ctx := context.Background()
+
+			issue, err := client.EditIssue(ctx, tc.args)
+
+			if tc.wantErr {
+				if err == nil {
+					t.Error("expected error, got nil")
+				}
+				if issue != nil {
+					t.Error("expected nil issue when error occurs")
+				}
+				return
+			}
+
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+
+			if issue == nil {
+				t.Error("expected non-nil issue")
+			}
+		})
+	}
+}
+
+func TestForgejoClient_EditIssue_NilClient(t *testing.T) {
+	t.Parallel()
+
+	// Test that EditIssue handles nil client gracefully
+	client := &ForgejoClient{}
+	ctx := context.Background()
+
+	args := remote.EditIssueArgs{
+		Repository:  "testuser/testrepo",
+		IssueNumber: 123,
+		Title:       "Updated title",
+	}
+
+	// This should return an error due to nil client, not panic
+	_, err := client.EditIssue(ctx, args)
 
 	if err == nil {
 		t.Error("expected error due to nil client, but no error occurred")

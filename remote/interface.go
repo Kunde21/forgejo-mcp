@@ -6,9 +6,14 @@ import (
 
 // Issue represents a Git repository issue
 type Issue struct {
-	Number int    `json:"number"`
-	Title  string `json:"title"`
-	State  string `json:"state"`
+	ID      int    `json:"id"`
+	Number  int    `json:"number"`
+	Title   string `json:"title"`
+	State   string `json:"state"`
+	Body    string `json:"body,omitempty"`
+	User    string `json:"user"`
+	Updated string `json:"updated,omitempty"`
+	Created string `json:"created,omitempty"`
 }
 
 // IssueLister defines the interface for listing issues from a Git repository
@@ -92,6 +97,21 @@ type ProcessedAttachment struct {
 // IssueAttachmentCreator defines the interface for creating issues with attachments
 type IssueAttachmentCreator interface {
 	CreateIssueWithAttachments(ctx context.Context, args CreateIssueWithAttachmentsArgs) (*Issue, error)
+}
+
+// EditIssueArgs represents the arguments for editing an issue
+type EditIssueArgs struct {
+	Repository  string `json:"repository"`
+	Directory   string `json:"directory"`
+	IssueNumber int    `json:"issue_number"`
+	Title       string `json:"title"`
+	Body        string `json:"body"`
+	State       string `json:"state"`
+}
+
+// IssueEditor defines the interface for editing issues in Git repositories
+type IssueEditor interface {
+	EditIssue(ctx context.Context, args EditIssueArgs) (*Issue, error)
 }
 
 // PullRequestBranch represents a branch reference in a pull request
@@ -188,7 +208,7 @@ type PullRequestEditor interface {
 	EditPullRequest(ctx context.Context, args EditPullRequestArgs) (*PullRequest, error)
 }
 
-// ClientInterface combines IssueLister, IssueCommenter, IssueCommentLister, IssueCommentEditor, IssueCreator, IssueAttachmentCreator, PullRequestLister, PullRequestCommentLister, PullRequestCommenter, PullRequestCommentEditor, and PullRequestEditor for complete Git operations
+// ClientInterface combines IssueLister, IssueCommenter, IssueCommentLister, IssueCommentEditor, IssueCreator, IssueAttachmentCreator, IssueEditor, PullRequestLister, PullRequestCommentLister, PullRequestCommenter, PullRequestCommentEditor, and PullRequestEditor for complete Git operations
 type ClientInterface interface {
 	IssueLister
 	IssueCommenter
@@ -196,6 +216,7 @@ type ClientInterface interface {
 	IssueCommentEditor
 	IssueCreator
 	IssueAttachmentCreator
+	IssueEditor
 	PullRequestLister
 	PullRequestCommentLister
 	PullRequestCommenter
