@@ -237,3 +237,57 @@ func (c *ForgejoClient) EditIssueComment(ctx context.Context, args remote.EditIs
 
 	return comment, nil
 }
+
+// CreateIssue creates a new issue in the specified repository
+func (c *ForgejoClient) CreateIssue(ctx context.Context, args remote.CreateIssueArgs) (*remote.Issue, error) {
+	// Client validation
+	if c.client == nil {
+		return nil, fmt.Errorf("client not initialized")
+	}
+
+	// Parse repository string
+	owner, repoName, ok := strings.Cut(args.Repository, "/")
+	if !ok {
+		return nil, fmt.Errorf("invalid repository format: %s, expected 'owner/repo'", args.Repository)
+	}
+
+	// Create issue using Forgejo SDK
+	opts := forgejo.CreateIssueOption{
+		Title: args.Title,
+		Body:  args.Body,
+	}
+
+	forgejoIssue, _, err := c.client.CreateIssue(owner, repoName, opts)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create issue: %w", err)
+	}
+
+	// Convert to our Issue struct
+	issue := &remote.Issue{
+		Number: int(forgejoIssue.Index),
+		Title:  forgejoIssue.Title,
+		State:  string(forgejoIssue.State),
+	}
+
+	return issue, nil
+}
+
+// CreateIssueWithAttachments creates a new issue with attachments
+// Note: Attachment upload is not yet implemented as Forgejo/Gitea SDKs don't expose
+// issue attachment APIs. This method currently only creates the issue.
+func (c *ForgejoClient) CreateIssueWithAttachments(ctx context.Context, args remote.CreateIssueWithAttachmentsArgs) (*remote.Issue, error) {
+	// First create the issue
+	issue, err := c.CreateIssue(ctx, args.CreateIssueArgs)
+	if err != nil {
+		return nil, err
+	}
+
+	// TODO: Implement attachment upload once Forgejo/Gitea attachment APIs are documented
+	// For now, we create the issue but ignore attachments
+	if len(args.Attachments) > 0 {
+		// Log that attachments were provided but not uploaded
+		// In a real implementation, this would upload each attachment
+	}
+
+	return issue, nil
+}

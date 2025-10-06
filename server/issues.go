@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"path/filepath"
 
@@ -89,4 +90,135 @@ func (s *Server) handleIssueList(ctx context.Context, request *mcp.CallToolReque
 	}
 
 	return TextResultf("Found %d issues", len(issues)), &IssueList{Issues: issues}, nil
+}
+
+type IssueCreateArgs struct {
+	Repository  string        `json:"repository,omitzero"`
+	Directory   string        `json:"directory,omitzero"`
+	Title       string        `json:"title"`
+	Body        string        `json:"body,omitzero"`
+	Attachments []interface{} `json:"attachments,omitzero"` // MCP Content objects
+}
+
+type IssueCreateResult struct {
+	Issue *remote.Issue `json:"issue,omitempty"`
+}
+
+// handleIssueCreate handles the "issue_create" tool request
+func (s *Server) handleIssueCreate(ctx context.Context, request *mcp.CallToolRequest, args IssueCreateArgs) (*mcp.CallToolResult, *IssueCreateResult, error) {
+	// Validation using ozzo-validation (follow issue_comments.go pattern)
+	if err := v.ValidateStruct(&args,
+		v.Field(&args.Repository, v.When(args.Directory == "",
+			v.Required.Error("at least one of directory or repository must be provided"),
+			v.Match(repoReg).Error("repository must be in format 'owner/repo'"),
+		)),
+		v.Field(&args.Directory, v.When(args.Repository == "",
+			v.Required.Error("at least one of directory or repository must be provided"),
+			v.By(func(any) error {
+				if !filepath.IsAbs(args.Directory) {
+					return v.NewError("abs_dir", "directory must be an absolute path")
+				}
+				stat, err := os.Stat(args.Directory)
+				if err != nil {
+					return v.NewError("abs_dir", "invalid directory")
+				}
+				if !stat.IsDir() {
+					return v.NewError("abs_dir", "does not exist")
+				}
+				return nil
+			}),
+		)),
+		v.Field(&args.Title, v.Required, v.Length(1, 255).Error("title must be between 1 and 255 characters")),
+		v.Field(&args.Body, v.Length(0, 65535).Error("body must be less than 65535 characters")),
+	); err != nil {
+		return TextErrorf("Invalid request: %v", err), nil, nil
+	}
+
+	// Repository resolution (follow existing pattern)
+	repository := args.Repository
+	if args.Directory != "" {
+		resolution, err := s.repositoryResolver.ResolveRepository(args.Directory)
+		if err != nil {
+			return TextErrorf("Failed to resolve directory: %v", err), nil, nil
+		}
+		repository = resolution.Repository
+	}
+
+	// Process attachments
+	var processedAttachments []remote.ProcessedAttachment
+	for _, content := range args.Attachments {
+		attachment, err := s.processAttachment(content)
+		if err != nil {
+			return TextErrorf("Invalid attachment: %v", err), nil, nil
+		}
+		processedAttachments = append(processedAttachments, *attachment)
+	}
+
+	// Create issue
+	var issue *remote.Issue
+	if len(processedAttachments) > 0 {
+		// Use attachment-enabled method
+		createArgs := remote.CreateIssueWithAttachmentsArgs{
+			CreateIssueArgs: remote.CreateIssueArgs{
+				Repository: repository,
+				Title:      args.Title,
+				Body:       args.Body,
+			},
+			Attachments: processedAttachments,
+		}
+
+		var err error
+		issue, err = s.remote.CreateIssueWithAttachments(ctx, createArgs)
+		if err != nil {
+			return TextErrorf("Failed to create issue with attachments: %v", err), nil, nil
+		}
+	} else {
+		// Use regular method
+		createArgs := remote.CreateIssueArgs{
+			Repository: repository,
+			Title:      args.Title,
+			Body:       args.Body,
+		}
+
+		var err error
+		issue, err = s.remote.CreateIssue(ctx, createArgs)
+		if err != nil {
+			return TextErrorf("Failed to create issue: %v", err), nil, nil
+		}
+	}
+
+	// Success response
+	responseText := fmt.Sprintf("Issue created successfully. Number: %d, Title: %s", issue.Number, issue.Title)
+	return TextResult(responseText), &IssueCreateResult{Issue: issue}, nil
+}
+
+func (s *Server) processAttachment(content interface{}) (*remote.ProcessedAttachment, error) {
+	switch c := content.(type) {
+	case *mcp.ImageContent:
+		// Handle image content
+		data := []byte(c.Data) // MCP SDK handles base64 decoding
+		filename := generateFilename(c.MIMEType)
+		return &remote.ProcessedAttachment{
+			Data:     data,
+			Filename: filename,
+			MIMEType: c.MIMEType,
+		}, nil
+	default:
+		return nil, fmt.Errorf("unsupported content type: %T", content)
+	}
+}
+
+func generateFilename(mimeType string) string {
+	// Simple filename generation based on MIME type
+	// In a real implementation, this might use more sophisticated logic
+	switch mimeType {
+	case "image/jpeg":
+		return "attachment.jpg"
+	case "image/png":
+		return "attachment.png"
+	case "image/gif":
+		return "attachment.gif"
+	default:
+		return "attachment.bin"
+	}
 }

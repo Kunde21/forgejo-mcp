@@ -151,6 +151,11 @@ func NewFromService(service remote.ClientInterface, cfg *config.Config) (*Server
 		Description: "Edit an existing pull request in a Forgejo/Gitea repository",
 	}, s.handlePullRequestEdit)
 
+	mcp.AddTool(mcpServer, &mcp.Tool{
+		Name:        "issue_create",
+		Description: "Create a new issue on a Forgejo/Gitea repository",
+	}, s.handleIssueCreate)
+
 	s.mcpServer = mcpServer
 	return s, nil
 }

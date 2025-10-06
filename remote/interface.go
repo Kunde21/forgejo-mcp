@@ -64,6 +64,36 @@ type IssueCommentEditor interface {
 	EditIssueComment(ctx context.Context, args EditIssueCommentArgs) (*Comment, error)
 }
 
+// CreateIssueArgs represents arguments for creating a new issue
+type CreateIssueArgs struct {
+	Repository string `json:"repository"`
+	Title      string `json:"title"`
+	Body       string `json:"body"`
+}
+
+// IssueCreator defines the interface for creating issues
+type IssueCreator interface {
+	CreateIssue(ctx context.Context, args CreateIssueArgs) (*Issue, error)
+}
+
+// CreateIssueWithAttachmentsArgs represents arguments for creating a new issue with attachments
+type CreateIssueWithAttachmentsArgs struct {
+	CreateIssueArgs
+	Attachments []ProcessedAttachment
+}
+
+// ProcessedAttachment represents a processed file attachment
+type ProcessedAttachment struct {
+	Data     []byte
+	Filename string
+	MIMEType string
+}
+
+// IssueAttachmentCreator defines the interface for creating issues with attachments
+type IssueAttachmentCreator interface {
+	CreateIssueWithAttachments(ctx context.Context, args CreateIssueWithAttachmentsArgs) (*Issue, error)
+}
+
 // PullRequestBranch represents a branch reference in a pull request
 type PullRequestBranch struct {
 	Ref string `json:"ref"`
@@ -158,12 +188,14 @@ type PullRequestEditor interface {
 	EditPullRequest(ctx context.Context, args EditPullRequestArgs) (*PullRequest, error)
 }
 
-// ClientInterface combines IssueLister, IssueCommenter, IssueCommentLister, IssueCommentEditor, PullRequestLister, PullRequestCommentLister, PullRequestCommenter, PullRequestCommentEditor, and PullRequestEditor for complete Git operations
+// ClientInterface combines IssueLister, IssueCommenter, IssueCommentLister, IssueCommentEditor, IssueCreator, IssueAttachmentCreator, PullRequestLister, PullRequestCommentLister, PullRequestCommenter, PullRequestCommentEditor, and PullRequestEditor for complete Git operations
 type ClientInterface interface {
 	IssueLister
 	IssueCommenter
 	IssueCommentLister
 	IssueCommentEditor
+	IssueCreator
+	IssueAttachmentCreator
 	PullRequestLister
 	PullRequestCommentLister
 	PullRequestCommenter
