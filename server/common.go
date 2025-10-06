@@ -2,7 +2,10 @@ package server
 
 import (
 	"fmt"
+	"net/http"
+	"path/filepath"
 	"regexp"
+	"strings"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
@@ -27,3 +30,39 @@ var (
 	repoReg  = regexp.MustCompile(`^[a-zA-Z0-9._-]+/[a-zA-Z0-9._-]+$`)
 	emptyReg = regexp.MustCompilePOSIX(`[^[:space:]]+`)
 )
+
+// ValidateAttachment validates file data, filename, and size
+func ValidateAttachment(data []byte, filename string, maxSize int64, allowedTypes []string) error {
+	// Size validation
+	if int64(len(data)) > maxSize {
+		return fmt.Errorf("file size %d exceeds maximum allowed %d", len(data), maxSize)
+	}
+
+	// MIME type validation
+	mimeType := http.DetectContentType(data)
+	if !isAllowedMimeType(mimeType, allowedTypes) {
+		return fmt.Errorf("MIME type %s not allowed", mimeType)
+	}
+
+	// Filename validation
+	if !isValidFilename(filename) {
+		return fmt.Errorf("invalid filename: %s", filename)
+	}
+
+	return nil
+}
+
+func isAllowedMimeType(mimeType string, allowedTypes []string) bool {
+	for _, allowed := range allowedTypes {
+		if allowed == "*" || strings.HasPrefix(mimeType, allowed) {
+			return true
+		}
+	}
+	return false
+}
+
+func isValidFilename(filename string) bool {
+	// Basic filename validation - no path traversal, reasonable length
+	clean := filepath.Base(filename)
+	return clean == filename && len(clean) > 0 && len(clean) < 255
+}

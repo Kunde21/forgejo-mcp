@@ -7,11 +7,18 @@ import (
 )
 
 type Config struct {
-	Host       string `mapstructure:"host"`
-	Port       int    `mapstructure:"port"`
-	RemoteURL  string `mapstructure:"remote_url"`
-	AuthToken  string `mapstructure:"auth_token"`
-	ClientType string `mapstructure:"client_type"`
+	Host       string           `mapstructure:"host"`
+	Port       int              `mapstructure:"port"`
+	RemoteURL  string           `mapstructure:"remote_url"`
+	AuthToken  string           `mapstructure:"auth_token"`
+	ClientType string           `mapstructure:"client_type"`
+	Attachment AttachmentConfig `mapstructure:"attachment"`
+}
+
+type AttachmentConfig struct {
+	Enabled      bool     `mapstructure:"enabled"`
+	MaxSize      int64    `mapstructure:"max_size"`
+	AllowedTypes []string `mapstructure:"allowed_types"`
 }
 
 func Load() (*Config, error) {
@@ -20,6 +27,11 @@ func Load() (*Config, error) {
 	viper.SetDefault("remote_url", "")
 	viper.SetDefault("auth_token", "")
 	viper.SetDefault("client_type", "auto") // Default to auto-detection
+
+	// Attachment defaults
+	viper.SetDefault("attachment.enabled", false)
+	viper.SetDefault("attachment.max_size", 4*1024*1024) // 4MB default
+	viper.SetDefault("attachment.allowed_types", []string{"image/*", "application/pdf"})
 
 	// Environment variables
 	viper.BindEnv("host", "MCP_HOST")
