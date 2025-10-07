@@ -208,7 +208,28 @@ type PullRequestEditor interface {
 	EditPullRequest(ctx context.Context, args EditPullRequestArgs) (*PullRequest, error)
 }
 
-// ClientInterface combines IssueLister, IssueCommenter, IssueCommentLister, IssueCommentEditor, IssueCreator, IssueAttachmentCreator, IssueEditor, PullRequestLister, PullRequestCommentLister, PullRequestCommenter, PullRequestCommentEditor, and PullRequestEditor for complete Git operations
+// CreatePullRequestArgs represents arguments for creating a new pull request
+type CreatePullRequestArgs struct {
+	Repository string `json:"repository"`
+	Head       string `json:"head"` // Source branch
+	Base       string `json:"base"` // Target branch
+	Title      string `json:"title"`
+	Body       string `json:"body"`
+	Draft      bool   `json:"draft"`
+	Assignee   string `json:"assignee"` // Single reviewer
+}
+
+// PullRequestCreator defines the interface for creating pull requests
+type PullRequestCreator interface {
+	CreatePullRequest(ctx context.Context, args CreatePullRequestArgs) (*PullRequest, error)
+}
+
+// FileContentFetcher defines interface for fetching repository file contents
+type FileContentFetcher interface {
+	GetFileContent(ctx context.Context, owner, repo, ref, filepath string) ([]byte, error)
+}
+
+// ClientInterface combines IssueLister, IssueCommenter, IssueCommentLister, IssueCommentEditor, IssueCreator, IssueAttachmentCreator, IssueEditor, PullRequestLister, PullRequestCommentLister, PullRequestCommenter, PullRequestCommentEditor, PullRequestEditor, PullRequestCreator, and FileContentFetcher for complete Git operations
 type ClientInterface interface {
 	IssueLister
 	IssueCommenter
@@ -222,4 +243,6 @@ type ClientInterface interface {
 	PullRequestCommenter
 	PullRequestCommentEditor
 	PullRequestEditor
+	PullRequestCreator
+	FileContentFetcher
 }

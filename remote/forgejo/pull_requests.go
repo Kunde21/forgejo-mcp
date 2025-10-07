@@ -414,3 +414,92 @@ func (c *ForgejoClient) EditPullRequest(ctx context.Context, args remote.EditPul
 		Base:      base,
 	}, nil
 }
+
+// CreatePullRequest creates a new pull request in the repository
+func (c *ForgejoClient) CreatePullRequest(ctx context.Context, args remote.CreatePullRequestArgs) (*remote.PullRequest, error) {
+	// Parse repository string (format: "owner/repo")
+	owner, repoName, ok := strings.Cut(args.Repository, "/")
+	if !ok {
+		return nil, fmt.Errorf("invalid repository format: %s, expected 'owner/repo'", args.Repository)
+	}
+
+	if c.client == nil {
+		return nil, fmt.Errorf("client not initialized")
+	}
+
+	// Handle draft PRs with title prefix since SDK lacks draft field
+	title := args.Title
+	if args.Draft {
+		title = "[DRAFT] " + title
+	}
+
+	opts := forgejo.CreatePullRequestOption{
+		Head:     args.Head,
+		Base:     args.Base,
+		Title:    title,
+		Body:     args.Body,
+		Assignee: args.Assignee,
+	}
+
+	fpr, _, err := c.client.CreatePullRequest(owner, repoName, opts)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create pull request: %w", err)
+	}
+
+	// Transform Forgejo SDK response to remote interface format
+	user := "unknown"
+	if fpr.Poster != nil {
+		user = fpr.Poster.UserName
+	}
+
+	createdAt := ""
+	if fpr.Created != nil {
+		createdAt = fpr.Created.Format("2006-01-02T15:04:05Z")
+	}
+
+	updatedAt := ""
+	if fpr.Updated != nil {
+		updatedAt = fpr.Updated.Format("2006-01-02T15:04:05Z")
+	}
+
+	// Convert head branch
+	var head remote.PullRequestBranch
+	if fpr.Head != nil {
+		head = remote.PullRequestBranch{
+			Ref: fpr.Head.Ref,
+			Sha: fpr.Head.Sha,
+		}
+	}
+
+	// Convert base branch
+	var base remote.PullRequestBranch
+	if fpr.Base != nil {
+		base = remote.PullRequestBranch{
+			Ref: fpr.Base.Ref,
+			Sha: fpr.Base.Sha,
+		}
+	}
+
+	return &remote.PullRequest{
+		ID:        int(fpr.ID),
+		Number:    int(fpr.Index),
+		Title:     fpr.Title,
+		Body:      fpr.Body,
+		State:     string(fpr.State),
+		User:      user,
+		CreatedAt: createdAt,
+		UpdatedAt: updatedAt,
+		Head:      head,
+		Base:      base,
+	}, nil
+}
+
+// GetFileContent fetches file content from repository
+func (c *ForgejoClient) GetFileContent(ctx context.Context, owner, repo, ref, filepath string) ([]byte, error) {
+	if c.client == nil {
+		return nil, fmt.Errorf("client not initialized")
+	}
+
+	content, _, err := c.client.GetFile(owner, repo, ref, filepath)
+	return content, err
+}

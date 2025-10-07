@@ -37,6 +37,7 @@ type MockGiteaServer struct {
 	issues       map[string][]MockIssue
 	comments     map[string][]MockComment
 	pullRequests map[string][]MockPullRequest
+	files        map[string][]byte // File content storage
 	// Repositories that should return 404
 	notFoundRepos map[string]bool
 	// Comment IDs that should return 403
@@ -157,6 +158,7 @@ func NewMockGiteaServer(t *testing.T) *MockGiteaServer {
 		issues:                make(map[string][]MockIssue),
 		comments:              make(map[string][]MockComment),
 		pullRequests:          make(map[string][]MockPullRequest),
+		files:                 make(map[string][]byte),
 		notFoundRepos:         make(map[string]bool),
 		forbiddenCommentIDs:   make(map[int]bool),
 		serverErrorCommentIDs: make(map[int]bool),
@@ -169,12 +171,14 @@ func NewMockGiteaServer(t *testing.T) *MockGiteaServer {
 
 	// Register individual handlers with method + path patterns
 	handler.HandleFunc("GET /api/v1/repos/{owner}/{repo}/pulls", mock.handlePullRequests)
+	handler.HandleFunc("POST /api/v1/repos/{owner}/{repo}/pulls", mock.handleCreatePullRequest)
 	handler.HandleFunc("PATCH /api/v1/repos/{owner}/{repo}/pulls/{number}", mock.handleEditPullRequest)
 	handler.HandleFunc("GET /api/v1/repos/{owner}/{repo}/issues", mock.handleIssues)
 	handler.HandleFunc("PATCH /api/v1/repos/{owner}/{repo}/issues/{number}", mock.handleEditIssue)
 	handler.HandleFunc("POST /api/v1/repos/{owner}/{repo}/issues/{number}/comments", mock.handleCreateComment)
 	handler.HandleFunc("GET /api/v1/repos/{owner}/{repo}/issues/{number}/comments", mock.handleListComments)
 	handler.HandleFunc("PATCH /api/v1/repos/{owner}/{repo}/issues/comments/{id}", mock.handleEditComment)
+	handler.HandleFunc("GET /api/v1/repos/{owner}/{repo}/contents/{path...}", mock.handleGetFileContent)
 
 	mock.server = httptest.NewServer(handler)
 	t.Cleanup(mock.server.Close)
@@ -486,6 +490,110 @@ func (m *MockGiteaServer) handleEditPullRequest(w http.ResponseWriter, r *http.R
 	}
 
 	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(giteaPR)
+}
+
+// handleCreatePullRequest handles pull request creation endpoint
+func (m *MockGiteaServer) handleCreatePullRequest(w http.ResponseWriter, r *http.Request) {
+	// Check method
+	if r.Method != "POST" {
+		http.NotFound(w, r)
+		return
+	}
+
+	// Extract repository key from path values
+	repoKey, err := getRepoKeyFromRequest(r)
+	if err != nil {
+		http.NotFound(w, r)
+		return
+	}
+
+	// Check if repository is marked as not found
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	if m.notFoundRepos[repoKey] {
+		http.NotFound(w, r)
+		return
+	}
+
+	// Parse request body
+	var createRequest struct {
+		Title string `json:"title"`
+		Body  string `json:"body"`
+		Head  string `json:"head"`
+		Base  string `json:"base"`
+		Draft bool   `json:"draft"`
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&createRequest); err != nil {
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	// Validate required fields
+	if createRequest.Title == "" {
+		http.Error(w, "Title is required", http.StatusBadRequest)
+		return
+	}
+	if createRequest.Head == "" {
+		http.Error(w, "Head branch is required", http.StatusBadRequest)
+		return
+	}
+	if createRequest.Base == "" {
+		http.Error(w, "Base branch is required", http.StatusBadRequest)
+		return
+	}
+
+	// Initialize pull requests slice if it doesn't exist
+	if m.pullRequests[repoKey] == nil {
+		m.pullRequests[repoKey] = []MockPullRequest{}
+	}
+
+	// Create new pull request
+	newPR := MockPullRequest{
+		ID:        m.nextID,
+		Number:    m.nextID,
+		Title:     createRequest.Title,
+		Body:      createRequest.Body,
+		State:     "open",
+		BaseRef:   createRequest.Base,
+		UpdatedAt: "2025-10-07T12:00:00Z",
+	}
+
+	if createRequest.Draft {
+		newPR.Title = "[DRAFT] " + newPR.Title
+	}
+
+	// Add to pull requests
+	m.pullRequests[repoKey] = append(m.pullRequests[repoKey], newPR)
+	m.nextID++
+
+	// Return response in Gitea API format
+	giteaPR := map[string]any{
+		"id":     newPR.Number,
+		"number": newPR.Number,
+		"title":  newPR.Title,
+		"body":   newPR.Body,
+		"state":  newPR.State,
+		"user": map[string]any{
+			"login": "testuser",
+		},
+		"created_at": "2025-10-07T12:00:00Z",
+		"updated_at": newPR.UpdatedAt,
+		"head": map[string]any{
+			"ref": createRequest.Head,
+			"sha": "abc123",
+		},
+		"base": map[string]any{
+			"ref": createRequest.Base,
+			"sha": "def456",
+		},
+		"draft": createRequest.Draft,
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
 	json.NewEncoder(w).Encode(giteaPR)
 }
 
@@ -1113,6 +1221,76 @@ func (ts *TestServer) ValidateErrorResult(result *mcp.CallToolResult, expectedEr
 //	if !ts.ValidateSuccessResult(result, "Comment created successfully", t) {
 //	    t.Errorf("Expected success result not found")
 //	}
+
+// AddFile adds mock file content for a repository
+func (m *MockGiteaServer) AddFile(owner, repo, ref, filepath string, content []byte) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	key := fmt.Sprintf("%s/%s/%s/%s", owner, repo, ref, filepath)
+	m.files[key] = content
+}
+
+// handleGetFileContent handles file content retrieval endpoint
+func (m *MockGiteaServer) handleGetFileContent(w http.ResponseWriter, r *http.Request) {
+	// Check method
+	if r.Method != "GET" {
+		http.NotFound(w, r)
+		return
+	}
+
+	// Extract repository key from path values
+	repoKey, err := getRepoKeyFromRequest(r)
+	if err != nil {
+		http.NotFound(w, r)
+		return
+	}
+
+	// Extract file path from path values
+	filepath := r.PathValue("path")
+	if filepath == "" {
+		http.NotFound(w, r)
+		return
+	}
+
+	// Get reference from query parameters (default to "main")
+	ref := r.URL.Query().Get("ref")
+	if ref == "" {
+		ref = "main"
+	}
+
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	// Check if repository is marked as not found
+	if m.notFoundRepos[repoKey] {
+		http.NotFound(w, r)
+		return
+	}
+
+	// Look for file content
+	key := fmt.Sprintf("%s/%s/%s", repoKey, ref, filepath)
+	content, exists := m.files[key]
+	if !exists {
+		http.NotFound(w, r)
+		return
+	}
+
+	// Return file content in Gitea API format
+	response := map[string]any{
+		"content":  string(content),
+		"encoding": "none", // We're storing raw content, not base64
+		"name":     filepath[strings.LastIndex(filepath, "/")+1:],
+		"path":     filepath,
+		"sha":      "mock-sha-123",
+		"size":     len(content),
+		"type":     "file",
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(response)
+}
+
 func (ts *TestServer) ValidateSuccessResult(result *mcp.CallToolResult, expectedSuccessText string, t *testing.T) bool {
 	t.Helper()
 

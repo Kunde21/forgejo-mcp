@@ -602,3 +602,92 @@ func (c *GiteaClient) EditIssue(ctx context.Context, args remote.EditIssueArgs) 
 
 	return issue, nil
 }
+
+// CreatePullRequest creates a new pull request in the repository
+func (c *GiteaClient) CreatePullRequest(ctx context.Context, args remote.CreatePullRequestArgs) (*remote.PullRequest, error) {
+	// Parse repository string (format: "owner/repo")
+	owner, repoName, ok := strings.Cut(args.Repository, "/")
+	if !ok {
+		return nil, fmt.Errorf("invalid repository format: %s, expected 'owner/repo'", args.Repository)
+	}
+
+	if c.client == nil {
+		return nil, fmt.Errorf("client not initialized")
+	}
+
+	// Handle draft PRs with title prefix since SDK lacks draft field
+	title := args.Title
+	if args.Draft {
+		title = "[DRAFT] " + title
+	}
+
+	opts := gitea.CreatePullRequestOption{
+		Head:     args.Head,
+		Base:     args.Base,
+		Title:    title,
+		Body:     args.Body,
+		Assignee: args.Assignee,
+	}
+
+	gpr, _, err := c.client.CreatePullRequest(owner, repoName, opts)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create pull request: %w", err)
+	}
+
+	// Transform Gitea SDK response to remote interface format
+	user := "unknown"
+	if gpr.Poster != nil {
+		user = gpr.Poster.UserName
+	}
+
+	createdAt := ""
+	if !gpr.Created.IsZero() {
+		createdAt = gpr.Created.Format("2006-01-02T15:04:05Z")
+	}
+
+	updatedAt := ""
+	if !gpr.Updated.IsZero() {
+		updatedAt = gpr.Updated.Format("2006-01-02T15:04:05Z")
+	}
+
+	// Convert head branch
+	var head remote.PullRequestBranch
+	if gpr.Head != nil {
+		head = remote.PullRequestBranch{
+			Ref: gpr.Head.Ref,
+			Sha: gpr.Head.Sha,
+		}
+	}
+
+	// Convert base branch
+	var base remote.PullRequestBranch
+	if gpr.Base != nil {
+		base = remote.PullRequestBranch{
+			Ref: gpr.Base.Ref,
+			Sha: gpr.Base.Sha,
+		}
+	}
+
+	return &remote.PullRequest{
+		ID:        int(gpr.ID),
+		Number:    int(gpr.Index),
+		Title:     gpr.Title,
+		Body:      gpr.Body,
+		State:     string(gpr.State),
+		User:      user,
+		CreatedAt: createdAt,
+		UpdatedAt: updatedAt,
+		Head:      head,
+		Base:      base,
+	}, nil
+}
+
+// GetFileContent fetches file content from repository
+func (c *GiteaClient) GetFileContent(ctx context.Context, owner, repo, ref, filepath string) ([]byte, error) {
+	if c.client == nil {
+		return nil, fmt.Errorf("client not initialized")
+	}
+
+	content, _, err := c.client.GetFile(owner, repo, ref, filepath)
+	return content, err
+}
