@@ -6,80 +6,12 @@ Model Context Protocol server for interacting with Forgejo repositories.
 
 This server provides MCP (Model Context Protocol) access to Forgejo and Gitea repository features using the **official Model Context Protocol SDK** (`github.com/modelcontextprotocol/go-sdk/mcp v0.4.0`). It enables AI agents to interact with remote repositories for common development tasks like managing pull requests and issues with direct API integration for improved performance and reliability.
 
-**Migration Note**: This project has been updated to use the official MCP SDK instead of the third-party `mark3labs/mcp-go` library for better protocol compliance, long-term stability, and official support.
-
 ## Prerequisites
 
 - Go 1.24.6 or later
 - Access to a Forgejo/Gitea instance
 - Authentication token for Forgejo/Gitea API access
 - Official MCP SDK (`github.com/modelcontextprotocol/go-sdk/mcp v0.4.0`)
-
-## Migration from Previous Versions
-
-If you're upgrading from a version using the third-party `mark3labs/mcp-go` SDK:
-
-### What Changed
-- **SDK**: Migrated from `mark3labs/mcp-go` to official `github.com/modelcontextprotocol/go-sdk/mcp v0.4.0`
-- **Protocol Compliance**: Improved adherence to MCP protocol specifications
-- **API Stability**: Official SDK provides long-term stability and support
-- **Tool Registration**: Updated tool registration methods (`mcp.AddTool()`)
-- **Handler Signatures**: New handler function signatures for better type safety
-
-### Upgrade Steps
-1. **Update Dependencies**: Run `go mod tidy` to fetch the new SDK
-2. **Rebuild**: Clean rebuild with `go build ./...`
-3. **Test**: Run your test suite to ensure compatibility
-4. **Configuration**: No configuration changes required - fully backward compatible
-
-### Breaking Changes
-- None for end users - all existing functionality preserved
-- Internal API changes only affect custom integrations
-
-## Migration from Gitea to Forgejo
-
-If you're migrating from a Gitea instance to Forgejo, the server provides seamless support through automatic detection:
-
-### Automatic Migration (Recommended)
-
-1. **Update Environment Variables**: Change your `FORGEJO_REMOTE_URL` to point to your new Forgejo instance
-2. **No Configuration Changes**: The server will automatically detect Forgejo and use the appropriate SDK
-3. **Test Connection**: Use the `config` command to verify connectivity:
-
-```bash
-./forgejo-mcp config
-```
-
-### Manual Migration
-
-If you prefer explicit control:
-
-1. **Update Environment Variables**:
-   ```bash
-   export FORGEJO_REMOTE_URL="https://your-new-forgejo.instance"
-   export FORGEJO_CLIENT_TYPE="forgejo"  # Explicitly use Forgejo SDK
-   ```
-
-2. **Update Configuration File** (if using config.yaml):
-   ```yaml
-   remote_url: "https://your-new-forgejo.instance"
-   client_type: "forgejo"
-   ```
-
-### Migration Benefits
-
-- **Zero Downtime**: Automatic detection ensures compatibility during transition
-- **Feature Parity**: All existing tools work identically with both platforms
-- **Performance**: Forgejo SDK may provide better performance for Forgejo instances
-- **Future-Proof**: Ready for any future platform-specific optimizations
-
-### Verification Steps
-
-After migration, verify everything works:
-
-1. **Test Tool Calls**: Run any existing MCP tool calls - they should work unchanged
-2. **Check Logs**: Look for "Detected Forgejo" in server logs during startup
-3. **Validate Responses**: Ensure all API responses maintain the same structure
 
 ## Installation
 
@@ -97,19 +29,39 @@ go build -o bin/forgejo-mcp cmd/main.go
 
 ## Configuration
 
-The application can be configured through environment variables or a configuration file.
+The application can be configured through environment variables.
 
 ### Environment Variables
 
 - `FORGEJO_REMOTE_URL` - URL of your Forgejo/Gitea instance (required)
 - `FORGEJO_AUTH_TOKEN` - Authentication token for Forgejo/Gitea API (required)
 - `FORGEJO_CLIENT_TYPE` - Client type: "gitea", "forgejo", or "auto" (default: "auto")
-- `MCP_HOST` - Host for MCP server (default: localhost)
-- `MCP_PORT` - Port for MCP server (default: 3000)
 
-### Configuration File
+### Configuration for OpenCode
 
-The server uses environment variables for configuration. No configuration file is currently supported.
+To use this MCP server with OpenCode, add the following to your `opencode.json` configuration file:
+
+```json
+{
+  "$schema": "https://opencode.ai/config.json",
+  "mcp": {
+    "forgejo": {
+      "type": "local",
+      "command": ["/path/to/forgejo-mcp", "serve"],
+      "enabled": true,
+      "environment": {
+        "FORGEJO_REMOTE_URL": "https://your.forgejo.instance",
+        "FORGEJO_AUTH_TOKEN": "your-api-token",
+        "FORGEJO_CLIENT_TYPE": "auto"
+      }
+    }
+  }
+}
+```
+
+Replace `/path/to/forgejo-mcp` with the actual path to your built binary, and update the environment variables with your Forgejo/Gitea instance details.
+
+The server will be automatically available to OpenCode once configured. You can temporarily disable it by setting `"enabled": false`.
 
 ### Client Type Configuration
 
@@ -182,9 +134,8 @@ The server will start and listen for MCP protocol messages on stdin/stdout.
 
 ### Directory Parameter Support
 
-**New Feature**: All tools now support an optional `directory` parameter that automatically resolves to the repository information. This provides a more intuitive interface for working with local git repositories.
+All tools support an optional `directory` parameter that automatically resolves to repository information from local git repositories. When you provide a `directory` parameter, the server will:
 
-When you provide a `directory` parameter pointing to a local git repository, the server will:
 1. Validate the directory exists and contains a `.git` folder
 2. Extract the remote repository URL from `.git/config`
 3. Parse the owner/repository information
@@ -206,74 +157,6 @@ When you provide a `directory` parameter pointing to a local git repository, the
 ```
 
 **Note**: The `directory` parameter takes precedence if both `repository` and `directory` are provided.
-
-### Migration Guide: From Repository to Directory Parameter
-
-#### Why Migrate?
-
-The `directory` parameter provides several advantages over manually specifying `repository`:
-
-1. **Automatic Resolution**: No need to remember or look up repository names
-2. **File System Integration**: Work directly with local project directories
-3. **Reduced Errors**: Eliminates typos in repository name specification
-4. **Git Integration**: Leverages existing git remote configuration
-
-#### Migration Steps
-
-1. **Identify Current Usage**: Find all places where you're using the `repository` parameter
-2. **Locate Local Repository**: Ensure you have a local clone of the repository
-3. **Replace Parameter**: Change `repository` to `directory` and provide the local path
-4. **Test**: Verify the tool still works as expected
-
-#### Before and After Examples
-
-**Before (Repository Parameter):**
-```json
-{
-  "method": "tools/call",
-  "params": {
-    "name": "issue_list",
-    "arguments": {
-      "repository": "myorg/myproject",
-      "limit": 10
-    }
-  }
-}
-```
-
-**After (Directory Parameter):**
-```json
-{
-  "method": "tools/call",
-  "params": {
-    "name": "issue_list",
-    "arguments": {
-      "directory": "/home/user/projects/myproject",
-      "limit": 10
-    }
-  }
-}
-```
-
-#### Backward Compatibility
-
-The `repository` parameter continues to work exactly as before. You can migrate gradually:
-
-- **Phase 1**: Continue using `repository` parameter
-- **Phase 2**: Start using `directory` parameter for new operations
-- **Phase 3**: Gradually migrate existing operations
-- **Phase 4**: Remove `repository` parameter usage (optional)
-
-#### Error Handling
-
-When using `directory` parameter, be aware of these validation rules:
-
-- Directory must exist
-- Directory must contain a `.git` folder
-- Git repository must have at least one remote configured
-- Remote URL must be parseable to extract owner/repo information
-
-If validation fails, you'll receive a clear error message indicating the specific issue.
 
 ### CLI Commands
 
@@ -299,41 +182,185 @@ Example usage:
 ./forgejo-mcp serve --verbose
 ```
 
-### Tool Usage Examples
+### Usage Examples
 
-#### List Issues
+#### Basic Issue Management
 
-**Using repository parameter:**
+**List open issues using directory parameter:**
 ```json
 {
   "method": "tools/call",
   "params": {
     "name": "issue_list",
+    "arguments": {
+      "directory": "/home/user/projects/myapp",
+      "limit": 10,
+      "offset": 0
+    }
+  }
+}
+```
+
+**Create a comment on an issue:**
+```json
+{
+  "method": "tools/call",
+  "params": {
+    "name": "issue_comment_create",
+    "arguments": {
+      "directory": "/home/user/projects/myapp",
+      "issue_number": 42,
+      "comment": "I've investigated this issue and it appears to be related to the database connection timeout. I'll submit a fix shortly."
+    }
+  }
+}
+```
+
+**Edit an existing issue comment:**
+```json
+{
+  "method": "tools/call",
+  "params": {
+    "name": "issue_comment_edit",
     "arguments": {
       "repository": "myorg/myrepo",
-      "limit": 10,
-      "offset": 0
+      "issue_number": 42,
+      "comment_id": 123,
+      "new_content": "Update: The fix has been implemented in PR #45. Please review and merge."
     }
   }
 }
 ```
 
-**Using directory parameter:**
+#### Pull Request Workflow
+
+**List open pull requests:**
 ```json
 {
   "method": "tools/call",
   "params": {
-    "name": "issue_list",
+    "name": "pr_list",
     "arguments": {
-      "directory": "/path/to/your/local/repo",
-      "limit": 10,
-      "offset": 0
+      "directory": "/home/user/projects/myapp",
+      "state": "open",
+      "limit": 5
     }
   }
 }
 ```
 
-Response:
+**Add review comment to a PR:**
+```json
+{
+  "method": "tools/call",
+  "params": {
+    "name": "pr_comment_create",
+    "arguments": {
+      "repository": "myorg/myrepo",
+      "pull_request_number": 23,
+      "comment": "Great work on this feature! I have a few suggestions:\n1. Consider adding error handling for edge cases\n2. The tests look comprehensive\n3. Documentation is clear and well-written"
+    }
+  }
+}
+```
+
+**Edit a pull request (update title and close):**
+```json
+{
+  "method": "tools/call",
+  "params": {
+    "name": "pr_edit",
+    "arguments": {
+      "directory": "/home/user/projects/myapp",
+      "pull_request_number": 23,
+      "title": "feat: Add user authentication with JWT tokens",
+      "state": "closed"
+    }
+  }
+}
+```
+
+#### Real-world Scenarios
+
+**Scenario 1: Code Review Workflow**
+```json
+// 1. List open PRs needing review
+{
+  "name": "pr_list",
+  "arguments": {
+    "directory": "/home/user/projects/myapp",
+    "state": "open"
+  }
+}
+
+// 2. Add constructive feedback
+{
+  "name": "pr_comment_create",
+  "arguments": {
+    "directory": "/home/user/projects/myapp",
+    "pull_request_number": 15,
+    "comment": "The implementation looks solid. I noticed one potential optimization in the database query - consider adding an index on the user_id column to improve performance."
+  }
+}
+```
+
+**Scenario 2: Issue Triage**
+```json
+// 1. Check recent issues
+{
+  "name": "issue_list",
+  "arguments": {
+    "repository": "myorg/myrepo",
+    "limit": 20
+  }
+}
+
+// 2. Request more information on a bug report
+{
+  "name": "issue_comment_create",
+  "arguments": {
+    "repository": "myorg/myrepo",
+    "issue_number": 67,
+    "comment": "Thank you for reporting this issue. Could you please provide:\n- Steps to reproduce\n- Expected vs actual behavior\n- Browser/OS version\n- Any error messages from the console"
+  }
+}
+```
+
+**Scenario 3: Project Management**
+```json
+// 1. Get overview of all open issues and PRs
+{
+  "name": "issue_list",
+  "arguments": {
+    "directory": "/home/user/projects/myapp",
+    "limit": 50
+  }
+}
+
+// 2. Check PR status
+{
+  "name": "pr_list",
+  "arguments": {
+    "directory": "/home/user/projects/myapp",
+    "state": "open"
+  }
+}
+
+// 3. Update PR with merge information
+{
+  "name": "pr_edit",
+  "arguments": {
+    "directory": "/home/user/projects/myapp",
+    "pull_request_number": 12,
+    "body": "This PR has been tested and is ready for merge. All tests pass and code review is complete."
+  }
+}
+```
+
+#### Response Format
+
+All tools return responses in the MCP standard format with both human-readable text and structured data:
+
 ```json
 {
   "result": {
@@ -347,465 +374,86 @@ Response:
       {
         "number": 1,
         "title": "Bug: Login fails",
-        "state": "open"
-      },
-      {
-        "number": 2,
-        "title": "Feature: Add dark mode",
-        "state": "open"
-      },
-      {
-        "number": 3,
-        "title": "Fix: Memory leak",
-        "state": "closed"
+        "state": "open",
+        "user": {
+          "login": "reporter"
+        },
+        "created_at": "2025-10-01T10:30:00Z"
       }
     ]
   }
 }
 ```
 
-#### Create Issue Comment
-
-**Using repository parameter:**
-```json
-{
-  "method": "tools/call",
-  "params": {
-    "name": "issue_comment_create",
-    "arguments": {
-      "repository": "myorg/myrepo",
-      "issue_number": 42,
-      "comment": "This is a helpful comment on the issue."
-    }
-  }
-}
-```
-
-**Using directory parameter:**
-```json
-{
-  "method": "tools/call",
-  "params": {
-    "name": "issue_comment_create",
-    "arguments": {
-      "directory": "/path/to/your/local/repo",
-      "issue_number": 42,
-      "comment": "This is a helpful comment on the issue."
-    }
-  }
-}
-```
-
- Response:
- ```json
- {
-   "result": {
-     "content": [
-       {
-         "type": "text",
-         "text": "Comment created successfully. ID: 123, Created: 2025-09-09T10:30:00Z\nComment body: This is a helpful comment on the issue."
-       }
-     ],
-     "structured": {
-       "comment": {
-         "id": 123,
-         "content": "This is a helpful comment on the issue.",
-         "author": "testuser",
-         "created": "2025-09-09T10:30:00Z"
-       }
-     }
-   }
- }
- ```
-
- #### List Issue Comments
-
- ```json
- {
-   "method": "tools/call",
-   "params": {
-     "name": "issue_comment_list",
-     "arguments": {
-       "repository": "myorg/myrepo",
-       "issue_number": 42,
-       "limit": 10,
-       "offset": 0
-     }
-   }
- }
- ```
-
- Response:
- ```json
- {
-   "result": {
-     "content": [
-       {
-         "type": "text",
-         "text": "Found 3 comments (showing 1-3)"
-       }
-     ],
-     "structured": {
-       "comments": [
-         {
-           "id": 1,
-           "content": "First comment on this issue",
-           "author": "developer1",
-           "created": "2025-09-10T09:15:00Z"
-         },
-         {
-           "id": 2,
-           "content": "Thanks for the update",
-           "author": "manager",
-           "created": "2025-09-10T10:30:00Z"
-         },
-         {
-           "id": 3,
-           "content": "I've implemented the requested changes",
-           "author": "developer1",
-           "created": "2025-09-10T14:45:00Z"
-         }
-       ],
-       "total": 3,
-       "limit": 10,
-       "offset": 0
-     }
-   }
-  }
-  ```
-
-#### Edit Issue Comment
-
-```json
-{
-  "method": "tools/call",
-  "params": {
-    "name": "issue_comment_edit",
-    "arguments": {
-      "repository": "myorg/myrepo",
-      "issue_number": 42,
-      "comment_id": 123,
-      "new_content": "Updated comment with additional information and corrections."
-    }
-  }
-}
-```
-
-Response:
-```json
-{
-  "result": {
-    "content": [
-      {
-        "type": "text",
-        "text": "Comment edited successfully. ID: 123, Updated: 2025-09-10T10:30:00Z\nComment body: Updated comment with additional information and corrections."
-      }
-    ],
-    "structured": {
-      "comment": {
-        "id": 123,
-        "content": "Updated comment with additional information and corrections.",
-        "author": "testuser",
-        "created": "2025-09-10T10:30:00Z"
-      }
-    }
-  }
-}
-```
-
-#### List Pull Requests
-
-**Using repository parameter:**
-```json
-{
-  "method": "tools/call",
-  "params": {
-    "name": "pr_list",
-    "arguments": {
-      "repository": "myorg/myrepo",
-      "limit": 10,
-      "offset": 0,
-      "state": "open"
-    }
-  }
-}
-```
-
-**Using directory parameter:**
-```json
-{
-  "method": "tools/call",
-  "params": {
-    "name": "pr_list",
-    "arguments": {
-      "directory": "/path/to/your/local/repo",
-      "limit": 10,
-      "offset": 0,
-      "state": "open"
-    }
-  }
-}
-```
-
-Response:
-```json
-{
-  "result": {
-    "content": [
-      {
-        "type": "text",
-        "text": "Found 2 pull requests"
-      }
-    ],
-    "structured": {
-      "pull_requests": [
-        {
-          "id": 1,
-          "number": 1,
-          "title": "Feature: Add dark mode",
-          "state": "open",
-          "user": {
-            "login": "developer1"
-          },
-          "created_at": "2025-09-10T09:15:00Z",
-          "updated_at": "2025-09-10T09:15:00Z",
-          "head": {
-            "ref": "feature/dark-mode",
-            "sha": "abc123def456"
-          },
-          "base": {
-            "ref": "main",
-            "sha": "def456abc123"
-          }
-        },
-        {
-          "id": 2,
-          "number": 2,
-          "title": "Fix: Memory leak",
-          "state": "open",
-          "user": {
-            "login": "developer2"
-          },
-          "created_at": "2025-09-10T10:30:00Z",
-          "updated_at": "2025-09-10T10:30:00Z",
-          "head": {
-            "ref": "fix/memory-leak",
-            "sha": "ghi789jkl012"
-          },
-          "base": {
-            "ref": "main",
-            "sha": "def456abc123"
-          }
-        }
-      ]
-    }
-  }
-}
-```
-
-Response:
-```json
-{
-  "result": {
-    "content": [
-      {
-        "type": "text",
-        "text": "Comment edited successfully. ID: 123, Updated: 2025-09-10T10:00:00Z\nComment body: Updated comment with additional information and corrections."
-      }
-    ],
-    "structured": {
-      "comment": {
-        "id": 123,
-        "content": "Updated comment with additional information and corrections.",
-        "author": "testuser",
-        "created": "2025-09-10T10:00:00Z"
-      }
-    }
-  }
-}
-```
-
-#### Create Pull Request Comment
-
-```json
-{
-  "method": "tools/call",
-  "params": {
-    "name": "pr_comment_create",
-    "arguments": {
-      "repository": "myorg/myrepo",
-      "pull_request_number": 42,
-      "comment": "This is a helpful comment on the pull request."
-    }
-  }
-}
-```
-
-Response:
-```json
-{
-  "result": {
-    "content": [
-      {
-        "type": "text",
-        "text": "Pull request comment created successfully. ID: 123, Created: 2025-09-12T14:30:45Z\nComment body: This is a helpful comment on the pull request."
-      }
-    ],
-    "structured": {
-      "comment": {
-        "id": 123,
-        "body": "This is a helpful comment on the pull request.",
-        "user": "reviewer",
-        "created_at": "2025-09-12T14:30:45Z",
-        "updated_at": "2025-09-12T14:30:45Z"
-      }
-    }
-  }
-}
-```
-
-#### List Pull Request Comments
-
-```json
-{
-  "method": "tools/call",
-  "params": {
-    "name": "pr_comment_list",
-    "arguments": {
-      "repository": "myorg/myrepo",
-      "pull_request_number": 42,
-      "limit": 10,
-      "offset": 0
-    }
-  }
-}
-```
-
-Response:
-```json
-{
-  "result": {
-    "content": [
-      {
-        "type": "text",
-        "text": "Found 2 pull request comments"
-      }
-    ],
-    "structured": {
-      "pull_request_comments": [
-        {
-          "id": 1,
-          "body": "This is a great PR!",
-          "user": "reviewer1",
-          "created_at": "2025-09-12T10:30:00Z",
-          "updated_at": "2025-09-12T10:30:00Z"
-        },
-        {
-          "id": 2,
-          "body": "I agree, well done!",
-          "user": "reviewer2",
-          "created_at": "2025-09-12T11:15:00Z",
-          "updated_at": "2025-09-12T11:15:00Z"
-        }
-      ]
-    }
-  }
-}
-```
-
-#### Edit Pull Request Comment
-
-```json
-{
-  "method": "tools/call",
-  "params": {
-    "name": "pr_comment_edit",
-    "arguments": {
-      "repository": "myorg/myrepo",
-      "pull_request_number": 42,
-      "comment_id": 123,
-      "new_content": "Updated comment with additional information and corrections."
-    }
-  }
-}
-```
-
-Response:
-```json
-{
-  "result": {
-    "content": [
-      {
-        "type": "text",
-        "text": "Pull request comment edited successfully. ID: 123, Updated: 2025-09-12T14:30:45Z\nComment body: Updated comment with additional information and corrections."
-      }
-    ],
-    "structured": {
-      "comment": {
-        "id": 123,
-        "body": "Updated comment with additional information and corrections.",
-        "user": "reviewer",
-        "created_at": "2025-09-12T14:30:45Z",
-        "updated_at": "2025-09-12T14:30:45Z"
-      }
-    }
-  }
-}
-```
+The `content` field provides human-readable summaries, while `structured` contains the full data for programmatic use.
 
 ## Features
 
 ### SDK Integration
 
-This server uses the **official Model Context Protocol SDK** for standardized MCP protocol implementation, combined with the official Gitea SDK for direct API integration with Gitea/Forgejo instances. This provides:
+This server uses the **official Model Context Protocol SDK** for standardized MCP protocol implementation, combined with platform-specific SDKs for direct API integration with Gitea/Forgejo instances. This provides:
 
 - **Official Protocol Support**: Full compliance with MCP specifications
 - **Improved Performance**: Direct API integration with comprehensive error handling
 - **Enhanced Reliability**: Official SDK with long-term support guarantees
 - **Better Tool Management**: Standardized tool registration and lifecycle management
+- **Platform Detection**: Automatic detection and optimal SDK selection for Gitea vs Forgejo
 
 Authentication is handled through API tokens configured at startup. All operations are performed directly via the Gitea/Forgejo REST API using the official SDKs.
 
-### PR interactions
+### Available Tools
 
-Manage Pull Requests opened on your gitea repository
+#### Issue Management
+- **`issue_list`**: List issues from a repository with pagination support
+  - Parameters: `repository` (owner/repo) OR `directory` (local path), `limit` (1-100, default 15), `offset` (0-based, default 0)
+  - Returns: Array of issues with number, title, state, and metadata
 
-Tools List:
-- `pr_list`: List pull requests from a repository with pagination and state filtering
-  - Parameters: repository (owner/repo) OR directory (local path), limit (1-100, default 15), offset (0-based, default 0), state (open/closed/all, default "open")
-  - Returns: Array of pull requests with ID, number, title, state, user, timestamps, and branch information
-- `pr_comment_create`: Create a comment on a repository pull request
-  - Parameters: repository (owner/repo), pull_request_number (positive integer), comment (non-empty string)
+- **`issue_comment_create`**: Create a comment on a repository issue
+  - Parameters: `repository` (owner/repo) OR `directory` (local path), `issue_number` (positive integer), `comment` (non-empty string)
   - Returns: Comment creation confirmation with metadata
-- `pr_comment_list`: List comments from a repository pull request with pagination support
-  - Parameters: repository (owner/repo), pull_request_number (positive integer), limit (1-100, default 15), offset (0-based, default 0)
+
+- **`issue_comment_list`**: List comments from a repository issue with pagination support
+  - Parameters: `repository` (owner/repo) OR `directory` (local path), `issue_number` (positive integer), `limit` (1-100, default 15), `offset` (0-based, default 0)
   - Returns: Array of comments with ID, content, author, and creation timestamp
-- `pr_comment_edit`: Edit an existing comment on a repository pull request
-  - Parameters: repository (owner/repo), pull_request_number (positive integer), comment_id (positive integer), new_content (non-empty string)
+
+- **`issue_comment_edit`**: Edit an existing comment on a repository issue
+  - Parameters: `repository` (owner/repo) OR `directory` (local path), `issue_number` (positive integer), `comment_id` (positive integer), `new_content` (non-empty string)
   - Returns: Comment edit confirmation with updated metadata
-- Review PR: approve or request changes
 
-### Issue interactions
+#### Pull Request Management
+- **`pr_list`**: List pull requests from a repository with pagination and state filtering
+  - Parameters: `repository` (owner/repo) OR `directory` (local path), `limit` (1-100, default 15), `offset` (0-based, default 0), `state` (open/closed/all, default "open")
+  - Returns: Array of pull requests with ID, number, title, state, user, timestamps, and branch information
 
-Manage issues in your forgejo repository
+- **`pr_comment_create`**: Create a comment on a repository pull request
+  - Parameters: `repository` (owner/repo) OR `directory` (local path), `pull_request_number` (positive integer), `comment` (non-empty string)
+  - Returns: Comment creation confirmation with metadata
 
- Tools List:
- - `issue_list`: List issues from a repository with pagination support
-   - Parameters: repository (owner/repo) OR directory (local path), limit (1-100), offset (0-based)
-   - Returns: Array of issues with number, title, and status
- - `issue_comment_create`: Create a comment on a repository issue
-   - Parameters: repository (owner/repo), issue_number (positive integer), comment (non-empty string)
-   - Returns: Comment creation confirmation with metadata
-  - `issue_comment_list`: List comments from a repository issue with pagination support
-    - Parameters: repository (owner/repo), issue_number (positive integer), limit (1-100, default 15), offset (0-based, default 0)
-    - Returns: Array of comments with ID, content, author, and creation timestamp
-  - `issue_comment_edit`: Edit an existing comment on a repository issue
-    - Parameters: repository (owner/repo), issue_number (positive integer), comment_id (positive integer), new_content (non-empty string)
-    - Returns: Comment edit confirmation with updated metadata
-- List Issues: show all open issues on the current repository
-- Open Issue: create a new issue with details about a feature request or a bug
-- Close Issue: close an issue that has been answered or completed
-- Issue Comment: Add a comment to a given issue
+- **`pr_comment_list`**: List comments from a repository pull request with pagination support
+  - Parameters: `repository` (owner/repo) OR `directory` (local path), `pull_request_number` (positive integer), `limit` (1-100, default 15), `offset` (0-based, default 0)
+  - Returns: Array of comments with ID, content, author, and creation timestamp
+
+- **`pr_comment_edit`**: Edit an existing comment on a repository pull request
+  - Parameters: `repository` (owner/repo) OR `directory` (local path), `pull_request_number` (positive integer), `comment_id` (positive integer), `new_content` (non-empty string)
+  - Returns: Comment edit confirmation with updated metadata
+
+- **`pr_edit`**: Edit an existing pull request
+  - Parameters: `repository` (owner/repo) OR `directory` (local path), `pull_request_number` (positive integer), optional: `title` (string), `body` (string), `state` (open/closed), `base_branch` (string)
+  - Returns: Pull request edit confirmation with updated metadata
+
+#### Repository Utilities
+- **`forgejo_hello`**: Simple hello world tool for testing connectivity
+  - Parameters: none
+  - Returns: Hello message confirming server is working
+
+### Platform Support
+
+The server automatically detects and optimizes for different platforms:
+
+- **Forgejo Instances**: Uses Forgejo-specific SDK for optimal performance
+- **Gitea Instances**: Uses Gitea SDK with full feature compatibility
+- **Automatic Detection**: Queries `/api/v1/version` endpoint to determine platform
+- **Manual Override**: Force specific client type via `FORGEJO_CLIENT_TYPE` environment variable
 
 ## Development
 
