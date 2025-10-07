@@ -35,9 +35,7 @@ func NewGiteaClientWithHTTPClient(url, token string, httpClient *http.Client) (*
 		return nil, fmt.Errorf("failed to create Gitea client: %w", err)
 	}
 
-	return &GiteaClient{
-		client: client,
-	}, nil
+	return &GiteaClient{client: client}, nil
 }
 
 // ListIssues retrieves issues from the specified repository

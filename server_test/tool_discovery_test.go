@@ -30,15 +30,14 @@ func TestToolDiscovery(t *testing.T) {
 		t.Fatalf("Failed to list tools: %v", err)
 	}
 
-	// Validate total tool count
-	expectedToolCount := 13
+	// Validate total tool count (hello tool is only available in debug mode)
+	expectedToolCount := 12
 	if len(tools.Tools) != expectedToolCount {
 		t.Fatalf("Expected %d tools, got %d", expectedToolCount, len(tools.Tools))
 	}
 
-	// Define expected tools with their descriptions
+	// Define expected tools with their descriptions (hello tool only in debug mode)
 	expectedTools := map[string]string{
-		"hello":                "Returns a hello world message",
 		"issue_list":           "List issues from a Gitea/Forgejo repository",
 		"issue_create":         "Create a new issue on a Forgejo/Gitea repository",
 		"issue_comment_create": "Create a comment on a Forgejo/Gitea repository issue",

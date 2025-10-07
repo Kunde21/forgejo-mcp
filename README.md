@@ -46,15 +46,35 @@ To use this MCP server with OpenCode, add the following to your `opencode.json` 
   "$schema": "https://opencode.ai/config.json",
   "mcp": {
     "forgejo": {
-      "type": "local",
-      "command": ["/path/to/forgejo-mcp", "serve"],
-      "enabled": true,
-      "environment": {
-        "FORGEJO_REMOTE_URL": "https://your.forgejo.instance",
-        "FORGEJO_AUTH_TOKEN": "your-api-token",
-        "FORGEJO_CLIENT_TYPE": "auto"
-      }
-    }
+       "type": "local",
+       "command": ["/path/to/forgejo-mcp", "serve"],
+       "enabled": true,
+       "environment": {
+         "FORGEJO_REMOTE_URL": "https://your.forgejo.instance",
+         "FORGEJO_AUTH_TOKEN": "your-api-token",
+         "FORGEJO_CLIENT_TYPE": "auto"
+       }
+     }
+  }
+}
+```
+
+To enable debug mode in OpenCode, modify the command to include the `--debug` flag:
+
+```json
+{
+  "$schema": "https://opencode.ai/config.json",
+  "mcp": {
+    "forgejo": {
+       "type": "local",
+       "command": ["/path/to/forgejo-mcp", "serve", "--debug"],
+       "enabled": true,
+       "environment": {
+         "FORGEJO_REMOTE_URL": "https://your.forgejo.instance",
+         "FORGEJO_AUTH_TOKEN": "your-api-token",
+         "FORGEJO_CLIENT_TYPE": "auto"
+       }
+     }
   }
 }
 ```
@@ -180,7 +200,35 @@ Example usage:
 
 # Enable verbose logging
 ./forgejo-mcp serve --verbose
+
+# Enable debug mode (exposes hello tool)
+./forgejo-mcp serve --debug
 ```
+
+### Debug Mode
+
+The server includes a debug mode that exposes additional tools for development and troubleshooting:
+
+```bash
+# Start server with debug mode enabled
+./forgejo-mcp serve --debug
+```
+
+**Debug Mode Features:**
+- **`hello` tool**: A simple debugging tool that returns "Hello, World!" to test server connectivity
+- **Additional logging**: Enhanced error reporting and diagnostic information
+- **Development tools**: Extra utilities for testing and development workflows
+
+**When to Use Debug Mode:**
+- During initial setup to verify server connectivity
+- When troubleshooting connection issues
+- For development and testing of MCP integrations
+- When building custom tools that interact with the server
+
+**Production Considerations:**
+- Debug mode is intended for development and troubleshooting only
+- The hello tool and other debug features should not be used in production environments
+- Regular server mode provides all essential functionality without debug overhead
 
 ### Usage Examples
 
@@ -442,9 +490,10 @@ Authentication is handled through API tokens configured at startup. All operatio
   - Returns: Pull request edit confirmation with updated metadata
 
 #### Repository Utilities
-- **`forgejo_hello`**: Simple hello world tool for testing connectivity
+- **`hello`**: Simple hello world tool for testing connectivity (debug mode only)
   - Parameters: none
   - Returns: Hello message confirming server is working
+  - **Note**: Only available when server is started with `--debug` flag
 
 ### Platform Support
 

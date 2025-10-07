@@ -1028,6 +1028,11 @@ func (m *MockGiteaServer) handleEditIssue(w http.ResponseWriter, r *http.Request
 //	}
 //	client := ts.Client()
 func NewTestServer(t *testing.T, ctx context.Context, env map[string]string) *TestServer {
+	return NewTestServerWithDebug(t, ctx, env, false)
+}
+
+// NewTestServerWithDebug creates a new test server with optional debug mode
+func NewTestServerWithDebug(t *testing.T, ctx context.Context, env map[string]string, debug bool) *TestServer {
 	if ctx == nil {
 		ctx = t.Context()
 	}
@@ -1045,7 +1050,7 @@ func NewTestServer(t *testing.T, ctx context.Context, env map[string]string) *Te
 	if err != nil {
 		t.Fatalf("Failed to load config: %v", err)
 	}
-	srv, err := server.NewFromConfig(cfg)
+	srv, err := server.NewFromConfigWithDebug(cfg, debug)
 	if err != nil {
 		t.Fatalf("Failed to create server from config: %v", err)
 	}

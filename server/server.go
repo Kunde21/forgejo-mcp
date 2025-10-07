@@ -37,12 +37,28 @@ func New() (*Server, error) {
 	return NewFromConfig(cfg)
 }
 
+// NewWithDebug creates a new MCP server instance with debug mode support.
+// When debug is true, the hello tool will be registered for debugging purposes.
+func NewWithDebug(debug bool) (*Server, error) {
+	cfg, err := config.Load()
+	if err != nil {
+		return nil, fmt.Errorf("failed to load config: %w", err)
+	}
+	return NewFromConfigWithDebug(cfg, debug)
+}
+
 // NewFromConfig creates a new MCP server instance with the provided configuration.
 // This allows for custom server setup while maintaining the official SDK integration.
 //
 // Migration Note: Tool registration updated to use mcp.AddTool() instead of the
 // previous SDK's tool registration methods.
 func NewFromConfig(cfg *config.Config) (*Server, error) {
+	return NewFromConfigWithDebug(cfg, false)
+}
+
+// NewFromConfigWithDebug creates a new MCP server instance with the provided configuration and debug mode.
+// When debug is true, the hello tool will be registered for debugging purposes.
+func NewFromConfigWithDebug(cfg *config.Config, debug bool) (*Server, error) {
 	if err := cfg.Validate(); err != nil {
 		return nil, fmt.Errorf("configuration validation failed: %w", err)
 	}
@@ -77,12 +93,18 @@ func NewFromConfig(cfg *config.Config) (*Server, error) {
 		return nil, fmt.Errorf("unsupported client type: %s", cfg.ClientType)
 	}
 
-	return NewFromService(client, cfg)
+	return NewFromServiceWithDebug(client, cfg, debug)
 }
 
 // NewFromService creates a new MCP server instance with the provided service.
 // This allows for dependency injection, particularly useful for testing with mock services.
 func NewFromService(service remote.ClientInterface, cfg *config.Config) (*Server, error) {
+	return NewFromServiceWithDebug(service, cfg, false)
+}
+
+// NewFromServiceWithDebug creates a new MCP server instance with the provided service and debug mode.
+// When debug is true, the hello tool will be registered for debugging purposes.
+func NewFromServiceWithDebug(service remote.ClientInterface, cfg *config.Config, debug bool) (*Server, error) {
 	if service == nil {
 		return nil, fmt.Errorf("service cannot be nil")
 	}
@@ -101,10 +123,13 @@ func NewFromService(service remote.ClientInterface, cfg *config.Config) (*Server
 	}, nil)
 
 	// Add tools using the new SDK
-	mcp.AddTool(mcpServer, &mcp.Tool{
-		Name:        "hello",
-		Description: "Returns a hello world message",
-	}, s.handleHello)
+	// Only register hello tool in debug mode
+	if debug {
+		mcp.AddTool(mcpServer, &mcp.Tool{
+			Name:        "hello",
+			Description: "Returns a hello world message",
+		}, s.handleHello)
+	}
 
 	mcp.AddTool(mcpServer, &mcp.Tool{
 		Name:        "issue_list",

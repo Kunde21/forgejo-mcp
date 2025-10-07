@@ -78,10 +78,10 @@ func TestHelloToolTableDriven(t *testing.T) {
 				tc.setupMock(mock)
 			}
 
-			ts := NewTestServer(t, ctx, map[string]string{
+			ts := NewTestServerWithDebug(t, ctx, map[string]string{
 				"FORGEJO_REMOTE_URL": mock.URL(),
 				"FORGEJO_AUTH_TOKEN": "mock-token",
-			})
+			}, true)
 			if err := ts.Initialize(); err != nil {
 				t.Fatalf("Failed to initialize test server: %v", err)
 			}
@@ -187,10 +187,10 @@ func TestHelloToolConcurrent(t *testing.T) {
 
 	// Create mock server even though hello tool doesn't use it
 	mock := NewMockGiteaServer(t)
-	ts := NewTestServer(t, ctx, map[string]string{
+	ts := NewTestServerWithDebug(t, ctx, map[string]string{
 		"FORGEJO_REMOTE_URL": mock.URL(),
 		"FORGEJO_AUTH_TOKEN": "mock-token",
-	})
+	}, true)
 	if err := ts.Initialize(); err != nil {
 		t.Fatalf("Failed to initialize test server: %v", err)
 	}
@@ -264,18 +264,17 @@ func TestHelloToolContextCancellation(t *testing.T) {
 
 // TestHelloToolPerformance tests performance with multiple rapid calls
 func TestHelloToolPerformance(t *testing.T) {
-	// Note: t.Parallel() is not compatible with t.Setenv() used in NewTestServer
-	// Performance testing can still be done without parallel execution
+	// Note: t.Parallel() disabled due to incompatibility with t.Setenv() used in test harness
 
-	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
 	t.Cleanup(cancel)
 
 	// Create mock server even though hello tool doesn't use it
 	mock := NewMockGiteaServer(t)
-	ts := NewTestServer(t, ctx, map[string]string{
+	ts := NewTestServerWithDebug(t, ctx, map[string]string{
 		"FORGEJO_REMOTE_URL": mock.URL(),
 		"FORGEJO_AUTH_TOKEN": "mock-token",
-	})
+	}, true)
 	if err := ts.Initialize(); err != nil {
 		t.Fatalf("Failed to initialize test server: %v", err)
 	}

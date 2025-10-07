@@ -31,6 +31,7 @@ tools for interacting with Forgejo repositories.`,
 	// Add serve-specific flags
 	cmd.Flags().String("host", "localhost", "Host to bind the server to")
 	cmd.Flags().Int("port", 3000, "Port to bind the server to")
+	cmd.Flags().Bool("debug", false, "Enable debug mode (exposes hello tool)")
 
 	return cmd
 }
@@ -53,10 +54,15 @@ func runServe(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to get port flag: %w", err)
 	}
 
+	debug, err := cmd.Flags().GetBool("debug")
+	if err != nil {
+		return fmt.Errorf("failed to get debug flag: %w", err)
+	}
+
 	log.Printf("Starting MCP server on %s:%d", host, port)
 
 	// Initialize the MCP server with official SDK
-	srv, err := server.New()
+	srv, err := server.NewWithDebug(debug)
 	if err != nil {
 		return fmt.Errorf("failed to create server: %v", err)
 	}
