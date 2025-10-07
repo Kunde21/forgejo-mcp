@@ -178,6 +178,86 @@ All tools support an optional `directory` parameter that automatically resolves 
 
 **Note**: The `directory` parameter takes precedence if both `repository` and `directory` are provided.
 
+## Features
+
+### SDK Integration
+
+This server uses the **official Model Context Protocol SDK** for standardized MCP protocol implementation, combined with platform-specific SDKs for direct API integration with Gitea/Forgejo instances. This provides:
+
+- **Official Protocol Support**: Full compliance with MCP specifications
+- **Improved Performance**: Direct API integration with comprehensive error handling
+- **Enhanced Reliability**: Official SDK with long-term support guarantees
+- **Better Tool Management**: Standardized tool registration and lifecycle management
+- **Platform Detection**: Automatic detection and optimal SDK selection for Gitea vs Forgejo
+
+Authentication is handled through API tokens configured at startup. All operations are performed directly via the Gitea/Forgejo REST API using the official SDKs.
+
+### Available Tools
+
+#### Issue Management
+- **`issue_list`**: List issues from a repository with pagination support
+  - Parameters: `repository` (owner/repo) OR `directory` (local path), `limit` (1-100, default 15), `offset` (0-based, default 0)
+  - Returns: Array of issues with number, title, state, and metadata
+
+- **`issue_create`**: Create a new issue on a repository
+  - Parameters: `repository` (owner/repo) OR `directory` (local path), `title` (required, 1-255 chars), `body` (optional), `attachments` (optional array)
+  - Returns: Issue creation confirmation with metadata
+
+- **`issue_edit`**: Edit an existing issue in a repository
+  - Parameters: `repository` (owner/repo) OR `directory` (local path), `issue_number` (positive integer), optional: `title` (string), `body` (string), `state` (open/closed)
+  - Returns: Issue edit confirmation with updated metadata
+
+- **`issue_comment_create`**: Create a comment on a repository issue
+  - Parameters: `repository` (owner/repo) OR `directory` (local path), `issue_number` (positive integer), `comment` (non-empty string)
+  - Returns: Comment creation confirmation with metadata
+
+- **`issue_comment_list`**: List comments from a repository issue with pagination support
+  - Parameters: `repository` (owner/repo) OR `directory` (local path), `issue_number` (positive integer), `limit` (1-100, default 15), `offset` (0-based, default 0)
+  - Returns: Array of comments with ID, content, author, and creation timestamp
+
+- **`issue_comment_edit`**: Edit an existing comment on a repository issue
+  - Parameters: `repository` (owner/repo) OR `directory` (local path), `issue_number` (positive integer), `comment_id` (positive integer), `new_content` (non-empty string)
+  - Returns: Comment edit confirmation with updated metadata
+
+#### Pull Request Management
+- **`pr_list`**: List pull requests from a repository with pagination and state filtering
+  - Parameters: `repository` (owner/repo) OR `directory` (local path), `limit` (1-100, default 15), `offset` (0-based, default 0), `state` (open/closed/all, default "open")
+  - Returns: Array of pull requests with ID, number, title, state, user, timestamps, and branch information
+
+- **`pr_create`**: Create a new pull request in a repository
+  - Parameters: `repository` (owner/repo) OR `directory` (local path), `title` (required), optional: `head` (source branch, auto-detected), `base` (target branch, default "main"), `body` (description), `draft` (boolean), `assignee` (reviewer)
+  - Returns: Pull request creation confirmation with metadata and conflict analysis
+
+- **`pr_edit`**: Edit an existing pull request
+  - Parameters: `repository` (owner/repo) OR `directory` (local path), `pull_request_number` (positive integer), optional: `title` (string), `body` (string), `state` (open/closed), `base_branch` (string)
+  - Returns: Pull request edit confirmation with updated metadata
+
+- **`pr_comment_create`**: Create a comment on a repository pull request
+  - Parameters: `repository` (owner/repo) OR `directory` (local path), `pull_request_number` (positive integer), `comment` (non-empty string)
+  - Returns: Comment creation confirmation with metadata
+
+- **`pr_comment_list`**: List comments from a repository pull request with pagination support
+  - Parameters: `repository` (owner/repo) OR `directory` (local path), `pull_request_number` (positive integer), `limit` (1-100, default 15), `offset` (0-based, default 0)
+  - Returns: Array of comments with ID, content, author, and creation timestamp
+
+- **`pr_comment_edit`**: Edit an existing comment on a repository pull request
+  - Parameters: `repository` (owner/repo) OR `directory` (local path), `pull_request_number` (positive integer), `comment_id` (positive integer), `new_content` (non-empty string)
+  - Returns: Comment edit confirmation with updated metadata
+
+#### Repository Utilities
+- **`hello`**: Simple hello world tool for testing connectivity (debug mode only)
+  - Parameters: none
+  - Returns: Hello message confirming server is working
+
+### Platform Support
+
+The server automatically detects and optimizes for different platforms:
+
+- **Forgejo Instances**: Uses Forgejo-specific SDK for optimal performance
+- **Gitea Instances**: Uses Gitea SDK with full feature compatibility
+- **Automatic Detection**: Queries `/api/v1/version` endpoint to determine platform
+- **Manual Override**: Force specific client type via `FORGEJO_CLIENT_TYPE` environment variable
+
 ### CLI Commands
 
 The application provides several CLI commands:
@@ -280,6 +360,37 @@ The server includes a debug mode that exposes additional tools for development a
 }
 ```
 
+**Create a new issue:**
+```json
+{
+  "method": "tools/call",
+  "params": {
+    "name": "issue_create",
+    "arguments": {
+      "directory": "/home/user/projects/myapp",
+      "title": "Bug: User authentication fails on mobile devices",
+      "body": "## Description\nUsers report that login attempts fail on mobile browsers with error 'Invalid credentials'.\n\n## Steps to Reproduce\n1. Open mobile browser\n2. Navigate to login page\n3. Enter valid credentials\n4. Submit form\n\n## Expected Behavior\nUser should be successfully authenticated and redirected to dashboard.\n\n## Actual Behavior\nError message 'Invalid credentials' appears despite correct credentials.\n\n## Environment\n- Mobile Safari (iOS 15+)\n- Mobile Chrome (Android 10+)\n- Desktop browsers work fine"
+    }
+  }
+}
+```
+
+**Edit an existing issue:**
+```json
+{
+  "method": "tools/call",
+  "params": {
+    "name": "issue_edit",
+    "arguments": {
+      "repository": "myorg/myrepo",
+      "issue_number": 67,
+      "state": "closed",
+      "body": "Fixed in PR #89. The issue was caused by missing mobile-specific user agent handling in the authentication middleware."
+    }
+  }
+}
+```
+
 #### Pull Request Workflow
 
 **List open pull requests:**
@@ -307,6 +418,23 @@ The server includes a debug mode that exposes additional tools for development a
       "repository": "myorg/myrepo",
       "pull_request_number": 23,
       "comment": "Great work on this feature! I have a few suggestions:\n1. Consider adding error handling for edge cases\n2. The tests look comprehensive\n3. Documentation is clear and well-written"
+    }
+  }
+}
+```
+
+**Create a new pull request:**
+```json
+{
+  "method": "tools/call",
+  "params": {
+    "name": "pr_create",
+    "arguments": {
+      "directory": "/home/user/projects/myapp",
+      "title": "feat: Add user authentication with JWT tokens",
+      "body": "## Summary\nImplements secure user authentication using JSON Web Tokens (JWT) with refresh token support.\n\n## Changes\n- Added JWT middleware for protected routes\n- Implemented login/logout endpoints\n- Added token refresh mechanism\n- Updated user model with authentication fields\n- Added comprehensive test coverage\n\n## Testing\n- All existing tests pass\n- Added new authentication test suite\n- Manual testing completed in staging environment\n\n## Checklist\n- [x] Code follows project style guidelines\n- [x] Self-review completed\n- [x] Tests added and passing\n- [x] Documentation updated\n- [x] No breaking changes",
+      "draft": false,
+      "assignee": "senior-dev"
     }
   }
 }
@@ -435,75 +563,6 @@ All tools return responses in the MCP standard format with both human-readable t
 
 The `content` field provides human-readable summaries, while `structured` contains the full data for programmatic use.
 
-## Features
-
-### SDK Integration
-
-This server uses the **official Model Context Protocol SDK** for standardized MCP protocol implementation, combined with platform-specific SDKs for direct API integration with Gitea/Forgejo instances. This provides:
-
-- **Official Protocol Support**: Full compliance with MCP specifications
-- **Improved Performance**: Direct API integration with comprehensive error handling
-- **Enhanced Reliability**: Official SDK with long-term support guarantees
-- **Better Tool Management**: Standardized tool registration and lifecycle management
-- **Platform Detection**: Automatic detection and optimal SDK selection for Gitea vs Forgejo
-
-Authentication is handled through API tokens configured at startup. All operations are performed directly via the Gitea/Forgejo REST API using the official SDKs.
-
-### Available Tools
-
-#### Issue Management
-- **`issue_list`**: List issues from a repository with pagination support
-  - Parameters: `repository` (owner/repo) OR `directory` (local path), `limit` (1-100, default 15), `offset` (0-based, default 0)
-  - Returns: Array of issues with number, title, state, and metadata
-
-- **`issue_comment_create`**: Create a comment on a repository issue
-  - Parameters: `repository` (owner/repo) OR `directory` (local path), `issue_number` (positive integer), `comment` (non-empty string)
-  - Returns: Comment creation confirmation with metadata
-
-- **`issue_comment_list`**: List comments from a repository issue with pagination support
-  - Parameters: `repository` (owner/repo) OR `directory` (local path), `issue_number` (positive integer), `limit` (1-100, default 15), `offset` (0-based, default 0)
-  - Returns: Array of comments with ID, content, author, and creation timestamp
-
-- **`issue_comment_edit`**: Edit an existing comment on a repository issue
-  - Parameters: `repository` (owner/repo) OR `directory` (local path), `issue_number` (positive integer), `comment_id` (positive integer), `new_content` (non-empty string)
-  - Returns: Comment edit confirmation with updated metadata
-
-#### Pull Request Management
-- **`pr_list`**: List pull requests from a repository with pagination and state filtering
-  - Parameters: `repository` (owner/repo) OR `directory` (local path), `limit` (1-100, default 15), `offset` (0-based, default 0), `state` (open/closed/all, default "open")
-  - Returns: Array of pull requests with ID, number, title, state, user, timestamps, and branch information
-
-- **`pr_comment_create`**: Create a comment on a repository pull request
-  - Parameters: `repository` (owner/repo) OR `directory` (local path), `pull_request_number` (positive integer), `comment` (non-empty string)
-  - Returns: Comment creation confirmation with metadata
-
-- **`pr_comment_list`**: List comments from a repository pull request with pagination support
-  - Parameters: `repository` (owner/repo) OR `directory` (local path), `pull_request_number` (positive integer), `limit` (1-100, default 15), `offset` (0-based, default 0)
-  - Returns: Array of comments with ID, content, author, and creation timestamp
-
-- **`pr_comment_edit`**: Edit an existing comment on a repository pull request
-  - Parameters: `repository` (owner/repo) OR `directory` (local path), `pull_request_number` (positive integer), `comment_id` (positive integer), `new_content` (non-empty string)
-  - Returns: Comment edit confirmation with updated metadata
-
-- **`pr_edit`**: Edit an existing pull request
-  - Parameters: `repository` (owner/repo) OR `directory` (local path), `pull_request_number` (positive integer), optional: `title` (string), `body` (string), `state` (open/closed), `base_branch` (string)
-  - Returns: Pull request edit confirmation with updated metadata
-
-#### Repository Utilities
-- **`hello`**: Simple hello world tool for testing connectivity (debug mode only)
-  - Parameters: none
-  - Returns: Hello message confirming server is working
-  - **Note**: Only available when server is started with `--debug` flag
-
-### Platform Support
-
-The server automatically detects and optimizes for different platforms:
-
-- **Forgejo Instances**: Uses Forgejo-specific SDK for optimal performance
-- **Gitea Instances**: Uses Gitea SDK with full feature compatibility
-- **Automatic Detection**: Queries `/api/v1/version` endpoint to determine platform
-- **Manual Override**: Force specific client type via `FORGEJO_CLIENT_TYPE` environment variable
-
 ## Development
 
 ### Prerequisites
@@ -546,7 +605,7 @@ go test -run TestName ./...
 Run integration tests:
 
 ```bash
-go test -run Integration ./...
+go test -run ./server_test/...
 ```
 
 Run tests with verbose output:
