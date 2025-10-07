@@ -305,3 +305,168 @@ func (r *RepositoryResolver) ResolveRepository(directory string) (*RepositoryRes
 		RemoteName: remoteName,
 	}, nil
 }
+
+// ForkInfo contains information about fork relationships
+type ForkInfo struct {
+	IsFork        bool   `json:"is_fork"`
+	ForkOwner     string `json:"fork_owner,omitempty"`
+	OriginalOwner string `json:"original_owner,omitempty"`
+	ForkRemote    string `json:"fork_remote,omitempty"`
+}
+
+// ResolveWithForkInfo performs repository resolution with fork detection
+func (r *RepositoryResolver) ResolveWithForkInfo(directory string) (*RepositoryResolution, *ForkInfo, error) {
+	// First perform basic repository resolution
+	resolution, err := r.ResolveRepository(directory)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	// Extract all remotes to detect fork relationships
+	remotes, err := r.ExtractAllRemotes(directory)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to extract remotes: %w", err)
+	}
+
+	// Detect fork relationships
+	forkInfo, err := r.DetectForkRelationship(remotes, resolution.Repository)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to detect fork relationship: %w", err)
+	}
+
+	return resolution, forkInfo, nil
+}
+
+// ExtractAllRemotes extracts all remote configurations from git config
+func (r *RepositoryResolver) ExtractAllRemotes(directory string) (map[string]string, error) {
+	gitConfigPath := filepath.Join(directory, ".git", "config")
+
+	// Read git config file
+	file, err := os.Open(gitConfigPath)
+	if err != nil {
+		return nil, &RepositoryError{
+			Op:   "extract",
+			Path: gitConfigPath,
+			Err:  fmt.Errorf("failed to read git config: %w", err),
+		}
+	}
+	defer file.Close()
+
+	remotes := make(map[string]string)
+	scanner := bufio.NewScanner(file)
+	inRemoteSection := false
+	currentRemote := ""
+
+	for scanner.Scan() {
+		line := strings.TrimSpace(scanner.Text())
+
+		// Check for remote section start
+		if strings.HasPrefix(line, "[remote \"") {
+			inRemoteSection = true
+			start := strings.Index(line, "\"") + 1
+			end := strings.LastIndex(line, "\"")
+			if start > 0 && end > start {
+				currentRemote = line[start:end]
+			}
+			continue
+		}
+
+		// Check for section end
+		if line == "]" {
+			inRemoteSection = false
+			continue
+		}
+
+		// Look for URL in remote section
+		if inRemoteSection && strings.HasPrefix(line, "url = ") {
+			remoteURL := strings.TrimPrefix(line, "url = ")
+			remotes[currentRemote] = remoteURL
+		}
+	}
+
+	if err := scanner.Err(); err != nil {
+		return nil, &RepositoryError{
+			Op:   "extract",
+			Path: gitConfigPath,
+			Err:  fmt.Errorf("failed to parse git config: %w", err),
+		}
+	}
+
+	return remotes, nil
+}
+
+// DetectForkRelationship analyzes remotes to detect fork relationships
+func (r *RepositoryResolver) DetectForkRelationship(remotes map[string]string, targetRepo string) (*ForkInfo, error) {
+	if len(remotes) == 0 {
+		return &ForkInfo{IsFork: false}, nil
+	}
+
+	// Parse target repository to get owner and repo name
+	targetOwner, targetRepoName, ok := strings.Cut(targetRepo, "/")
+	if !ok {
+		return nil, fmt.Errorf("invalid target repository format: %s", targetRepo)
+	}
+
+	// Look for remotes that might indicate a fork
+	for remoteName, remoteURL := range remotes {
+		parsedRepo, err := r.parseRemoteURL(remoteURL)
+		if err != nil {
+			continue // Skip invalid URLs
+		}
+
+		remoteOwner, remoteRepoName, ok := strings.Cut(parsedRepo, "/")
+		if !ok {
+			continue
+		}
+
+		// If this remote has a different owner than target, it might be a fork
+		if remoteOwner != targetOwner {
+			// Check if the repo name is the same (indicating a fork)
+			if targetRepoName == remoteRepoName {
+				return &ForkInfo{
+					IsFork:        true,
+					ForkOwner:     remoteOwner,
+					OriginalOwner: targetOwner,
+					ForkRemote:    remoteName,
+				}, nil
+			}
+		}
+	}
+
+	// Look for remotes that might indicate a fork
+	for remoteName, remoteURL := range remotes {
+		parsedRepo, err := r.parseRemoteURL(remoteURL)
+		if err != nil {
+			continue // Skip invalid URLs
+		}
+
+		remoteOwner, _, ok := strings.Cut(parsedRepo, "/")
+		if !ok {
+			continue
+		}
+
+		// If this remote has a different owner than target, it might be a fork
+		if remoteOwner != targetOwner {
+			// Check if the repo name is the same (indicating a fork)
+			_, targetRepoName, ok := strings.Cut(targetRepo, "/")
+			if !ok {
+				continue
+			}
+			_, remoteRepoName, ok := strings.Cut(parsedRepo, "/")
+			if !ok {
+				continue
+			}
+
+			if targetRepoName == remoteRepoName {
+				return &ForkInfo{
+					IsFork:        true,
+					ForkOwner:     remoteOwner,
+					OriginalOwner: targetOwner,
+					ForkRemote:    remoteName,
+				}, nil
+			}
+		}
+	}
+
+	return &ForkInfo{IsFork: false}, nil
+}
