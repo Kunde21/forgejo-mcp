@@ -196,6 +196,11 @@ func NewFromServiceWithDebug(service remote.ClientInterface, cfg *config.Config,
 		Description: "Create a new pull request in a Forgejo/Gitea repository",
 	}, s.handlePullRequestCreate)
 
+	mcp.AddTool(mcpServer, &mcp.Tool{
+		Name:        "pr_fetch",
+		Description: "Fetch detailed information about a single pull request from a Forgejo/Gitea repository",
+	}, s.handlePullRequestFetch)
+
 	s.mcpServer = mcpServer
 	return s, nil
 }
