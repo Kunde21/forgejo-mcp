@@ -224,12 +224,69 @@ type PullRequestCreator interface {
 	CreatePullRequest(ctx context.Context, args CreatePullRequestArgs) (*PullRequest, error)
 }
 
+// PullRequestGetter defines the interface for fetching a single pull request
+type PullRequestGetter interface {
+	GetPullRequest(ctx context.Context, repo string, number int) (*PullRequestDetails, error)
+}
+
+// PullRequestDetails represents comprehensive pull request information
+type PullRequestDetails struct {
+	// Basic fields (matching PullRequest for compatibility)
+	ID        int               `json:"id"`
+	Number    int               `json:"number"`
+	Title     string            `json:"title"`
+	Body      string            `json:"body"`
+	State     string            `json:"state"`
+	User      string            `json:"user"`
+	CreatedAt string            `json:"created"`
+	UpdatedAt string            `json:"updated"`
+	Head      PullRequestBranch `json:"head"`
+	Base      PullRequestBranch `json:"base"`
+
+	// Additional metadata fields
+	HTMLURL             string     `json:"html_url"`
+	DiffURL             string     `json:"diff_url"`
+	PatchURL            string     `json:"patch_url"`
+	Labels              []Label    `json:"labels,omitempty"`
+	Milestone           *Milestone `json:"milestone,omitempty"`
+	Assignee            string     `json:"assignee,omitempty"`
+	Assignees           []string   `json:"assignees,omitempty"`
+	Comments            int        `json:"comments"`
+	IsLocked            bool       `json:"is_locked"`
+	Mergeable           bool       `json:"mergeable"`
+	HasMerged           bool       `json:"has_merged"`
+	MergedAt            string     `json:"merged_at,omitempty"`
+	MergeCommitSHA      string     `json:"merge_commit_sha,omitempty"`
+	MergedBy            string     `json:"merged_by,omitempty"`
+	AllowMaintainerEdit bool       `json:"allow_maintainer_edit"`
+	ClosedAt            string     `json:"closed_at,omitempty"`
+	Deadline            string     `json:"deadline,omitempty"`
+}
+
+// Label represents a repository label
+type Label struct {
+	ID          int    `json:"id"`
+	Name        string `json:"name"`
+	Color       string `json:"color"`
+	Description string `json:"description,omitempty"`
+}
+
+// Milestone represents a repository milestone
+type Milestone struct {
+	ID           int    `json:"id"`
+	Title        string `json:"title"`
+	Description  string `json:"description,omitempty"`
+	State        string `json:"state"`
+	OpenIssues   int    `json:"open_issues"`
+	ClosedIssues int    `json:"closed_issues"`
+}
+
 // FileContentFetcher defines interface for fetching repository file contents
 type FileContentFetcher interface {
 	GetFileContent(ctx context.Context, owner, repo, ref, filepath string) ([]byte, error)
 }
 
-// ClientInterface combines IssueLister, IssueCommenter, IssueCommentLister, IssueCommentEditor, IssueCreator, IssueAttachmentCreator, IssueEditor, PullRequestLister, PullRequestCommentLister, PullRequestCommenter, PullRequestCommentEditor, PullRequestEditor, PullRequestCreator, and FileContentFetcher for complete Git operations
+// ClientInterface combines IssueLister, IssueCommenter, IssueCommentLister, IssueCommentEditor, IssueCreator, IssueAttachmentCreator, IssueEditor, PullRequestLister, PullRequestCommentLister, PullRequestCommenter, PullRequestCommentEditor, PullRequestEditor, PullRequestCreator, PullRequestGetter, and FileContentFetcher for complete Git operations
 type ClientInterface interface {
 	IssueLister
 	IssueCommenter
@@ -244,5 +301,6 @@ type ClientInterface interface {
 	PullRequestCommentEditor
 	PullRequestEditor
 	PullRequestCreator
+	PullRequestGetter
 	FileContentFetcher
 }

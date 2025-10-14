@@ -494,6 +494,167 @@ func (c *ForgejoClient) CreatePullRequest(ctx context.Context, args remote.Creat
 	}, nil
 }
 
+// GetPullRequest fetches a single pull request with full metadata
+func (c *ForgejoClient) GetPullRequest(ctx context.Context, repo string, number int) (*remote.PullRequestDetails, error) {
+	// Check if client is initialized
+	if c.client == nil {
+		return nil, fmt.Errorf("client not initialized")
+	}
+
+	// Parse repository string (format: "owner/repo")
+	owner, repoName, ok := strings.Cut(repo, "/")
+	if !ok {
+		return nil, fmt.Errorf("invalid repository format: %s, expected 'owner/repo'", repo)
+	}
+
+	if number <= 0 {
+		return nil, fmt.Errorf("invalid pull request number: %d, must be positive", number)
+	}
+
+	// Fetch pull request using Forgejo SDK
+	forgejoPR, _, err := c.client.GetPullRequest(owner, repoName, int64(number))
+	if err != nil {
+		return nil, fmt.Errorf("failed to get pull request: %w", err)
+	}
+
+	// Convert to PullRequestDetails
+	return c.convertToPullRequestDetails(forgejoPR), nil
+}
+
+// convertToPullRequestDetails converts Forgejo PR to our detailed format
+func (c *ForgejoClient) convertToPullRequestDetails(fpr *forgejo.PullRequest) *remote.PullRequestDetails {
+	// Extract user information
+	user := "unknown"
+	if fpr.Poster != nil {
+		user = fpr.Poster.UserName
+	}
+
+	// Format timestamps
+	createdAt := ""
+	if fpr.Created != nil {
+		createdAt = fpr.Created.Format("2006-01-02T15:04:05Z")
+	}
+
+	updatedAt := ""
+	if fpr.Updated != nil {
+		updatedAt = fpr.Updated.Format("2006-01-02T15:04:05Z")
+	}
+
+	mergedAt := ""
+	if fpr.Merged != nil {
+		mergedAt = fpr.Merged.Format("2006-01-02T15:04:05Z")
+	}
+
+	closedAt := ""
+	if fpr.Closed != nil {
+		closedAt = fpr.Closed.Format("2006-01-02T15:04:05Z")
+	}
+
+	deadline := ""
+	if fpr.Deadline != nil {
+		deadline = fpr.Deadline.Format("2006-01-02T15:04:05Z")
+	}
+
+	// Extract assignee information
+	var assignee string
+	if fpr.Assignee != nil {
+		assignee = fpr.Assignee.UserName
+	}
+
+	var assignees []string
+	for _, a := range fpr.Assignees {
+		if a != nil {
+			assignees = append(assignees, a.UserName)
+		}
+	}
+
+	// Extract merged by information
+	var mergedBy string
+	if fpr.MergedBy != nil {
+		mergedBy = fpr.MergedBy.UserName
+	}
+
+	// Extract merge commit SHA
+	var mergeCommitSHA string
+	if fpr.MergedCommitID != nil {
+		mergeCommitSHA = *fpr.MergedCommitID
+	}
+
+	// Convert labels
+	var labels []remote.Label
+	for _, l := range fpr.Labels {
+		if l != nil {
+			labels = append(labels, remote.Label{
+				ID:          int(l.ID),
+				Name:        l.Name,
+				Color:       l.Color,
+				Description: l.Description,
+			})
+		}
+	}
+
+	// Convert milestone
+	var milestone *remote.Milestone
+	if fpr.Milestone != nil {
+		milestone = &remote.Milestone{
+			ID:           int(fpr.Milestone.ID),
+			Title:        fpr.Milestone.Title,
+			Description:  fpr.Milestone.Description,
+			State:        string(fpr.Milestone.State),
+			OpenIssues:   int(fpr.Milestone.OpenIssues),
+			ClosedIssues: int(fpr.Milestone.ClosedIssues),
+		}
+	}
+
+	// Convert head branch
+	var head remote.PullRequestBranch
+	if fpr.Head != nil {
+		head = remote.PullRequestBranch{
+			Ref: fpr.Head.Ref,
+			Sha: fpr.Head.Sha,
+		}
+	}
+
+	// Convert base branch
+	var base remote.PullRequestBranch
+	if fpr.Base != nil {
+		base = remote.PullRequestBranch{
+			Ref: fpr.Base.Ref,
+			Sha: fpr.Base.Sha,
+		}
+	}
+
+	return &remote.PullRequestDetails{
+		ID:                  int(fpr.ID),
+		Number:              int(fpr.Index),
+		Title:               fpr.Title,
+		Body:                fpr.Body,
+		State:               string(fpr.State),
+		User:                user,
+		CreatedAt:           createdAt,
+		UpdatedAt:           updatedAt,
+		Head:                head,
+		Base:                base,
+		HTMLURL:             fpr.HTMLURL,
+		DiffURL:             fpr.DiffURL,
+		PatchURL:            fpr.PatchURL,
+		Labels:              labels,
+		Milestone:           milestone,
+		Assignee:            assignee,
+		Assignees:           assignees,
+		Comments:            fpr.Comments,
+		IsLocked:            fpr.IsLocked,
+		Mergeable:           fpr.Mergeable,
+		HasMerged:           fpr.HasMerged,
+		MergedAt:            mergedAt,
+		MergeCommitSHA:      mergeCommitSHA,
+		MergedBy:            mergedBy,
+		AllowMaintainerEdit: fpr.AllowMaintainerEdit,
+		ClosedAt:            closedAt,
+		Deadline:            deadline,
+	}
+}
+
 // GetFileContent fetches file content from repository
 func (c *ForgejoClient) GetFileContent(ctx context.Context, owner, repo, ref, filepath string) ([]byte, error) {
 	if c.client == nil {

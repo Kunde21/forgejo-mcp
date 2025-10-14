@@ -680,6 +680,167 @@ func (c *GiteaClient) CreatePullRequest(ctx context.Context, args remote.CreateP
 	}, nil
 }
 
+// GetPullRequest fetches a single pull request with full metadata
+func (c *GiteaClient) GetPullRequest(ctx context.Context, repo string, number int) (*remote.PullRequestDetails, error) {
+	// Check if client is initialized
+	if c.client == nil {
+		return nil, fmt.Errorf("client not initialized")
+	}
+
+	// Parse repository string (format: "owner/repo")
+	owner, repoName, ok := strings.Cut(repo, "/")
+	if !ok {
+		return nil, fmt.Errorf("invalid repository format: %s, expected 'owner/repo'", repo)
+	}
+
+	if number <= 0 {
+		return nil, fmt.Errorf("invalid pull request number: %d, must be positive", number)
+	}
+
+	// Fetch pull request using Gitea SDK
+	giteaPR, _, err := c.client.GetPullRequest(owner, repoName, int64(number))
+	if err != nil {
+		return nil, fmt.Errorf("failed to get pull request: %w", err)
+	}
+
+	// Convert to PullRequestDetails
+	return c.convertToPullRequestDetails(giteaPR), nil
+}
+
+// convertToPullRequestDetails converts Gitea PR to our detailed format
+func (c *GiteaClient) convertToPullRequestDetails(gpr *gitea.PullRequest) *remote.PullRequestDetails {
+	// Extract user information
+	user := "unknown"
+	if gpr.Poster != nil {
+		user = gpr.Poster.UserName
+	}
+
+	// Format timestamps
+	createdAt := ""
+	if !gpr.Created.IsZero() {
+		createdAt = gpr.Created.Format("2006-01-02T15:04:05Z")
+	}
+
+	updatedAt := ""
+	if !gpr.Updated.IsZero() {
+		updatedAt = gpr.Updated.Format("2006-01-02T15:04:05Z")
+	}
+
+	mergedAt := ""
+	if gpr.Merged != nil && !gpr.Merged.IsZero() {
+		mergedAt = gpr.Merged.Format("2006-01-02T15:04:05Z")
+	}
+
+	closedAt := ""
+	if gpr.Closed != nil && !gpr.Closed.IsZero() {
+		closedAt = gpr.Closed.Format("2006-01-02T15:04:05Z")
+	}
+
+	deadline := ""
+	if gpr.Deadline != nil && !gpr.Deadline.IsZero() {
+		deadline = gpr.Deadline.Format("2006-01-02T15:04:05Z")
+	}
+
+	// Extract assignee information
+	var assignee string
+	if gpr.Assignee != nil {
+		assignee = gpr.Assignee.UserName
+	}
+
+	var assignees []string
+	for _, a := range gpr.Assignees {
+		if a != nil {
+			assignees = append(assignees, a.UserName)
+		}
+	}
+
+	// Extract merged by information
+	var mergedBy string
+	if gpr.MergedBy != nil {
+		mergedBy = gpr.MergedBy.UserName
+	}
+
+	// Extract merge commit SHA
+	var mergeCommitSHA string
+	if gpr.MergedCommitID != nil {
+		mergeCommitSHA = *gpr.MergedCommitID
+	}
+
+	// Convert labels
+	var labels []remote.Label
+	for _, l := range gpr.Labels {
+		if l != nil {
+			labels = append(labels, remote.Label{
+				ID:          int(l.ID),
+				Name:        l.Name,
+				Color:       l.Color,
+				Description: l.Description,
+			})
+		}
+	}
+
+	// Convert milestone
+	var milestone *remote.Milestone
+	if gpr.Milestone != nil {
+		milestone = &remote.Milestone{
+			ID:           int(gpr.Milestone.ID),
+			Title:        gpr.Milestone.Title,
+			Description:  gpr.Milestone.Description,
+			State:        string(gpr.Milestone.State),
+			OpenIssues:   int(gpr.Milestone.OpenIssues),
+			ClosedIssues: int(gpr.Milestone.ClosedIssues),
+		}
+	}
+
+	// Convert head branch
+	var head remote.PullRequestBranch
+	if gpr.Head != nil {
+		head = remote.PullRequestBranch{
+			Ref: gpr.Head.Ref,
+			Sha: gpr.Head.Sha,
+		}
+	}
+
+	// Convert base branch
+	var base remote.PullRequestBranch
+	if gpr.Base != nil {
+		base = remote.PullRequestBranch{
+			Ref: gpr.Base.Ref,
+			Sha: gpr.Base.Sha,
+		}
+	}
+
+	return &remote.PullRequestDetails{
+		ID:                  int(gpr.ID),
+		Number:              int(gpr.Index),
+		Title:               gpr.Title,
+		Body:                gpr.Body,
+		State:               string(gpr.State),
+		User:                user,
+		CreatedAt:           createdAt,
+		UpdatedAt:           updatedAt,
+		Head:                head,
+		Base:                base,
+		HTMLURL:             gpr.HTMLURL,
+		DiffURL:             gpr.DiffURL,
+		PatchURL:            gpr.PatchURL,
+		Labels:              labels,
+		Milestone:           milestone,
+		Assignee:            assignee,
+		Assignees:           assignees,
+		Comments:            gpr.Comments,
+		IsLocked:            gpr.IsLocked,
+		Mergeable:           gpr.Mergeable,
+		HasMerged:           gpr.HasMerged,
+		MergedAt:            mergedAt,
+		MergeCommitSHA:      mergeCommitSHA,
+		MergedBy:            mergedBy,
+		AllowMaintainerEdit: gpr.AllowMaintainerEdit,
+		ClosedAt:            closedAt,
+		Deadline:            deadline,
+	}
+}
+
 // GetFileContent fetches file content from repository
 func (c *GiteaClient) GetFileContent(ctx context.Context, owner, repo, ref, filepath string) ([]byte, error) {
 	if c.client == nil {
