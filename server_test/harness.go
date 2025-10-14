@@ -171,6 +171,7 @@ func NewMockGiteaServer(t *testing.T) *MockGiteaServer {
 
 	// Register individual handlers with method + path patterns
 	handler.HandleFunc("GET /api/v1/repos/{owner}/{repo}/pulls", mock.handlePullRequests)
+	handler.HandleFunc("GET /api/v1/repos/{owner}/{repo}/pulls/{number}", mock.handlePullRequest)
 	handler.HandleFunc("POST /api/v1/repos/{owner}/{repo}/pulls", mock.handleCreatePullRequest)
 	handler.HandleFunc("PATCH /api/v1/repos/{owner}/{repo}/pulls/{number}", mock.handleEditPullRequest)
 	handler.HandleFunc("GET /api/v1/repos/{owner}/{repo}/issues", mock.handleIssues)
@@ -380,6 +381,113 @@ func (m *MockGiteaServer) handlePullRequests(w http.ResponseWriter, r *http.Requ
 	}
 
 	writeJSONResponse(w, giteaPRs, http.StatusOK)
+}
+
+// handlePullRequest handles single pull request endpoint
+func (m *MockGiteaServer) handlePullRequest(w http.ResponseWriter, r *http.Request) {
+	// Check method
+	if r.Method != "GET" {
+		http.NotFound(w, r)
+		return
+	}
+
+	// Extract repository key from path values
+	repoKey, err := getRepoKeyFromRequest(r)
+	if err != nil {
+		http.NotFound(w, r)
+		return
+	}
+
+	// Extract PR number from path
+	path := strings.TrimPrefix(r.URL.Path, "/api/v1/repos/")
+	parts := strings.Split(path, "/")
+	if len(parts) < 4 || parts[2] != "pulls" {
+		http.NotFound(w, r)
+		return
+	}
+	prNumber, err := strconv.Atoi(parts[3])
+	if err != nil {
+		http.NotFound(w, r)
+		return
+	}
+
+	// Check if repository is marked as not found
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	if m.notFoundRepos[repoKey] {
+		http.NotFound(w, r)
+		return
+	}
+
+	pullRequests, exists := m.pullRequests[repoKey]
+	if !exists {
+		http.NotFound(w, r)
+		return
+	}
+
+	// Find the PR
+	var foundPR *MockPullRequest
+	for _, pr := range pullRequests {
+		if pr.Number == prNumber {
+			foundPR = &pr
+			break
+		}
+	}
+	if foundPR == nil {
+		http.NotFound(w, r)
+		return
+	}
+
+	// Return the PR in Gitea API format
+	giteaPR := map[string]any{
+		"id":     foundPR.ID,
+		"number": foundPR.Number,
+		"title":  foundPR.Title,
+		"body":   foundPR.Body,
+		"state":  foundPR.State,
+		"user": map[string]any{
+			"login":     "testuser",
+			"username":  "testuser",
+			"id":        1,
+			"full_name": "Test User",
+		},
+		"poster": map[string]any{
+			"login":     "testuser",
+			"username":  "testuser",
+			"id":        1,
+			"full_name": "Test User",
+		},
+		"created_at": "2025-09-11T10:30:00Z",
+		"updated_at": foundPR.UpdatedAt,
+		"closed_at":  nil,
+		"merged_at":  nil,
+		"due_date":   nil,
+		"head": map[string]any{
+			"ref": "feature-branch",
+			"sha": "abc123",
+		},
+		"base": map[string]any{
+			"ref": "main",
+			"sha": "def456",
+		},
+		"html_url":              fmt.Sprintf("https://example.com/%s/pull/%d", repoKey, foundPR.Number),
+		"diff_url":              fmt.Sprintf("https://example.com/%s/pull/%d.diff", repoKey, foundPR.Number),
+		"patch_url":             fmt.Sprintf("https://example.com/%s/pull/%d.patch", repoKey, foundPR.Number),
+		"comments":              0,
+		"mergeable":             true,
+		"has_merged":            false,
+		"allow_maintainer_edit": true,
+		"assignee":              nil,
+		"assignees":             []map[string]any{},
+		"merged_by":             nil,
+		"merged_commit_id":      nil,
+		"labels":                []map[string]any{},
+		"milestone":             nil,
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(giteaPR)
 }
 
 // handleEditPullRequest handles pull request edit endpoint
@@ -899,7 +1007,6 @@ func (m *MockGiteaServer) handleEditComment(w http.ResponseWriter, r *http.Reque
 
 // handleEditIssue handles issue editing endpoint
 func (m *MockGiteaServer) handleEditIssue(w http.ResponseWriter, r *http.Request) {
-
 	// Check method
 	if r.Method != "PATCH" {
 		fmt.Printf("DEBUG: Method not PATCH, returning 404\n")
