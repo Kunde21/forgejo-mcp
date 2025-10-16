@@ -103,16 +103,12 @@ func (s *Server) handlePullRequestList(ctx context.Context, request *mcp.CallToo
 		return TextErrorf("Failed to list pull requests: %v", err), nil, nil
 	}
 
-	// Build detailed text result for backwards compatibility
-	var resultText string
-	if len(pullRequests) == 0 {
-		resultText = "No pull requests found"
+	var responseText string
+	if s.compatMode {
+		responseText = FormatPullRequestList(pullRequests)
 	} else {
-		resultText = fmt.Sprintf("Found %d pull requests:\n", len(pullRequests))
-		for _, pr := range pullRequests {
-			resultText += fmt.Sprintf("- #%d: %s (%s)\n", pr.Number, pr.Title, pr.State)
-		}
+		responseText = fmt.Sprintf("Found %d pull requests", len(pullRequests))
 	}
 
-	return TextResult(resultText), &PullRequestList{PullRequests: pullRequests}, nil
+	return TextResult(responseText), &PullRequestList{PullRequests: pullRequests}, nil
 }

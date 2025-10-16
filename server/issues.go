@@ -89,7 +89,14 @@ func (s *Server) handleIssueList(ctx context.Context, request *mcp.CallToolReque
 		return TextErrorf("Failed to list issues: %v", err), nil, nil
 	}
 
-	return TextResultf("Found %d issues", len(issues)), &IssueList{Issues: issues}, nil
+	var responseText string
+	if s.compatMode {
+		responseText = FormatIssueList(issues)
+	} else {
+		responseText = fmt.Sprintf("Found %d issues", len(issues))
+	}
+
+	return TextResult(responseText), &IssueList{Issues: issues}, nil
 }
 
 type IssueCreateArgs struct {
@@ -326,16 +333,12 @@ func (s *Server) handleIssueEdit(ctx context.Context, request *mcp.CallToolReque
 		return TextErrorf("Failed to edit issue: %v", err), nil, nil
 	}
 
-	// Format success response with updated issue metadata
-	responseText := fmt.Sprintf("Issue edited successfully. Number: %d, Title: %s, State: %s",
-		issue.Number, issue.Title, issue.State)
-	if issue.Updated != "" {
-		responseText += fmt.Sprintf(", Updated: %s", issue.Updated)
-	}
-	responseText += "\n"
-
-	if issue.Body != "" {
-		responseText += fmt.Sprintf("Body: %s\n", issue.Body)
+	var responseText string
+	if s.compatMode {
+		responseText = FormatIssueEditSuccess(issue)
+	} else {
+		responseText = fmt.Sprintf("Issue edited successfully. Number: %d, Title: %s, State: %s",
+			issue.Number, issue.Title, issue.State)
 	}
 
 	return TextResult(responseText), &IssueEditResult{Issue: issue}, nil

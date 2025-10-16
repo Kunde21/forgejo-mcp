@@ -90,9 +90,13 @@ func (s *Server) handleIssueCommentCreate(ctx context.Context, request *mcp.Call
 		return TextErrorf("Failed to create comment: %v", err), nil, nil
 	}
 
-	// Format success response with comment metadata
-	responseText := fmt.Sprintf("Comment created successfully. ID: %d, Created: %s\nComment body: %s",
-		comment.ID, comment.Created, comment.Content)
+	var responseText string
+	if s.compatMode {
+		responseText = fmt.Sprintf("Comment created successfully. ID: %d, Created: %s\nComment body: %s",
+			comment.ID, comment.Created, comment.Content)
+	} else {
+		responseText = FormatCommentCreateSuccess(comment)
+	}
 
 	return TextResult(responseText), &CommentResult{Comment: *comment}, nil
 }
@@ -184,20 +188,22 @@ func (s *Server) handleIssueCommentList(ctx context.Context, request *mcp.CallTo
 		return TextErrorf("Failed to list issue comments: %v", err), nil, nil
 	}
 
-	// Format success response with comment count and pagination info
 	var responseText string
-
-	if len(commentList.Comments) == 0 {
-		responseText += "Found 0 comments"
-		return TextResult(responseText), nil, nil
-	}
-	endIndex := min(args.Offset+len(commentList.Comments), commentList.Total)
-	responseText += fmt.Sprintf("Found %d comments (showing %d-%d):\n",
-		commentList.Total,
-		args.Offset+1,
-		endIndex)
-	for i, comment := range commentList.Comments {
-		responseText += fmt.Sprintf("Comment %d (ID: %d): %s\n", i+1, comment.ID, comment.Content)
+	if s.compatMode {
+		if len(commentList.Comments) == 0 {
+			responseText = "Found 0 comments"
+		} else {
+			endIndex := min(args.Offset+len(commentList.Comments), commentList.Total)
+			responseText = fmt.Sprintf("Found %d comments (showing %d-%d):\n",
+				commentList.Total,
+				args.Offset+1,
+				endIndex)
+			for i, comment := range commentList.Comments {
+				responseText += fmt.Sprintf("Comment %d (ID: %d): %s\n", i+1, comment.ID, comment.Content)
+			}
+		}
+	} else {
+		responseText = fmt.Sprintf("Found %d comments", commentList.Total)
 	}
 
 	return TextResult(responseText), &CommentListResult{
@@ -300,9 +306,13 @@ func (s *Server) handleIssueCommentEdit(ctx context.Context, request *mcp.CallTo
 		return TextErrorf("Failed to edit comment: %v", err), nil, nil
 	}
 
-	// Format success response with updated comment metadata
-	responseText := fmt.Sprintf("Comment edited successfully. ID: %d, Updated: %s\nComment body: %s",
-		comment.ID, comment.Created, comment.Content)
+	var responseText string
+	if s.compatMode {
+		responseText = fmt.Sprintf("Comment edited successfully. ID: %d, Updated: %s\nComment body: %s",
+			comment.ID, comment.Created, comment.Content)
+	} else {
+		responseText = FormatCommentEditSuccess(comment)
+	}
 
 	return TextResult(responseText), &CommentEditResult{Comment: comment}, nil
 }

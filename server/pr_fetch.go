@@ -80,56 +80,18 @@ func (s *Server) handlePullRequestFetch(ctx context.Context, request *mcp.CallTo
 		repository = resolution.Repository
 	}
 
-	// Check if remote client supports GetPullRequest
-	prGetter, ok := s.remote.(remote.PullRequestGetter)
-	if !ok {
-		return TextError("Remote client does not support pull request fetching"), nil, nil
-	}
-
 	// Fetch the pull request
-	pr, err := prGetter.GetPullRequest(ctx, repository, args.PullRequestNumber)
+	pr, err := s.remote.GetPullRequest(ctx, repository, args.PullRequestNumber)
 	if err != nil {
 		return TextErrorf("Failed to fetch pull request: %v", err), nil, nil
 	}
 
-	// Format detailed response
-	responseText := fmt.Sprintf("Pull Request #%d: %s\n", pr.Number, pr.Title)
-	responseText += fmt.Sprintf("State: %s\n", pr.State)
-	responseText += fmt.Sprintf("Author: %s\n", pr.User)
-	responseText += fmt.Sprintf("Created: %s\n", pr.CreatedAt)
-	responseText += fmt.Sprintf("Updated: %s\n", pr.UpdatedAt)
-
-	if pr.Assignee != "" {
-		responseText += fmt.Sprintf("Assignee: %s\n", pr.Assignee)
+	var responseText string
+	if s.compatMode {
+		responseText = FormatPullRequestDetails(pr)
+	} else {
+		responseText = fmt.Sprintf("Pull request #%d: %s", pr.Number, pr.Title)
 	}
-
-	if len(pr.Assignees) > 0 {
-		responseText += fmt.Sprintf("Assignees: %v\n", pr.Assignees)
-	}
-
-	if len(pr.Labels) > 0 {
-		responseText += "Labels: "
-		for i, label := range pr.Labels {
-			if i > 0 {
-				responseText += ", "
-			}
-			responseText += label.Name
-		}
-		responseText += "\n"
-	}
-
-	responseText += fmt.Sprintf("Comments: %d\n", pr.Comments)
-	responseText += fmt.Sprintf("Mergeable: %t\n", pr.Mergeable)
-
-	if pr.HasMerged {
-		responseText += fmt.Sprintf("Merged: %s", pr.MergedAt)
-		if pr.MergedBy != "" {
-			responseText += fmt.Sprintf(" by %s", pr.MergedBy)
-		}
-		responseText += "\n"
-	}
-
-	responseText += fmt.Sprintf("URL: %s\n", pr.HTMLURL)
 
 	return TextResult(responseText), &PullRequestFetchResult{PullRequest: pr}, nil
 }

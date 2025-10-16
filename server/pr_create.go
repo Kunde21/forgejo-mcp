@@ -217,33 +217,37 @@ func (s *Server) handlePullRequestCreate(ctx context.Context, request *mcp.CallT
 		return enhancePullRequestCreationError(err, repository, head, base), nil, nil
 	}
 
-	// Format success response with pull request metadata
-	responseText := fmt.Sprintf("Pull request created successfully. Number: %d, Title: %s, State: %s",
-		pr.Number, pr.Title, pr.State)
-	if pr.CreatedAt != "" {
-		responseText += fmt.Sprintf(", Created: %s", pr.CreatedAt)
-	}
-	responseText += "\n"
+	var responseText string
+	if s.compatMode {
+		responseText = fmt.Sprintf("Pull request created successfully. Number: %d, Title: %s, State: %s",
+			pr.Number, pr.Title, pr.State)
+		if pr.CreatedAt != "" {
+			responseText += fmt.Sprintf(", Created: %s", pr.CreatedAt)
+		}
+		responseText += "\n"
 
-	// Add fork information if applicable
-	if forkInfo != nil && forkInfo.IsFork {
-		responseText += fmt.Sprintf("Fork Information: Created from fork '%s' targeting original repository '%s'\n",
-			forkInfo.ForkOwner, forkInfo.OriginalOwner)
-	}
+		// Add fork information if applicable
+		if forkInfo != nil && forkInfo.IsFork {
+			responseText += fmt.Sprintf("Fork Information: Created from fork '%s' targeting original repository '%s'\n",
+				forkInfo.ForkOwner, forkInfo.OriginalOwner)
+		}
 
-	// Add template usage information
-	if body != "" && args.Body == "" {
-		responseText += "Template: Used repository PR template for description\n"
-	} else if body != "" && args.Body != "" {
-		responseText += "Template: Merged repository template with user-provided content\n"
-	}
+		// Add template usage information
+		if body != "" && args.Body == "" {
+			responseText += "Template: Used repository PR template for description\n"
+		} else if body != "" && args.Body != "" {
+			responseText += "Template: Merged repository template with user-provided content\n"
+		}
 
-	if pr.Body != "" {
-		responseText += fmt.Sprintf("Body: %s\n", pr.Body)
-	}
+		if pr.Body != "" {
+			responseText += fmt.Sprintf("Body: %s\n", pr.Body)
+		}
 
-	if args.Draft {
-		responseText += "Note: Created as draft PR with [DRAFT] prefix in title\n"
+		if args.Draft {
+			responseText += "Note: Created as draft PR with [DRAFT] prefix in title\n"
+		}
+	} else {
+		responseText = FormatPullRequestCreateSuccess(pr)
 	}
 
 	return TextResult(responseText), &PullRequestCreateResult{PullRequest: pr}, nil

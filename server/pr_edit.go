@@ -124,16 +124,20 @@ func (s *Server) handlePullRequestEdit(ctx context.Context, request *mcp.CallToo
 		return TextErrorf("Failed to edit pull request: %v", err), nil, nil
 	}
 
-	// Format success response with updated pull request metadata
-	responseText := fmt.Sprintf("Pull request edited successfully. Number: %d, Title: %s, State: %s",
-		pr.Number, pr.Title, pr.State)
-	if pr.UpdatedAt != "" {
-		responseText += fmt.Sprintf(", Updated: %s", pr.UpdatedAt)
-	}
-	responseText += "\n"
+	var responseText string
+	if s.compatMode {
+		responseText = fmt.Sprintf("Pull request edited successfully. Number: %d, Title: %s, State: %s",
+			pr.Number, pr.Title, pr.State)
+		if pr.UpdatedAt != "" {
+			responseText += fmt.Sprintf(", Updated: %s", pr.UpdatedAt)
+		}
+		responseText += "\n"
 
-	if pr.Body != "" {
-		responseText += fmt.Sprintf("Body: %s\n", pr.Body)
+		if pr.Body != "" {
+			responseText += fmt.Sprintf("Body: %s\n", pr.Body)
+		}
+	} else {
+		responseText = FormatPullRequestEditSuccess(pr)
 	}
 
 	return TextResult(responseText), &PullRequestEditResult{PullRequest: pr}, nil

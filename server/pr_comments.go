@@ -98,18 +98,21 @@ func (s *Server) handlePullRequestCommentList(ctx context.Context, request *mcp.
 	}
 
 	var responseText string
-
-	if len(commentList.Comments) == 0 {
-		responseText += "Found 0 comments"
-	} else {
-		endIndex := min(args.Offset+len(commentList.Comments), commentList.Total)
-		responseText += fmt.Sprintf("Found %d comments (showing %d-%d):\n",
-			commentList.Total,
-			args.Offset+1,
-			endIndex)
-		for i, comment := range commentList.Comments {
-			responseText += fmt.Sprintf("Comment %d (ID: %d): %s\n", i+1, comment.ID, comment.Content)
+	if s.compatMode {
+		if len(commentList.Comments) == 0 {
+			responseText = "Found 0 comments"
+		} else {
+			endIndex := min(args.Offset+len(commentList.Comments), commentList.Total)
+			responseText = fmt.Sprintf("Found %d comments (showing %d-%d):\n",
+				commentList.Total,
+				args.Offset+1,
+				endIndex)
+			for i, comment := range commentList.Comments {
+				responseText += fmt.Sprintf("Comment %d (ID: %d): %s\n", i+1, comment.ID, comment.Content)
+			}
 		}
+	} else {
+		responseText = fmt.Sprintf("Found %d comments", commentList.Total)
 	}
 
 	return TextResult(responseText), &PullRequestCommentList{PullRequestComments: commentList.Comments}, nil
@@ -197,9 +200,13 @@ func (s *Server) handlePullRequestCommentCreate(ctx context.Context, request *mc
 		return TextErrorf("Failed to create pull request comment: %v", err), nil, nil
 	}
 
-	// Format success response with comment metadata
-	responseText := fmt.Sprintf("Pull request comment created successfully. ID: %d, Created: %s\nComment body: %s",
-		comment.ID, comment.Created, comment.Content)
+	var responseText string
+	if s.compatMode {
+		responseText = fmt.Sprintf("Pull request comment created successfully. ID: %d, Created: %s\nComment body: %s",
+			comment.ID, comment.Created, comment.Content)
+	} else {
+		responseText = FormatCommentCreateSuccess(comment)
+	}
 
 	return TextResult(responseText), &PullRequestCommentCreateResult{Comment: comment}, nil
 }
@@ -295,9 +302,13 @@ func (s *Server) handlePullRequestCommentEdit(ctx context.Context, request *mcp.
 		return TextErrorf("Failed to edit pull request comment: %v", err), nil, nil
 	}
 
-	// Format success response with updated comment metadata
-	responseText := fmt.Sprintf("Pull request comment edited successfully. ID: %d, Updated: %s\nComment body: %s",
-		comment.ID, comment.Updated, comment.Content)
+	var responseText string
+	if s.compatMode {
+		responseText = fmt.Sprintf("Pull request comment edited successfully. ID: %d, Updated: %s\nComment body: %s",
+			comment.ID, comment.Updated, comment.Content)
+	} else {
+		responseText = FormatCommentEditSuccess(comment)
+	}
 
 	return TextResult(responseText), &PullRequestCommentEditResult{Comment: comment}, nil
 }
