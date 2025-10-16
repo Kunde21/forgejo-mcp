@@ -126,7 +126,7 @@ func TestListPullRequestComments(t *testing.T) {
 				Content: []mcp.Content{
 					&mcp.TextContent{Text: "Invalid request: repository: repository must be in format 'owner/repo'."},
 				},
-				StructuredContent: map[string]any{},
+				StructuredContent: nil,
 				IsError:           true,
 			},
 		},
@@ -144,7 +144,7 @@ func TestListPullRequestComments(t *testing.T) {
 				Content: []mcp.Content{
 					&mcp.TextContent{Text: "Invalid request: directory: at least one of directory or repository must be provided; repository: at least one of directory or repository must be provided."},
 				},
-				StructuredContent: map[string]any{},
+				StructuredContent: nil,
 				IsError:           true,
 			},
 		},
@@ -165,7 +165,7 @@ func TestListPullRequestComments(t *testing.T) {
 				Content: []mcp.Content{
 					&mcp.TextContent{Text: "Invalid request: pull_request_number: must be no less than 1."},
 				},
-				StructuredContent: map[string]any{},
+				StructuredContent: nil,
 				IsError:           true,
 			},
 		},
@@ -186,7 +186,7 @@ func TestListPullRequestComments(t *testing.T) {
 				Content: []mcp.Content{
 					&mcp.TextContent{Text: "Invalid request: limit: must be no greater than 100."},
 				},
-				StructuredContent: map[string]any{},
+				StructuredContent: nil,
 				IsError:           true,
 			},
 		},
@@ -235,7 +235,7 @@ func TestListPullRequestComments(t *testing.T) {
 				Content: []mcp.Content{
 					&mcp.TextContent{Text: "Invalid request: offset: must be no less than 0."},
 				},
-				StructuredContent: map[string]any{},
+				StructuredContent: nil,
 				IsError:           true,
 			},
 		},

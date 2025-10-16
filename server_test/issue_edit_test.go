@@ -138,7 +138,7 @@ func TestEditIssue(t *testing.T) {
 				Content: []mcp.Content{
 					&mcp.TextContent{Text: "At least one of title, body, or state must be provided"},
 				},
-				StructuredContent: map[string]any{},
+				StructuredContent: nil,
 				IsError:           true,
 			},
 		},
@@ -156,7 +156,7 @@ func TestEditIssue(t *testing.T) {
 				Content: []mcp.Content{
 					&mcp.TextContent{Text: "Invalid request: repository: repository must be in format 'owner/repo'."},
 				},
-				StructuredContent: map[string]any{},
+				StructuredContent: nil,
 				IsError:           true,
 			},
 		},
@@ -174,7 +174,7 @@ func TestEditIssue(t *testing.T) {
 				Content: []mcp.Content{
 					&mcp.TextContent{Text: "Invalid request: state: state must be 'open' or 'closed'."},
 				},
-				StructuredContent: map[string]any{},
+				StructuredContent: nil,
 				IsError:           true,
 			},
 		},

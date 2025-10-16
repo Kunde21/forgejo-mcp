@@ -136,16 +136,8 @@ func TestCreateIssueComment(t *testing.T) {
 				Content: []mcp.Content{
 					&mcp.TextContent{Text: "Invalid request: repository: repository must be in format 'owner/repo'."},
 				},
-				StructuredContent: map[string]any{
-					"comment": map[string]any{
-						"body":    "",
-						"created": "",
-						"id":      float64(0),
-						"updated": "",
-						"user":    "",
-					},
-				},
-				IsError: true,
+				StructuredContent: nil,
+				IsError:           true,
 			},
 		},
 		{
@@ -160,16 +152,8 @@ func TestCreateIssueComment(t *testing.T) {
 				Content: []mcp.Content{
 					&mcp.TextContent{Text: "Invalid request: directory: at least one of directory or repository must be provided; repository: at least one of directory or repository must be provided."},
 				},
-				StructuredContent: map[string]any{
-					"comment": map[string]any{
-						"body":    "",
-						"created": "",
-						"id":      float64(0),
-						"updated": "",
-						"user":    "",
-					},
-				},
-				IsError: true,
+				StructuredContent: nil,
+				IsError:           true,
 			},
 		},
 		{
@@ -185,16 +169,8 @@ func TestCreateIssueComment(t *testing.T) {
 				Content: []mcp.Content{
 					&mcp.TextContent{Text: "Invalid request: issue_number: must be no less than 1."},
 				},
-				StructuredContent: map[string]any{
-					"comment": map[string]any{
-						"body":    "",
-						"created": "",
-						"id":      float64(0),
-						"updated": "",
-						"user":    "",
-					},
-				},
-				IsError: true,
+				StructuredContent: nil,
+				IsError:           true,
 			},
 		},
 		{
@@ -210,16 +186,8 @@ func TestCreateIssueComment(t *testing.T) {
 				Content: []mcp.Content{
 					&mcp.TextContent{Text: "Invalid request: comment: cannot be blank."},
 				},
-				StructuredContent: map[string]any{
-					"comment": map[string]any{
-						"body":    "",
-						"created": "",
-						"id":      float64(0),
-						"updated": "",
-						"user":    "",
-					},
-				},
-				IsError: true,
+				StructuredContent: nil,
+				IsError:           true,
 			},
 		},
 		{
@@ -235,16 +203,8 @@ func TestCreateIssueComment(t *testing.T) {
 				Content: []mcp.Content{
 					&mcp.TextContent{Text: "Invalid request: comment: cannot be blank."},
 				},
-				StructuredContent: map[string]any{
-					"comment": map[string]any{
-						"body":    "",
-						"created": "",
-						"id":      float64(0),
-						"updated": "",
-						"user":    "",
-					},
-				},
-				IsError: true,
+				StructuredContent: nil,
+				IsError:           true,
 			},
 		},
 		{
@@ -260,16 +220,8 @@ func TestCreateIssueComment(t *testing.T) {
 				Content: []mcp.Content{
 					&mcp.TextContent{Text: "Invalid request: issue_number: must be no less than 1."},
 				},
-				StructuredContent: map[string]any{
-					"comment": map[string]any{
-						"body":    "",
-						"created": "",
-						"id":      float64(0),
-						"updated": "",
-						"user":    "",
-					},
-				},
-				IsError: true,
+				StructuredContent: nil,
+				IsError:           true,
 			},
 		},
 		// Real-world scenario tests
@@ -371,16 +323,8 @@ func TestCreateIssueComment(t *testing.T) {
 				Content: []mcp.Content{
 					&mcp.TextContent{Text: "Failed to create comment: failed to create issue comment: unknown API error: 404\nRequest: '/api/v1/repos/nonexistent/repo/issues/1/comments' with 'POST' method and '404 page not found\n' body"},
 				},
-				StructuredContent: map[string]any{
-					"comment": map[string]any{
-						"body":    "",
-						"created": "",
-						"id":      float64(0),
-						"updated": "",
-						"user":    "",
-					},
-				},
-				IsError: true,
+				StructuredContent: nil,
+				IsError:           true,
 			},
 		},
 		{
@@ -510,16 +454,8 @@ func TestCreateIssueComment(t *testing.T) {
 				Content: []mcp.Content{
 					&mcp.TextContent{Text: "Invalid request: directory: invalid directory."},
 				},
-				StructuredContent: map[string]any{
-					"comment": map[string]any{
-						"body":    "",
-						"created": "",
-						"id":      float64(0),
-						"updated": "",
-						"user":    "",
-					},
-				},
-				IsError: true,
+				StructuredContent: nil,
+				IsError:           true,
 			},
 		},
 		{
@@ -535,16 +471,8 @@ func TestCreateIssueComment(t *testing.T) {
 				Content: []mcp.Content{
 					&mcp.TextContent{Text: "Invalid request: directory: invalid directory."},
 				},
-				StructuredContent: map[string]any{
-					"comment": map[string]any{
-						"body":    "",
-						"created": "",
-						"id":      float64(0),
-						"updated": "",
-						"user":    "",
-					},
-				},
-				IsError: true,
+				StructuredContent: nil,
+				IsError:           true,
 			},
 		},
 		{
@@ -560,16 +488,8 @@ func TestCreateIssueComment(t *testing.T) {
 				Content: []mcp.Content{
 					&mcp.TextContent{Text: "Invalid request: directory: invalid directory."},
 				},
-				StructuredContent: map[string]any{
-					"comment": map[string]any{
-						"body":    "",
-						"created": "",
-						"id":      float64(0),
-						"updated": "",
-						"user":    "",
-					},
-				},
-				IsError: true,
+				StructuredContent: nil,
+				IsError:           true,
 			},
 		},
 		{
@@ -584,16 +504,8 @@ func TestCreateIssueComment(t *testing.T) {
 				Content: []mcp.Content{
 					&mcp.TextContent{Text: "Invalid request: directory: at least one of directory or repository must be provided; repository: at least one of directory or repository must be provided."},
 				},
-				StructuredContent: map[string]any{
-					"comment": map[string]any{
-						"body":    "",
-						"created": "",
-						"id":      float64(0),
-						"updated": "",
-						"user":    "",
-					},
-				},
-				IsError: true,
+				StructuredContent: nil,
+				IsError:           true,
 			},
 		},
 		{
@@ -610,16 +522,8 @@ func TestCreateIssueComment(t *testing.T) {
 				Content: []mcp.Content{
 					&mcp.TextContent{Text: "Failed to resolve directory: repository validate failed for /home/user/projects/testrepo: directory does not exist"},
 				},
-				StructuredContent: map[string]any{
-					"comment": map[string]any{
-						"body":    "",
-						"created": "",
-						"id":      float64(0),
-						"updated": "",
-						"user":    "",
-					},
-				},
-				IsError: true,
+				StructuredContent: nil,
+				IsError:           true,
 			},
 		},
 		{
@@ -635,16 +539,8 @@ func TestCreateIssueComment(t *testing.T) {
 				Content: []mcp.Content{
 					&mcp.TextContent{Text: "Invalid request: directory: invalid directory."},
 				},
-				StructuredContent: map[string]any{
-					"comment": map[string]any{
-						"body":    "",
-						"created": "",
-						"id":      float64(0),
-						"updated": "",
-						"user":    "",
-					},
-				},
-				IsError: true,
+				StructuredContent: nil,
+				IsError:           true,
 			},
 		},
 	}

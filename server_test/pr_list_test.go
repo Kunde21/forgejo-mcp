@@ -122,7 +122,7 @@ func TestPullRequestsList(t *testing.T) {
 				Content: []mcp.Content{
 					&mcp.TextContent{Text: "Invalid request: offset: must be no less than 0."},
 				},
-				StructuredContent: map[string]any{},
+				StructuredContent: nil,
 				IsError:           true,
 			},
 		},
@@ -778,7 +778,7 @@ func TestPullRequestsList(t *testing.T) {
 				Content: []mcp.Content{
 					&mcp.TextContent{Text: "Invalid request: directory: invalid directory."},
 				},
-				StructuredContent: map[string]any{},
+				StructuredContent: nil,
 				IsError:           true,
 			},
 		},
@@ -805,7 +805,7 @@ func TestPullRequestsList(t *testing.T) {
 				Content: []mcp.Content{
 					&mcp.TextContent{Text: "Invalid request: directory: invalid directory."},
 				},
-				StructuredContent: map[string]any{},
+				StructuredContent: nil,
 				IsError:           true,
 			},
 		},
@@ -827,7 +827,7 @@ func TestPullRequestsList(t *testing.T) {
 				Content: []mcp.Content{
 					&mcp.TextContent{Text: "Failed to resolve directory: repository validate failed for /tmp/test-repo: directory does not exist"},
 				},
-				StructuredContent: map[string]any{},
+				StructuredContent: nil,
 				IsError:           true,
 			},
 		},

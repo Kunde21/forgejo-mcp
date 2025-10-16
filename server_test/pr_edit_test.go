@@ -220,7 +220,7 @@ func TestEditPullRequest(t *testing.T) {
 				Content: []mcp.Content{
 					&mcp.TextContent{Text: "At least one of title, body, state, or base_branch must be provided"},
 				},
-				StructuredContent: map[string]any{},
+				StructuredContent: nil,
 				IsError:           true,
 			},
 		},
@@ -238,7 +238,7 @@ func TestEditPullRequest(t *testing.T) {
 				Content: []mcp.Content{
 					&mcp.TextContent{Text: "Invalid request: repository: repository must be in format 'owner/repo'."},
 				},
-				StructuredContent: map[string]any{},
+				StructuredContent: nil,
 				IsError:           true,
 			},
 		},
@@ -256,7 +256,7 @@ func TestEditPullRequest(t *testing.T) {
 				Content: []mcp.Content{
 					&mcp.TextContent{Text: "Invalid request: state: state must be 'open' or 'closed'."},
 				},
-				StructuredContent: map[string]any{},
+				StructuredContent: nil,
 				IsError:           true,
 			},
 		},
@@ -413,7 +413,7 @@ func TestEditPullRequestDirectoryParameter(t *testing.T) {
 				Content: []mcp.Content{
 					&mcp.TextContent{Text: "Invalid request: directory: invalid directory."},
 				},
-				StructuredContent: map[string]any{},
+				StructuredContent: nil,
 				IsError:           true,
 			},
 		},

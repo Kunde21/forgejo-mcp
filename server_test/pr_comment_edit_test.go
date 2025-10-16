@@ -70,7 +70,7 @@ func TestEditPullRequestComment(t *testing.T) {
 				Content: []mcp.Content{
 					&mcp.TextContent{Text: "Invalid request: repository: repository must be in format 'owner/repo'."},
 				},
-				StructuredContent: map[string]any{},
+				StructuredContent: nil,
 				IsError:           true,
 			},
 		},
@@ -88,7 +88,7 @@ func TestEditPullRequestComment(t *testing.T) {
 				Content: []mcp.Content{
 					&mcp.TextContent{Text: "Invalid request: directory: at least one of directory or repository must be provided; repository: at least one of directory or repository must be provided."},
 				},
-				StructuredContent: map[string]any{},
+				StructuredContent: nil,
 				IsError:           true,
 			},
 		},
@@ -106,7 +106,7 @@ func TestEditPullRequestComment(t *testing.T) {
 				Content: []mcp.Content{
 					&mcp.TextContent{Text: "Invalid request: new_content: cannot be blank."},
 				},
-				StructuredContent: map[string]any{},
+				StructuredContent: nil,
 				IsError:           true,
 			},
 		},
@@ -125,7 +125,7 @@ func TestEditPullRequestComment(t *testing.T) {
 				Content: []mcp.Content{
 					&mcp.TextContent{Text: "Invalid request: new_content: cannot be blank."},
 				},
-				StructuredContent: map[string]any{},
+				StructuredContent: nil,
 				IsError:           true,
 			},
 		},
@@ -144,7 +144,7 @@ func TestEditPullRequestComment(t *testing.T) {
 				Content: []mcp.Content{
 					&mcp.TextContent{Text: "Invalid request: new_content: cannot be blank."},
 				},
-				StructuredContent: map[string]any{},
+				StructuredContent: nil,
 				IsError:           true,
 			},
 		},
@@ -163,7 +163,7 @@ func TestEditPullRequestComment(t *testing.T) {
 				Content: []mcp.Content{
 					&mcp.TextContent{Text: "Invalid request: pull_request_number: must be no less than 1."},
 				},
-				StructuredContent: map[string]any{},
+				StructuredContent: nil,
 				IsError:           true,
 			},
 		},
@@ -182,7 +182,7 @@ func TestEditPullRequestComment(t *testing.T) {
 				Content: []mcp.Content{
 					&mcp.TextContent{Text: "Invalid request: pull_request_number: must be no less than 1."},
 				},
-				StructuredContent: map[string]any{},
+				StructuredContent: nil,
 				IsError:           true,
 			},
 		},
@@ -201,7 +201,7 @@ func TestEditPullRequestComment(t *testing.T) {
 				Content: []mcp.Content{
 					&mcp.TextContent{Text: "Invalid request: comment_id: must be no less than 1."},
 				},
-				StructuredContent: map[string]any{},
+				StructuredContent: nil,
 				IsError:           true,
 			},
 		},
@@ -220,7 +220,7 @@ func TestEditPullRequestComment(t *testing.T) {
 				Content: []mcp.Content{
 					&mcp.TextContent{Text: "Invalid request: comment_id: must be no less than 1."},
 				},
-				StructuredContent: map[string]any{},
+				StructuredContent: nil,
 				IsError:           true,
 			},
 		},
@@ -239,7 +239,7 @@ func TestEditPullRequestComment(t *testing.T) {
 				Content: []mcp.Content{
 					&mcp.TextContent{Text: "Failed to edit pull request comment: failed to edit pull request comment: unknown API error: 404\nRequest: '/api/v1/repos/nonexistent/repo/issues/comments/123' with 'PATCH' method and '404 page not found\n' body"},
 				},
-				StructuredContent: map[string]any{},
+				StructuredContent: nil,
 				IsError:           true,
 			},
 		},
@@ -265,7 +265,7 @@ func TestEditPullRequestComment(t *testing.T) {
 				Content: []mcp.Content{
 					&mcp.TextContent{Text: "Failed to edit pull request comment: failed to edit pull request comment: unknown API error: 404\nRequest: '/api/v1/repos/testuser/testrepo/issues/comments/123' with 'PATCH' method and '404 page not found\n' body"},
 				},
-				StructuredContent: map[string]any{},
+				StructuredContent: nil,
 				IsError:           true,
 			},
 		},
@@ -292,7 +292,7 @@ func TestEditPullRequestComment(t *testing.T) {
 				Content: []mcp.Content{
 					&mcp.TextContent{Text: "Failed to edit pull request comment: failed to edit pull request comment: unknown API error: 403\nRequest: '/api/v1/repos/testuser/testrepo/issues/comments/123' with 'PATCH' method and 'Forbidden\n' body"},
 				},
-				StructuredContent: map[string]any{},
+				StructuredContent: nil,
 				IsError:           true,
 			},
 		},
@@ -1024,7 +1024,7 @@ func TestPullRequestCommentEditDirectoryParameter(t *testing.T) {
 				Content: []mcp.Content{
 					&mcp.TextContent{Text: "Invalid request: directory: invalid directory."},
 				},
-				StructuredContent: map[string]any{},
+				StructuredContent: nil,
 				IsError:           true,
 			},
 		},
@@ -1106,7 +1106,7 @@ func TestPullRequestCommentEditDirectoryParameter(t *testing.T) {
 				Content: []mcp.Content{
 					&mcp.TextContent{Text: "Invalid request: directory: at least one of directory or repository must be provided; repository: at least one of directory or repository must be provided."},
 				},
-				StructuredContent: map[string]any{},
+				StructuredContent: nil,
 				IsError:           true,
 			},
 		},
@@ -1125,7 +1125,7 @@ func TestPullRequestCommentEditDirectoryParameter(t *testing.T) {
 				Content: []mcp.Content{
 					&mcp.TextContent{Text: "Invalid request: directory: directory must be an absolute path."},
 				},
-				StructuredContent: map[string]any{},
+				StructuredContent: nil,
 				IsError:           true,
 			},
 		},

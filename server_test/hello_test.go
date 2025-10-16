@@ -33,7 +33,8 @@ func TestHelloToolTableDriven(t *testing.T) {
 				Content: []mcp.Content{
 					&mcp.TextContent{Text: "Hello, World!"},
 				},
-				IsError: false,
+				StructuredContent: map[string]any{"message": "Hello, World!"},
+				IsError:           false,
 			},
 		},
 		{
@@ -44,7 +45,8 @@ func TestHelloToolTableDriven(t *testing.T) {
 				Content: []mcp.Content{
 					&mcp.TextContent{Text: "Hello, World!"},
 				},
-				IsError: false,
+				StructuredContent: map[string]any{"message": "Hello, World!"},
+				IsError:           false,
 			},
 		},
 		{
@@ -55,7 +57,8 @@ func TestHelloToolTableDriven(t *testing.T) {
 				Content: []mcp.Content{
 					&mcp.TextContent{Text: "Hello, World!"},
 				},
-				IsError: false,
+				StructuredContent: map[string]any{"message": "Hello, World!"},
+				IsError:           false,
 			},
 		},
 		{
