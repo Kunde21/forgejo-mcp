@@ -122,83 +122,106 @@ func NewFromServiceWithDebug(service remote.ClientInterface, cfg *config.Config,
 		Version: "1.0.0",
 	}, nil)
 
-	// Add tools using the new SDK
+	// Add tools using the new SDK with input and output schemas
 	// Only register hello tool in debug mode
 	if debug {
 		mcp.AddTool(mcpServer, &mcp.Tool{
-			Name:        "hello",
-			Description: "Returns a hello world message",
+			Name:         "hello",
+			Description:  "Returns a hello world message",
+			InputSchema:  generateInputSchema[HelloArgs](),
+			OutputSchema: generateOutputSchema[HelloResult](),
 		}, s.handleHello)
 	}
 
 	mcp.AddTool(mcpServer, &mcp.Tool{
-		Name:        "issue_list",
-		Description: "List issues from a Gitea/Forgejo repository",
+		Name:         "issue_list",
+		Description:  "List issues from a Gitea/Forgejo repository",
+		InputSchema:  generateInputSchema[IssueListArgs](),
+		OutputSchema: generateOutputSchema[IssueList](),
 	}, s.handleIssueList)
 
 	mcp.AddTool(mcpServer, &mcp.Tool{
-		Name:        "issue_create",
-		Description: "Create a new issue on a Forgejo/Gitea repository",
+		Name:         "issue_create",
+		Description:  "Create a new issue on a Forgejo/Gitea repository",
+		InputSchema:  generateInputSchema[IssueCreateArgs](),
+		OutputSchema: generateOutputSchema[IssueCreateResult](),
 	}, s.handleIssueCreate)
 
 	mcp.AddTool(mcpServer, &mcp.Tool{
-		Name:        "issue_edit",
-		Description: "Edit an existing issue in a Forgejo/Gitea repository",
+		Name:         "issue_edit",
+		Description:  "Edit an existing issue in a Forgejo/Gitea repository",
+		InputSchema:  generateInputSchema[IssueEditArgs](),
+		OutputSchema: generateOutputSchema[IssueEditResult](),
 	}, s.handleIssueEdit)
 
 	mcp.AddTool(mcpServer, &mcp.Tool{
-		Name:        "issue_comment_create",
-		Description: "Create a comment on a Forgejo/Gitea repository issue",
+		Name:         "issue_comment_create",
+		Description:  "Create a comment on a Forgejo/Gitea repository issue",
+		InputSchema:  generateInputSchema[IssueCommentArgs](),
+		OutputSchema: generateOutputSchema[CommentResult](),
 	}, s.handleIssueCommentCreate)
 
 	mcp.AddTool(mcpServer, &mcp.Tool{
-		Name:        "issue_comment_list",
-		Description: "List comments from a Forgejo/Gitea repository issue with pagination support",
+		Name:         "issue_comment_list",
+		Description:  "List comments from a Forgejo/Gitea repository issue with pagination support",
+		InputSchema:  generateInputSchema[IssueCommentListArgs](),
+		OutputSchema: generateOutputSchema[CommentListResult](),
 	}, s.handleIssueCommentList)
 
 	mcp.AddTool(mcpServer, &mcp.Tool{
-		Name:        "issue_comment_edit",
-		Description: "Edit an existing comment on a Forgejo/Gitea repository issue",
+		Name:         "issue_comment_edit",
+		Description:  "Edit an existing comment on a Forgejo/Gitea repository issue",
+		InputSchema:  generateInputSchema[IssueCommentEditArgs](),
+		OutputSchema: generateOutputSchema[CommentEditResult](),
 	}, s.handleIssueCommentEdit)
 
 	mcp.AddTool(mcpServer, &mcp.Tool{
-		Name:        "issue_edit",
-		Description: "Edit an existing issue in a Forgejo/Gitea repository",
-	}, s.handleIssueEdit)
-
-	mcp.AddTool(mcpServer, &mcp.Tool{
-		Name:        "pr_list",
-		Description: "List pull requests from a Forgejo/Gitea repository with pagination and state filtering",
+		Name:         "pr_list",
+		Description:  "List pull requests from a Forgejo/Gitea repository with pagination and state filtering",
+		InputSchema:  generateInputSchema[PullRequestListArgs](),
+		OutputSchema: generateOutputSchema[PullRequestList](),
 	}, s.handlePullRequestList)
 
 	mcp.AddTool(mcpServer, &mcp.Tool{
-		Name:        "pr_edit",
-		Description: "Edit an existing pull request in a Forgejo/Gitea repository",
+		Name:         "pr_edit",
+		Description:  "Edit an existing pull request in a Forgejo/Gitea repository",
+		InputSchema:  generateInputSchema[PullRequestEditArgs](),
+		OutputSchema: generateOutputSchema[PullRequestEditResult](),
 	}, s.handlePullRequestEdit)
 
 	mcp.AddTool(mcpServer, &mcp.Tool{
-		Name:        "pr_comment_list",
-		Description: "List comments from a Forgejo/Gitea repository pull request with pagination support",
+		Name:         "pr_comment_list",
+		Description:  "List comments from a Forgejo/Gitea repository pull request with pagination support",
+		InputSchema:  generateInputSchema[PullRequestCommentListArgs](),
+		OutputSchema: generateOutputSchema[PullRequestCommentList](),
 	}, s.handlePullRequestCommentList)
 
 	mcp.AddTool(mcpServer, &mcp.Tool{
-		Name:        "pr_comment_create",
-		Description: "Create a comment on a Forgejo/Gitea repository pull request",
+		Name:         "pr_comment_create",
+		Description:  "Create a comment on a Forgejo/Gitea repository pull request",
+		InputSchema:  generateInputSchema[PullRequestCommentCreateArgs](),
+		OutputSchema: generateOutputSchema[PullRequestCommentCreateResult](),
 	}, s.handlePullRequestCommentCreate)
 
 	mcp.AddTool(mcpServer, &mcp.Tool{
-		Name:        "pr_comment_edit",
-		Description: "Edit an existing comment on a Forgejo/Gitea repository pull request",
+		Name:         "pr_comment_edit",
+		Description:  "Edit an existing comment on a Forgejo/Gitea repository pull request",
+		InputSchema:  generateInputSchema[PullRequestCommentEditArgs](),
+		OutputSchema: generateOutputSchema[PullRequestCommentEditResult](),
 	}, s.handlePullRequestCommentEdit)
 
 	mcp.AddTool(mcpServer, &mcp.Tool{
-		Name:        "pr_create",
-		Description: "Create a new pull request in a Forgejo/Gitea repository",
+		Name:         "pr_create",
+		Description:  "Create a new pull request in a Forgejo/Gitea repository",
+		InputSchema:  generateInputSchema[PullRequestCreateArgs](),
+		OutputSchema: generateOutputSchema[PullRequestCreateResult](),
 	}, s.handlePullRequestCreate)
 
 	mcp.AddTool(mcpServer, &mcp.Tool{
-		Name:        "pr_fetch",
-		Description: "Fetch detailed information about a single pull request from a Forgejo/Gitea repository",
+		Name:         "pr_fetch",
+		Description:  "Fetch detailed information about a single pull request from a Forgejo/Gitea repository",
+		InputSchema:  generateInputSchema[PullRequestFetchArgs](),
+		OutputSchema: generateOutputSchema[PullRequestFetchResult](),
 	}, s.handlePullRequestFetch)
 
 	s.mcpServer = mcpServer

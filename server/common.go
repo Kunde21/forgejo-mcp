@@ -7,6 +7,7 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/google/jsonschema-go/jsonschema"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
@@ -65,4 +66,24 @@ func isValidFilename(filename string) bool {
 	// Basic filename validation - no path traversal, reasonable length
 	clean := filepath.Base(filename)
 	return clean == filename && len(clean) > 0 && len(clean) < 255
+}
+
+// generateInputSchema generates a JSON schema for the given argument type
+func generateInputSchema[T any]() *jsonschema.Schema {
+	schema, err := jsonschema.For[T](nil)
+	if err != nil {
+		// Fallback to empty schema if generation fails
+		return &jsonschema.Schema{}
+	}
+	return schema
+}
+
+// generateOutputSchema generates a JSON schema for the given result type
+func generateOutputSchema[T any]() *jsonschema.Schema {
+	schema, err := jsonschema.For[T](nil)
+	if err != nil {
+		// Fallback to empty schema if generation fails
+		return &jsonschema.Schema{}
+	}
+	return schema
 }
