@@ -22,6 +22,7 @@ type Server struct {
 	config             *config.Config
 	remote             remote.ClientInterface
 	repositoryResolver *RepositoryResolver
+	compatMode         bool
 }
 
 // New creates a new MCP server instance with default configuration.
@@ -47,6 +48,17 @@ func NewWithDebug(debug bool) (*Server, error) {
 	return NewFromConfigWithDebug(cfg, debug)
 }
 
+// NewWithDebugAndCompat creates a new MCP server instance with debug mode and compatibility mode support.
+// When debug is true, the hello tool will be registered for debugging purposes.
+// When compat is true, tools return detailed text responses alongside structured data.
+func NewWithDebugAndCompat(debug, compat bool) (*Server, error) {
+	cfg, err := config.Load()
+	if err != nil {
+		return nil, fmt.Errorf("failed to load config: %w", err)
+	}
+	return NewFromConfigWithDebugAndCompat(cfg, debug, compat)
+}
+
 // NewFromConfig creates a new MCP server instance with the provided configuration.
 // This allows for custom server setup while maintaining the official SDK integration.
 //
@@ -59,6 +71,13 @@ func NewFromConfig(cfg *config.Config) (*Server, error) {
 // NewFromConfigWithDebug creates a new MCP server instance with the provided configuration and debug mode.
 // When debug is true, the hello tool will be registered for debugging purposes.
 func NewFromConfigWithDebug(cfg *config.Config, debug bool) (*Server, error) {
+	return NewFromConfigWithDebugAndCompat(cfg, debug, false)
+}
+
+// NewFromConfigWithDebugAndCompat creates a new MCP server instance with the provided configuration, debug mode, and compatibility mode.
+// When debug is true, the hello tool will be registered for debugging purposes.
+// When compat is true, tools return detailed text responses alongside structured data.
+func NewFromConfigWithDebugAndCompat(cfg *config.Config, debug, compat bool) (*Server, error) {
 	if err := cfg.Validate(); err != nil {
 		return nil, fmt.Errorf("configuration validation failed: %w", err)
 	}
@@ -93,7 +112,7 @@ func NewFromConfigWithDebug(cfg *config.Config, debug bool) (*Server, error) {
 		return nil, fmt.Errorf("unsupported client type: %s", cfg.ClientType)
 	}
 
-	return NewFromServiceWithDebug(client, cfg, debug)
+	return NewFromServiceWithDebugAndCompat(client, cfg, debug, compat)
 }
 
 // NewFromService creates a new MCP server instance with the provided service.
@@ -105,6 +124,13 @@ func NewFromService(service remote.ClientInterface, cfg *config.Config) (*Server
 // NewFromServiceWithDebug creates a new MCP server instance with the provided service and debug mode.
 // When debug is true, the hello tool will be registered for debugging purposes.
 func NewFromServiceWithDebug(service remote.ClientInterface, cfg *config.Config, debug bool) (*Server, error) {
+	return NewFromServiceWithDebugAndCompat(service, cfg, debug, false)
+}
+
+// NewFromServiceWithDebugAndCompat creates a new MCP server instance with the provided service, debug mode, and compatibility mode.
+// When debug is true, the hello tool will be registered for debugging purposes.
+// When compat is true, tools return detailed text responses alongside structured data.
+func NewFromServiceWithDebugAndCompat(service remote.ClientInterface, cfg *config.Config, debug, compat bool) (*Server, error) {
 	if service == nil {
 		return nil, fmt.Errorf("service cannot be nil")
 	}
@@ -116,6 +142,7 @@ func NewFromServiceWithDebug(service remote.ClientInterface, cfg *config.Config,
 		config:             cfg,
 		remote:             service,
 		repositoryResolver: NewRepositoryResolver(),
+		compatMode:         compat,
 	}
 	mcpServer := mcp.NewServer(&mcp.Implementation{
 		Name:    "forgejo-mcp",
