@@ -1114,32 +1114,30 @@ func (m *MockGiteaServer) handleEditIssue(w http.ResponseWriter, r *http.Request
 }
 
 // NewTestServer creates a new TestServer instance with standardized setup
-//
-// Parameters:
-//   - t: testing.T for test context and cleanup
-//   - ctx: context.Context for the test execution (uses t.Context() if nil)
-//   - env: map[string]string for environment variables (FORGEJO_REMOTE_URL, FORGEJO_AUTH_TOKEN)
-//
-// Returns:
-//   - *TestServer: configured test server instance ready for use
+// This is the primary constructor for most tests, providing a clean API
+// while maintaining backward compatibility.
 //
 // Example usage:
-//
-//	mock := NewMockGiteaServer(t)
 //	ts := NewTestServer(t, ctx, map[string]string{
-//	    "FORGEJO_REMOTE_URL": mock.URL(),
-//	    "FORGEJO_AUTH_TOKEN": "mock-token",
+//		"FORGEJO_REMOTE_URL": mock.URL(),
+//		"FORGEJO_AUTH_TOKEN": "mock-token",
 //	})
-//	if err := ts.Initialize(); err != nil {
-//	    t.Fatal(err)
-//	}
-//	client := ts.Client()
 func NewTestServer(t *testing.T, ctx context.Context, env map[string]string) *TestServer {
-	return NewTestServerWithDebug(t, ctx, env, false)
+	return NewTestServerWithCompatAndDebug(t, ctx, env, false, false)
 }
 
 // NewTestServerWithDebug creates a new test server with optional debug mode
 func NewTestServerWithDebug(t *testing.T, ctx context.Context, env map[string]string, debug bool) *TestServer {
+	return NewTestServerWithCompatAndDebug(t, ctx, env, debug, false)
+}
+
+// NewTestServerWithCompat creates a new test server with optional compatibility mode
+func NewTestServerWithCompat(t *testing.T, ctx context.Context, env map[string]string, compat bool) *TestServer {
+	return NewTestServerWithCompatAndDebug(t, ctx, env, false, compat)
+}
+
+// NewTestServerWithCompatAndDebug creates a new test server with optional debug and compatibility modes
+func NewTestServerWithCompatAndDebug(t *testing.T, ctx context.Context, env map[string]string, debug, compat bool) *TestServer {
 	if ctx == nil {
 		ctx = t.Context()
 	}
@@ -1157,7 +1155,7 @@ func NewTestServerWithDebug(t *testing.T, ctx context.Context, env map[string]st
 	if err != nil {
 		t.Fatalf("Failed to load config: %v", err)
 	}
-	srv, err := server.NewFromConfigWithDebug(cfg, debug)
+	srv, err := server.NewFromConfigWithDebugAndCompat(cfg, debug, compat)
 	if err != nil {
 		t.Fatalf("Failed to create server from config: %v", err)
 	}

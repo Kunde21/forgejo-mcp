@@ -304,10 +304,10 @@ func TestListIssueComments(t *testing.T) {
 			if tc.setupMock != nil {
 				tc.setupMock(mock)
 			}
-			ts := NewTestServer(t, t.Context(), map[string]string{
+			ts := NewTestServerWithCompat(t, t.Context(), map[string]string{
 				"FORGEJO_REMOTE_URL": mock.URL(),
 				"FORGEJO_AUTH_TOKEN": "mock-token",
-			})
+			}, true)
 			if err := ts.Initialize(); err != nil {
 				t.Fatalf("Failed to initialize test server: %v", err)
 			}

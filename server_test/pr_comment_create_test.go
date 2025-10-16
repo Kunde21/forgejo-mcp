@@ -319,10 +319,10 @@ Overall, great work on this feature!`,
 			if tc.setupMock != nil {
 				tc.setupMock(mock)
 			}
-			ts := NewTestServer(t, ctx, map[string]string{
+			ts := NewTestServerWithCompat(t, ctx, map[string]string{
 				"FORGEJO_REMOTE_URL": mock.URL(),
 				"FORGEJO_AUTH_TOKEN": "mock-token",
-			})
+			}, true)
 			if err := ts.Initialize(); err != nil {
 				t.Fatalf("Failed to initialize test server: %v", err)
 			}

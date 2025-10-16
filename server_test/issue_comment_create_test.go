@@ -563,11 +563,11 @@ func TestCreateIssueComment(t *testing.T) {
 				tc.setupMock(mock)
 			}
 
-			// Create test server
-			ts := NewTestServer(t, ctx, map[string]string{
+			// Create test server with compat mode enabled for detailed responses
+			ts := NewTestServerWithCompat(t, ctx, map[string]string{
 				"FORGEJO_REMOTE_URL": mock.URL(),
 				"FORGEJO_AUTH_TOKEN": "mock-token",
-			})
+			}, true)
 			if err := ts.Initialize(); err != nil {
 				t.Fatalf("Failed to initialize test server: %v", err)
 			}
@@ -626,10 +626,10 @@ func TestIssueCommentLifecycle(t *testing.T) {
 	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
 	t.Cleanup(cancel)
 	mock := NewMockGiteaServer(t)
-	ts := NewTestServer(t, ctx, map[string]string{
+	ts := NewTestServerWithCompat(t, ctx, map[string]string{
 		"FORGEJO_REMOTE_URL": mock.URL(),
 		"FORGEJO_AUTH_TOKEN": "mock-token",
-	})
+	}, true)
 	if err := ts.Initialize(); err != nil {
 		t.Fatal(err)
 	}
@@ -708,10 +708,10 @@ func TestIssueCommentCreateConcurrent(t *testing.T) {
 		{Index: 2, Title: "Another concurrent test issue", State: "open"},
 	})
 
-	ts := NewTestServer(t, ctx, map[string]string{
+	ts := NewTestServerWithCompat(t, ctx, map[string]string{
 		"FORGEJO_REMOTE_URL": mock.URL(),
 		"FORGEJO_AUTH_TOKEN": "mock-token",
-	})
+	}, true)
 	if err := ts.Initialize(); err != nil {
 		t.Fatal(err)
 	}
@@ -811,10 +811,10 @@ func TestIssueCommentCreateStress(t *testing.T) {
 		{Index: 1, Title: "Stress test issue", State: "open"},
 	})
 
-	ts := NewTestServer(t, ctx, map[string]string{
+	ts := NewTestServerWithCompat(t, ctx, map[string]string{
 		"FORGEJO_REMOTE_URL": mock.URL(),
 		"FORGEJO_AUTH_TOKEN": "mock-token",
-	})
+	}, true)
 	if err := ts.Initialize(); err != nil {
 		t.Fatal(err)
 	}

@@ -1,6 +1,7 @@
 package servertest
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
@@ -79,6 +80,15 @@ func TestPRFetch_Success(t *testing.T) {
 		t.Errorf("Expected body about new feature, got %v", pr["body"])
 	}
 
+	// Verify body is also in text response
+	textContent := GetTextContent(result.Content)
+	if !strings.Contains(textContent, "This PR adds a new feature to the application.") {
+		t.Errorf("Expected PR body to be included in text response, got: %s", textContent)
+	}
+	if !strings.Contains(textContent, "Body:") {
+		t.Errorf("Expected 'Body:' label in text response, got: %s", textContent)
+	}
+
 	// Test fetching PR #2
 	result2, err := ts.CallToolWithValidation(ctx, "pr_fetch", map[string]any{
 		"repository":          "testuser/testrepo",
@@ -149,7 +159,7 @@ func TestPRFetch_NotFound(t *testing.T) {
 	}
 
 	errorText := GetTextContent(result.Content)
-	if !containsString(errorText, "not found") && !containsString(errorText, "404") {
+	if !strings.Contains(errorText, "not found") && !strings.Contains(errorText, "404") {
 		t.Errorf("Expected 'not found' or '404' in error message, got: %s", errorText)
 	}
 }
@@ -184,7 +194,7 @@ func TestPRFetch_RepositoryNotFound(t *testing.T) {
 	}
 
 	errorText := GetTextContent(result.Content)
-	if !containsString(errorText, "not found") && !containsString(errorText, "404") {
+	if !strings.Contains(errorText, "not found") && !strings.Contains(errorText, "404") {
 		t.Errorf("Expected 'not found' or '404' in error message, got: %s", errorText)
 	}
 }
@@ -227,7 +237,7 @@ func TestPRFetch_InvalidRepository(t *testing.T) {
 			}
 
 			errorText := GetTextContent(result.Content)
-			if !containsString(errorText, "repository must be in format") {
+			if !strings.Contains(errorText, "repository must be in format") {
 				t.Errorf("Expected 'repository must be in format' in error message, got: %s", errorText)
 			}
 		})
@@ -265,7 +275,7 @@ func TestPRFetch_InvalidNumber(t *testing.T) {
 			})
 			// For JSON unmarshaling errors, err will be non-nil
 			if err != nil {
-				if !containsString(err.Error(), "unmarshal") {
+				if !strings.Contains(err.Error(), "unmarshal") {
 					t.Fatalf("Expected unmarshaling error for invalid PR number '%v', got: %v", tc.number, err)
 				}
 				return
@@ -276,7 +286,7 @@ func TestPRFetch_InvalidNumber(t *testing.T) {
 			}
 
 			errorText := GetTextContent(result.Content)
-			if !containsString(errorText, "pull request number") && !containsString(errorText, "no less than 1") {
+			if !strings.Contains(errorText, "pull request number") && !strings.Contains(errorText, "no less than 1") {
 				t.Errorf("Expected 'pull request number' or 'no less than 1' in error message, got: %s", errorText)
 			}
 		})
@@ -330,7 +340,7 @@ func TestPRFetch_MissingParameters(t *testing.T) {
 			}
 
 			errorText := GetTextContent(result.Content)
-			if !containsString(errorText, tc.errorText) {
+			if !strings.Contains(errorText, tc.errorText) {
 				t.Errorf("Expected '%s' in error message, got: %s", tc.errorText, errorText)
 			}
 		})
@@ -458,20 +468,87 @@ func TestPRFetch_DetailedResponse(t *testing.T) {
 	} else {
 		t.Errorf("Expected user to be a string, got %v", pr["user"])
 	}
+
+	// Check that body is included in structured response
+	if body, ok := pr["body"].(string); ok {
+		if body != "This is a detailed PR for testing all response fields." {
+			t.Errorf("Expected body 'This is a detailed PR for testing all response fields.', got %v", body)
+		}
+	} else {
+		t.Errorf("Expected body to be a string, got %v", pr["body"])
+	}
+
+	// Check that body is included in text response
+	textContent := GetTextContent(result.Content)
+	if !strings.Contains(textContent, "This is a detailed PR for testing all response fields.") {
+		t.Errorf("Expected PR body to be included in text response, got: %s", textContent)
+	}
+	if !strings.Contains(textContent, "Body:") {
+		t.Errorf("Expected 'Body:' label in text response, got: %s", textContent)
+	}
 }
 
-// Helper function to check if a string contains a substring
-func containsString(s, substr string) bool {
-	return len(s) >= len(substr) && (s == substr || len(substr) == 0 ||
-		(len(s) > len(substr) && containsStringRecursive(s, substr)))
-}
+// TestPRFetch_EmptyBody tests that empty body is handled correctly
+func TestPRFetch_EmptyBody(t *testing.T) {
+	ctx, _ := CreateTestContext(t, 0)
 
-func containsStringRecursive(s, substr string) bool {
-	if len(s) < len(substr) {
-		return false
+	// Create mock server
+	mock := NewMockGiteaServer(t)
+
+	// Add mock pull request with empty body
+	mock.AddPullRequests("testuser", "testrepo", []MockPullRequest{
+		{
+			ID:        43,
+			Number:    43,
+			Title:     "PR with Empty Body",
+			Body:      "",
+			State:     "open",
+			BaseRef:   "main",
+			UpdatedAt: "2025-10-14T15:00:00Z",
+		},
+	})
+
+	// Create test server
+	ts := NewTestServer(t, ctx, map[string]string{
+		"FORGEJO_REMOTE_URL": mock.URL(),
+		"FORGEJO_AUTH_TOKEN": "mock-token",
+	})
+
+	// Fetch the PR
+	result, err := ts.CallToolWithValidation(ctx, "pr_fetch", map[string]any{
+		"repository":          "testuser/testrepo",
+		"pull_request_number": 43,
+	})
+	if err != nil {
+		t.Fatalf("Failed to call pr_fetch tool: %v", err)
 	}
-	if s[:len(substr)] == substr {
-		return true
+
+	if result.IsError {
+		t.Fatalf("Expected success, got error: %s", GetTextContent(result.Content))
 	}
-	return containsStringRecursive(s[1:], substr)
+
+	// Check that body is empty in structured response
+	structured := GetStructuredContent(result)
+	if structured == nil {
+		t.Fatal("Expected structured content, got nil")
+	}
+
+	pr, ok := structured["pull_request"].(map[string]any)
+	if !ok {
+		t.Fatal("Expected pull_request in structured content")
+	}
+
+	if body, ok := pr["body"].(string); ok {
+		if body != "" {
+			t.Errorf("Expected empty body, got '%v'", body)
+		}
+	} else {
+		t.Errorf("Expected body to be a string, got %v", pr["body"])
+	}
+
+	// Check that "Body:" label is NOT in text response when body is empty
+	textContent := GetTextContent(result.Content)
+	if strings.Contains(textContent, "Body:") {
+		t.Errorf("Expected 'Body:' label NOT to appear when body is empty, got: %s", textContent)
+	}
 }
