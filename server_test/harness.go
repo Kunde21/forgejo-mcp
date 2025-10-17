@@ -33,11 +33,12 @@ type TestServer struct {
 
 // MockGiteaServer represents a mock Gitea API server for testing
 type MockGiteaServer struct {
-	server       *httptest.Server
-	issues       map[string][]MockIssue
-	comments     map[string][]MockComment
-	pullRequests map[string][]MockPullRequest
-	files        map[string][]byte // File content storage
+	server        *httptest.Server
+	issues        map[string][]MockIssue
+	comments      map[string][]MockComment
+	pullRequests  map[string][]MockPullRequest
+	files         map[string][]byte             // File content storage
+	notifications map[string][]MockNotification // Add notifications storage
 	// Repositories that should return 404
 	notFoundRepos map[string]bool
 	// Comment IDs that should return 403
@@ -82,6 +83,18 @@ type MockPullRequest struct {
 	State     string `json:"state"`
 	BaseRef   string `json:"base_ref"`
 	UpdatedAt string `json:"updated_at"`
+}
+
+// MockNotification represents a mock notification for testing
+type MockNotification struct {
+	ID         int    `json:"id"`
+	Repository string `json:"repository"`
+	Type       string `json:"type"`
+	Number     int    `json:"number"`
+	Title      string `json:"title"`
+	Unread     bool   `json:"unread"`
+	Updated    string `json:"updated_at"`
+	URL        string `json:"url"`
 }
 
 // GetTextContent extracts text content from MCP content slice
@@ -159,6 +172,7 @@ func NewMockGiteaServer(t *testing.T) *MockGiteaServer {
 		comments:              make(map[string][]MockComment),
 		pullRequests:          make(map[string][]MockPullRequest),
 		files:                 make(map[string][]byte),
+		notifications:         make(map[string][]MockNotification),
 		notFoundRepos:         make(map[string]bool),
 		forbiddenCommentIDs:   make(map[int]bool),
 		serverErrorCommentIDs: make(map[int]bool),
@@ -180,6 +194,7 @@ func NewMockGiteaServer(t *testing.T) *MockGiteaServer {
 	handler.HandleFunc("GET /api/v1/repos/{owner}/{repo}/issues/{number}/comments", mock.handleListComments)
 	handler.HandleFunc("PATCH /api/v1/repos/{owner}/{repo}/issues/comments/{id}", mock.handleEditComment)
 	handler.HandleFunc("GET /api/v1/repos/{owner}/{repo}/contents/{path...}", mock.handleGetFileContent)
+	handler.HandleFunc("GET /api/v1/notifications", mock.handleNotifications)
 
 	mock.server = httptest.NewServer(handler)
 	t.Cleanup(mock.server.Close)
@@ -228,6 +243,13 @@ func (m *MockGiteaServer) AddPullRequests(owner, repo string, pullRequests []Moc
 
 	key := owner + "/" + repo
 	m.pullRequests[key] = pullRequests
+}
+
+// AddNotifications adds mock notifications
+func (m *MockGiteaServer) AddNotifications(notifications []MockNotification) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.notifications["user"] = notifications
 }
 
 // SetNotFoundRepo marks a repository as not found (will return 404)
@@ -1416,4 +1438,72 @@ func (ts *TestServer) ValidateSuccessResult(result *mcp.CallToolResult, expected
 	}
 
 	return true
+}
+
+// handleNotifications handles notification endpoint
+func (m *MockGiteaServer) handleNotifications(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "GET" {
+		http.NotFound(w, r)
+		return
+	}
+
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	notifications, exists := m.notifications["user"]
+	if !exists {
+		notifications = []MockNotification{}
+	}
+
+	// Debug: log the query parameters
+	// fmt.Printf("DEBUG: Query params: %v\n", r.URL.Query())
+
+	// Filter by status if provided (simulate SDK behavior)
+	// The SDK might send status as "status-types" or "status", check both
+	statuses := r.URL.Query()["status"]
+	if len(statuses) == 0 {
+		statuses = r.URL.Query()["status-types"]
+	}
+
+	var filtered []MockNotification
+	for _, notif := range notifications {
+		// If no status specified, return all (SDK default behavior)
+		if len(statuses) == 0 {
+			filtered = append(filtered, notif)
+			continue
+		}
+
+		// Check if notification matches any of the requested statuses
+		shouldInclude := false
+		for _, status := range statuses {
+			if (status == "read" && !notif.Unread) || (status == "unread" && notif.Unread) {
+				shouldInclude = true
+				break
+			}
+		}
+
+		if shouldInclude {
+			filtered = append(filtered, notif)
+		}
+	}
+
+	// Convert to SDK format
+	sdkNotifications := make([]map[string]any, len(filtered))
+	for i, notif := range filtered {
+		sdkNotifications[i] = map[string]any{
+			"id":         notif.ID,
+			"unread":     notif.Unread,
+			"updated_at": notif.Updated,
+			"repository": map[string]any{
+				"full_name": notif.Repository,
+			},
+			"subject": map[string]any{
+				"title": notif.Title,
+				"type":  strings.Title(notif.Type),
+				"url":   notif.URL,
+			},
+		}
+	}
+
+	writeJSONResponse(w, sdkNotifications, http.StatusOK)
 }

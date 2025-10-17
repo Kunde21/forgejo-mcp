@@ -251,6 +251,13 @@ func NewFromServiceWithDebugAndCompat(service remote.ClientInterface, cfg *confi
 		OutputSchema: generateOutputSchema[PullRequestFetchResult](),
 	}, s.handlePullRequestFetch)
 
+	mcp.AddTool(mcpServer, &mcp.Tool{
+		Name:         "notification_list",
+		Description:  "List notifications from a Git repository with optional filtering",
+		InputSchema:  generateInputSchema[NotificationListArgs](),
+		OutputSchema: generateOutputSchema[NotificationList](),
+	}, s.handleNotificationList)
+
 	s.mcpServer = mcpServer
 	return s, nil
 }

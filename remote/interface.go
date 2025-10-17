@@ -281,12 +281,36 @@ type Milestone struct {
 	ClosedIssues int    `json:"closed_issues"`
 }
 
+// Notification represents a user notification from a Git repository
+type Notification struct {
+	ID         int    `json:"id"`
+	Repository string `json:"repository"`
+	Type       string `json:"type"`   // "issue", "pull", "commit"
+	Number     int    `json:"number"` // Issue/PR number (0 if not applicable)
+	Title      string `json:"title"`
+	Unread     bool   `json:"unread"`
+	Updated    string `json:"updated"`
+}
+
+// NotificationList represents a collection of notifications with pagination metadata
+type NotificationList struct {
+	Notifications []Notification `json:"notifications"`
+	Total         int            `json:"total"`
+	Limit         int            `json:"limit"`
+	Offset        int            `json:"offset"`
+}
+
+// NotificationLister defines the interface for listing notifications from a Git repository
+type NotificationLister interface {
+	ListNotifications(ctx context.Context, repo string, status string, limit, offset int) (*NotificationList, error)
+}
+
 // FileContentFetcher defines interface for fetching repository file contents
 type FileContentFetcher interface {
 	GetFileContent(ctx context.Context, owner, repo, ref, filepath string) ([]byte, error)
 }
 
-// ClientInterface combines IssueLister, IssueCommenter, IssueCommentLister, IssueCommentEditor, IssueCreator, IssueAttachmentCreator, IssueEditor, PullRequestLister, PullRequestCommentLister, PullRequestCommenter, PullRequestCommentEditor, PullRequestEditor, PullRequestCreator, PullRequestGetter, and FileContentFetcher for complete Git operations
+// ClientInterface combines IssueLister, IssueCommenter, IssueCommentLister, IssueCommentEditor, IssueCreator, IssueAttachmentCreator, IssueEditor, PullRequestLister, PullRequestCommentLister, PullRequestCommenter, PullRequestCommentEditor, PullRequestEditor, PullRequestCreator, PullRequestGetter, NotificationLister, and FileContentFetcher for complete Git operations
 type ClientInterface interface {
 	IssueLister
 	IssueCommenter
@@ -302,5 +326,6 @@ type ClientInterface interface {
 	PullRequestEditor
 	PullRequestCreator
 	PullRequestGetter
+	NotificationLister
 	FileContentFetcher
 }
